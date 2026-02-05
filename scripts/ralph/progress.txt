@@ -1,0 +1,19 @@
+# Ralph Progress Log
+Started: Initial setup
+
+## Codebase Patterns
+- Use `createClient()` from `lib/supabase/client.ts` for browser-side Supabase
+- Use `createClient()` from `lib/supabase/server.ts` for server-side Supabase
+- shadcn/ui components in `components/ui/`
+- Server Actions in `actions/` directory with `'use server'`
+
+---
+
+## Initial Setup - Infrastructure
+- Project created with Next.js 15, TypeScript, Tailwind
+- shadcn/ui initialized with default configuration
+- Supabase SDK installed and configured
+- GitHub repo: PanArtek/plany-app
+- Ralph agent configured
+
+---
