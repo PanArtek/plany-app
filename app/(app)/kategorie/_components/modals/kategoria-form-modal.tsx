@@ -1,9 +1,10 @@
 'use client'
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
+import { Loader2 } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -13,6 +14,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
   Form,
   FormControl,
@@ -20,6 +22,7 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  FormDescription,
 } from '@/components/ui/form';
 import { createKategoriaSchema, type CreateKategoriaInput } from '@/lib/validations/kategorie';
 import { createKategoria, updateKategoria, type KategoriaNode } from '@/actions/kategorie';
@@ -28,24 +31,32 @@ interface Props {
   mode: 'add' | 'edit';
   poziom: 1 | 2 | 3;
   parentId: string | null;
+  parentPath: string | null;
+  parentNazwa: string | null;
+  suggestedKod: string | null;
   kategoria?: KategoriaNode;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  isLoading?: boolean;
 }
 
-const POZIOM_LABELS: Record<number, { title: string; kodHelp: string }> = {
-  1: { title: 'branżę', kodHelp: '2-3 wielkie litery (np. BUD)' },
-  2: { title: 'kategorię', kodHelp: '2 cyfry (np. 01)' },
-  3: { title: 'podkategorię', kodHelp: '2 cyfry (np. 01)' },
+const POZIOM_LABELS: Record<number, { title: string; parentLabel: string; kodLabel: string }> = {
+  1: { title: 'branżę', parentLabel: '', kodLabel: 'Kod branży' },
+  2: { title: 'kategorię', parentLabel: 'Branża nadrzędna', kodLabel: 'Kod kategorii' },
+  3: { title: 'podkategorię', parentLabel: 'Kategoria nadrzędna', kodLabel: 'Kod podkategorii' },
 };
 
 export function KategoriaFormModal({
   mode,
   poziom,
   parentId,
+  parentPath,
+  parentNazwa,
+  suggestedKod,
   kategoria,
   open,
   onOpenChange,
+  isLoading = false,
 }: Props) {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -56,19 +67,41 @@ export function KategoriaFormModal({
     resolver: zodResolver(createKategoriaSchema),
     defaultValues: {
       parentId: parentId,
-      kod: kategoria?.kod || '',
-      nazwa: kategoria?.nazwa || '',
+      kod: '',
+      nazwa: '',
     },
   });
 
-  // Reset form when parentId changes (tab switch)
+  const kodValue = form.watch('kod');
+
+  const fullKodPreview = useMemo(() => {
+    const kod = kodValue || '__';
+    return parentPath ? `${parentPath}.${kod}` : kod;
+  }, [parentPath, kodValue]);
+
   useEffect(() => {
-    form.reset({
-      parentId: parentId,
-      kod: kategoria?.kod || '',
-      nazwa: kategoria?.nazwa || '',
-    });
-  }, [parentId, kategoria, form]);
+    if (open) {
+      if (isEdit && kategoria) {
+        form.reset({
+          parentId: parentId,
+          kod: kategoria.kod,
+          nazwa: kategoria.nazwa,
+        });
+      } else if (suggestedKod) {
+        form.reset({
+          parentId: parentId,
+          kod: suggestedKod,
+          nazwa: '',
+        });
+      } else {
+        form.reset({
+          parentId: parentId,
+          kod: '',
+          nazwa: '',
+        });
+      }
+    }
+  }, [open, isEdit, kategoria, suggestedKod, parentId, form]);
 
   async function onSubmit(data: CreateKategoriaInput) {
     setIsSubmitting(true);
@@ -89,7 +122,6 @@ export function KategoriaFormModal({
         if (result.success) {
           toast.success(`Dodano ${labels.title}`);
           onOpenChange(false);
-          form.reset();
         } else {
           toast.error(result.error || 'Błąd dodawania');
         }
@@ -110,54 +142,90 @@ export function KategoriaFormModal({
           <DialogTitle>{dialogTitle}</DialogTitle>
         </DialogHeader>
 
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="kod"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Kod</FormLabel>
-                  <FormControl>
-                    <Input
-                      {...field}
-                      placeholder={labels.kodHelp}
-                      className="font-mono"
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
+        {isLoading ? (
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          </div>
+        ) : (
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              {parentPath && parentNazwa && (
+                <div className="space-y-2">
+                  <Label className="text-muted-foreground text-sm">
+                    {labels.parentLabel}
+                  </Label>
+                  <Input
+                    value={`${parentPath} - ${parentNazwa}`}
+                    disabled
+                    className="bg-muted font-mono"
+                  />
+                </div>
               )}
-            />
 
-            <FormField
-              control={form.control}
-              name="nazwa"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Nazwa</FormLabel>
-                  <FormControl>
-                    <Input {...field} placeholder="Nazwa kategorii" />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+              <FormField
+                control={form.control}
+                name="kod"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{labels.kodLabel}</FormLabel>
+                    <FormControl>
+                      <Input
+                        {...field}
+                        className="font-mono w-24"
+                        maxLength={2}
+                        placeholder="01"
+                      />
+                    </FormControl>
+                    {mode === 'add' && suggestedKod && (
+                      <FormDescription>
+                        Sugestia: {suggestedKod} (następny wolny)
+                      </FormDescription>
+                    )}
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => onOpenChange(false)}
-              >
-                Anuluj
-              </Button>
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? 'Zapisywanie...' : isEdit ? 'Zapisz' : 'Dodaj'}
-              </Button>
-            </DialogFooter>
-          </form>
-        </Form>
+              <div className="space-y-2">
+                <Label className="text-muted-foreground text-sm">
+                  Pełny kod (podgląd)
+                </Label>
+                <Input
+                  value={fullKodPreview}
+                  disabled
+                  className="bg-muted font-mono"
+                />
+              </div>
+
+              <FormField
+                control={form.control}
+                name="nazwa"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Nazwa</FormLabel>
+                    <FormControl>
+                      <Input {...field} placeholder="np. Ściany działowe" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <DialogFooter>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => onOpenChange(false)}
+                >
+                  Anuluj
+                </Button>
+                <Button type="submit" disabled={isSubmitting}>
+                  {isSubmitting ? 'Zapisywanie...' : isEdit ? 'Zapisz' : 'Dodaj'}
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        )}
       </DialogContent>
     </Dialog>
   );

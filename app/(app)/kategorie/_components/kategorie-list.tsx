@@ -5,10 +5,21 @@ import { KategoriaCard } from './kategoria-card';
 
 interface Props {
   kategorie: KategoriaNode[];
-  branzaId?: string;
+  branzaKod: string;
+  branzaNazwa: string;
+  onAddPodkategoria: (parentId: string, parentKod: string, parentNazwa: string) => void;
+  onEditKategoria: (kategoria: KategoriaNode, parentKod: string, parentNazwa: string) => void;
+  onEditPodkategoria: (kategoria: KategoriaNode, parentKod: string, parentNazwa: string) => void;
 }
 
-export function KategorieList({ kategorie, branzaId }: Props) {
+export function KategorieList({
+  kategorie,
+  branzaKod,
+  branzaNazwa,
+  onAddPodkategoria,
+  onEditKategoria,
+  onEditPodkategoria,
+}: Props) {
   if (kategorie.length === 0) {
     return (
       <div className="text-muted-foreground text-sm py-8 text-center">
@@ -23,7 +34,11 @@ export function KategorieList({ kategorie, branzaId }: Props) {
         <KategoriaCard
           key={kategoria.id}
           kategoria={kategoria}
-          branzaId={branzaId}
+          branzaKod={branzaKod}
+          branzaNazwa={branzaNazwa}
+          onAddPodkategoria={onAddPodkategoria}
+          onEditKategoria={onEditKategoria}
+          onEditPodkategoria={onEditPodkategoria}
         />
       ))}
     </div>

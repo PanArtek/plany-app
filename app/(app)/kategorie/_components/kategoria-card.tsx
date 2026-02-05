@@ -6,28 +6,35 @@ import { useKategorieUIStore } from '@/stores/kategorie-ui-store';
 import type { KategoriaNode } from '@/actions/kategorie';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { KategoriaFormModal } from './modals/kategoria-form-modal';
 import { DeleteConfirmModal } from './modals/delete-confirm-modal';
 import { cn } from '@/lib/utils';
 
 interface Props {
   kategoria: KategoriaNode;
-  branzaId?: string;
+  branzaKod: string;
+  branzaNazwa: string;
+  onAddPodkategoria: (parentId: string, parentKod: string, parentNazwa: string) => void;
+  onEditKategoria: (kategoria: KategoriaNode, parentKod: string, parentNazwa: string) => void;
+  onEditPodkategoria: (kategoria: KategoriaNode, parentKod: string, parentNazwa: string) => void;
 }
 
-export function KategoriaCard({ kategoria }: Props) {
+export function KategoriaCard({
+  kategoria,
+  branzaKod,
+  branzaNazwa,
+  onAddPodkategoria,
+  onEditKategoria,
+  onEditPodkategoria,
+}: Props) {
   const { expandedIds, toggleExpanded } = useKategorieUIStore();
   const isExpanded = expandedIds.has(kategoria.id);
   const hasChildren = kategoria.children.length > 0;
 
-  const [editModalOpen, setEditModalOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
-  const [addSubModalOpen, setAddSubModalOpen] = useState(false);
-
-  // For podkategoria actions
   const [selectedPodkategoria, setSelectedPodkategoria] = useState<KategoriaNode | null>(null);
-  const [editSubModalOpen, setEditSubModalOpen] = useState(false);
   const [deleteSubModalOpen, setDeleteSubModalOpen] = useState(false);
+
+  const kategoriaFullKod = `${branzaKod}.${kategoria.kod}`;
 
   return (
     <div className="border border-border rounded-lg bg-card">
@@ -71,7 +78,7 @@ export function KategoriaCard({ kategoria }: Props) {
             className="h-8 w-8"
             onClick={(e) => {
               e.stopPropagation();
-              setEditModalOpen(true);
+              onEditKategoria(kategoria, branzaKod, branzaNazwa);
             }}
           >
             <Pencil className="h-4 w-4" />
@@ -109,8 +116,7 @@ export function KategoriaCard({ kategoria }: Props) {
                   variant="ghost"
                   className="h-6 w-6"
                   onClick={() => {
-                    setSelectedPodkategoria(podkategoria);
-                    setEditSubModalOpen(true);
+                    onEditPodkategoria(podkategoria, kategoriaFullKod, kategoria.nazwa);
                   }}
                 >
                   <Pencil className="h-3 w-3" />
@@ -134,23 +140,13 @@ export function KategoriaCard({ kategoria }: Props) {
             variant="ghost"
             size="sm"
             className="mt-2 w-full justify-start text-muted-foreground"
-            onClick={() => setAddSubModalOpen(true)}
+            onClick={() => onAddPodkategoria(kategoria.id, kategoriaFullKod, kategoria.nazwa)}
           >
             <Plus className="h-4 w-4 mr-2" />
             Dodaj podkategorię
           </Button>
         </div>
       )}
-
-      {/* Modals for kategoria */}
-      <KategoriaFormModal
-        mode="edit"
-        poziom={2}
-        parentId={null}
-        kategoria={kategoria}
-        open={editModalOpen}
-        onOpenChange={setEditModalOpen}
-      />
 
       <DeleteConfirmModal
         kategoria={kategoria}
@@ -159,33 +155,13 @@ export function KategoriaCard({ kategoria }: Props) {
         onOpenChange={setDeleteModalOpen}
       />
 
-      <KategoriaFormModal
-        mode="add"
-        poziom={3}
-        parentId={kategoria.id}
-        open={addSubModalOpen}
-        onOpenChange={setAddSubModalOpen}
-      />
-
-      {/* Modals for podkategoria */}
       {selectedPodkategoria && (
-        <>
-          <KategoriaFormModal
-            mode="edit"
-            poziom={3}
-            parentId={kategoria.id}
-            kategoria={selectedPodkategoria}
-            open={editSubModalOpen}
-            onOpenChange={setEditSubModalOpen}
-          />
-
-          <DeleteConfirmModal
-            kategoria={selectedPodkategoria}
-            hasChildren={selectedPodkategoria.children.length > 0}
-            open={deleteSubModalOpen}
-            onOpenChange={setDeleteSubModalOpen}
-          />
-        </>
+        <DeleteConfirmModal
+          kategoria={selectedPodkategoria}
+          hasChildren={selectedPodkategoria.children.length > 0}
+          open={deleteSubModalOpen}
+          onOpenChange={setDeleteSubModalOpen}
+        />
       )}
     </div>
   );

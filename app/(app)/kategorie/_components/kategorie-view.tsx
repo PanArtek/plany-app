@@ -1,11 +1,11 @@
 'use client'
 
-import { useState } from 'react';
 import { Plus } from 'lucide-react';
 import { BranzaTabs } from './branza-tabs';
 import { KategorieList } from './kategorie-list';
 import { KategoriaFormModal } from './modals/kategoria-form-modal';
 import { useKategorieUIStore, type BranzaKod } from '@/stores/kategorie-ui-store';
+import { useKategoriaModal } from '@/hooks/use-kategoria-modal';
 import type { KategoriaNode } from '@/actions/kategorie';
 import { Button } from '@/components/ui/button';
 
@@ -23,9 +23,20 @@ const BRANZE_NAMES: Record<BranzaKod, string> = {
 
 export function KategorieView({ initialData }: Props) {
   const { activeBranza } = useKategorieUIStore();
-  const [addModalOpen, setAddModalOpen] = useState(false);
+  const modal = useKategoriaModal();
 
   const currentBranza = initialData.find(b => b.kod === activeBranza);
+
+  const handleAddKategoria = () => {
+    if (currentBranza) {
+      modal.openAdd(
+        currentBranza.id,
+        currentBranza.kod,
+        currentBranza.nazwa,
+        2
+      );
+    }
+  };
 
   return (
     <div>
@@ -36,7 +47,7 @@ export function KategorieView({ initialData }: Props) {
           <h2 className="text-lg font-medium">
             {currentBranza?.nazwa || BRANZE_NAMES[activeBranza]}
           </h2>
-          <Button size="sm" onClick={() => setAddModalOpen(true)}>
+          <Button size="sm" onClick={handleAddKategoria}>
             <Plus className="h-4 w-4 mr-2" />
             Dodaj kategorię
           </Button>
@@ -44,16 +55,31 @@ export function KategorieView({ initialData }: Props) {
 
         <KategorieList
           kategorie={currentBranza?.children || []}
-          branzaId={currentBranza?.id}
+          branzaKod={currentBranza?.kod || activeBranza}
+          branzaNazwa={currentBranza?.nazwa || BRANZE_NAMES[activeBranza]}
+          onAddPodkategoria={(parentId, parentKod, parentNazwa) =>
+            modal.openAdd(parentId, parentKod, parentNazwa, 3)
+          }
+          onEditKategoria={(kategoria, parentKod, parentNazwa) =>
+            modal.openEdit(kategoria, parentKod, parentNazwa, 2)
+          }
+          onEditPodkategoria={(kategoria, parentKod, parentNazwa) =>
+            modal.openEdit(kategoria, parentKod, parentNazwa, 3)
+          }
         />
       </div>
 
       <KategoriaFormModal
-        mode="add"
-        poziom={2}
-        parentId={currentBranza?.id || null}
-        open={addModalOpen}
-        onOpenChange={setAddModalOpen}
+        mode={modal.state.mode}
+        poziom={modal.state.poziom}
+        parentId={modal.state.parentId}
+        parentPath={modal.state.parentPath}
+        parentNazwa={modal.state.parentNazwa}
+        suggestedKod={modal.state.suggestedKod}
+        kategoria={modal.state.kategoria}
+        open={modal.state.open}
+        onOpenChange={modal.setOpen}
+        isLoading={modal.state.isLoading}
       />
     </div>
   );
