@@ -8,9 +8,9 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 
 const VARIANTS = {
-  default: "w-[600px]",
-  narrow: "w-[400px]",
-  wide: "w-[800px]",
+  default: "w-full md:w-[600px]",
+  narrow: "w-full md:w-[400px]",
+  wide: "w-full md:w-[800px]",
 } as const
 
 type SlidePanelVariant = keyof typeof VARIANTS
@@ -48,7 +48,11 @@ function SlidePanel({
             "data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right",
             "data-[state=open]:duration-300 data-[state=closed]:duration-300",
             "ease-out",
-            // Width variant
+            // Mobile fullscreen - no border-radius, full width
+            "rounded-none md:rounded-l-xl",
+            // Mobile: remove left border (fullscreen)
+            "border-l-0 md:border-l",
+            // Width variant (includes mobile w-full)
             VARIANTS[variant]
           )}
         >

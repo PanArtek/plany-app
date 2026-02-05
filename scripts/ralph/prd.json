@@ -17,8 +17,8 @@
         "Typecheck passes"
       ],
       "priority": 1,
-      "passes": false,
-      "notes": "",
+      "passes": true,
+      "notes": "Added w-full to all variants for mobile, rounded-none md:rounded-l-xl, border-l-0 md:border-l",
       "dependsOn": []
     },
     {

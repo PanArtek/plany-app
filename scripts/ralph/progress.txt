@@ -1,4 +1,8 @@
 # Ralph Progress Log
-Started:
+Started: Thu Feb  5 15:43:06 CET 2026
 ---
-
+## UX-001: Add mobile fullscreen support to SlidePanel ✓
+- Updated VARIANTS to include `w-full md:w-[Xpx]` for all sizes
+- Added `rounded-none md:rounded-l-xl` for mobile fullscreen
+- Added `border-l-0 md:border-l` to remove border on mobile
+- Build passes
