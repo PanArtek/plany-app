@@ -89,8 +89,8 @@
         "Typecheck passes"
       ],
       "priority": 5,
-      "passes": false,
-      "notes": "",
+      "passes": true,
+      "notes": "Applied glass wrapper, sticky header, amber selected state with glow",
       "dependsOn": ["UX-004"]
     },
     {
