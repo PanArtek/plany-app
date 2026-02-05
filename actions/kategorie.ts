@@ -178,6 +178,61 @@ export async function getNextKod(parentId: string | null): Promise<string> {
   return '99';
 }
 
+// GET NEXT POZYCJA KOD - generate next available position code for a kategoria
+export async function getNextPozycjaKod(kategoriaId: string): Promise<string> {
+  const supabase = await createClient();
+
+  // 1. Get kategoria to obtain pelny_kod
+  const { data: kategoria, error: katError } = await supabase
+    .from('kategorie')
+    .select('pelny_kod')
+    .eq('id', kategoriaId)
+    .single();
+
+  if (katError || !kategoria?.pelny_kod) {
+    console.error('[getNextPozycjaKod] Kategoria not found:', kategoriaId);
+    return '';
+  }
+
+  const prefix = kategoria.pelny_kod; // e.g. "BUD.03.01"
+
+  // 2. Find existing pozycje with this prefix
+  const { data: pozycje, error: pozError } = await supabase
+    .from('pozycje_biblioteka')
+    .select('kod')
+    .like('kod', `${prefix}.%`)
+    .order('kod');
+
+  if (pozError) {
+    console.error('[getNextPozycjaKod] Error fetching pozycje:', pozError);
+    return `${prefix}.001`;
+  }
+
+  if (!pozycje || pozycje.length === 0) {
+    return `${prefix}.001`;
+  }
+
+  // 3. Find first available 3-digit number
+  const existingNumbers = new Set(
+    pozycje
+      .map(p => {
+        const parts = p.kod.split('.');
+        const lastPart = parts[parts.length - 1];
+        return parseInt(lastPart, 10);
+      })
+      .filter(n => !isNaN(n))
+  );
+
+  for (let i = 1; i <= 999; i++) {
+    if (!existingNumbers.has(i)) {
+      return `${prefix}.${i.toString().padStart(3, '0')}`;
+    }
+  }
+
+  // Fallback - should never happen with 999 slots
+  return `${prefix}.999`;
+}
+
 // GET KATEGORIE BY POZIOM - for cascading selects
 export interface KategoriaOption {
   id: string;
