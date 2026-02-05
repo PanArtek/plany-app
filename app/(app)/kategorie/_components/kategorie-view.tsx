@@ -80,7 +80,7 @@ export function KategorieView({ initialData, activeBranza }: Props) {
         </div>
 
         <KategorieList
-          kategorie={currentBranza?.children || []}
+          kategorie={selectedKategoriaId === 'all' ? kategorie : kategorie.filter(k => k.id === selectedKategoriaId)}
           branzaKod={currentBranza?.kod || activeBranza}
           branzaNazwa={currentBranza?.nazwa || BRANZE_NAMES[activeBranza]}
           onAddPodkategoria={(parentId, parentKod, parentNazwa) =>
