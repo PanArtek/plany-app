@@ -8,6 +8,7 @@ import { PozycjeFilters as FiltersComponent } from './pozycje-filters';
 import { PozycjeTable } from './pozycje-table';
 import { PozycjaDetailPanel } from './pozycja-detail-panel';
 import { PozycjaFormModal } from './modals/pozycja-form-modal';
+import { DeletePozycjaModal } from './modals/delete-pozycja-modal';
 
 interface PozycjeViewProps {
   initialData: Pozycja[];
@@ -28,6 +29,8 @@ function PozycjeViewContent({ initialData, initialFilters, initialSelected }: Po
     open: false,
     mode: 'add',
   });
+
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
 
   // Selected ID from URL
   const selectedId = searchParams.get('selected');
@@ -52,9 +55,16 @@ function PozycjeViewContent({ initialData, initialFilters, initialSelected }: Po
   };
 
   const handleDelete = () => {
-    // Will be handled by POZ-012 delete modal
-    // For now, just a placeholder
-    console.log('Delete clicked for:', selectedPozycja?.id);
+    if (selectedPozycja) {
+      setDeleteModalOpen(true);
+    }
+  };
+
+  const handleDeleted = () => {
+    // Close panel and deselect on successful delete
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete('selected');
+    router.push(`/pozycje?${params.toString()}`);
   };
 
   return (
@@ -92,6 +102,17 @@ function PozycjeViewContent({ initialData, initialFilters, initialSelected }: Po
         pozycja={formModal.mode === 'edit' && selectedPozycja ? selectedPozycja : undefined}
         open={formModal.open}
         onOpenChange={(open) => setFormModal((prev) => ({ ...prev, open }))}
+      />
+
+      <DeletePozycjaModal
+        pozycja={selectedPozycja ? {
+          id: selectedPozycja.id,
+          kod: selectedPozycja.kod,
+          nazwa: selectedPozycja.nazwa,
+        } : null}
+        open={deleteModalOpen}
+        onOpenChange={setDeleteModalOpen}
+        onDeleted={handleDeleted}
       />
     </div>
   );
