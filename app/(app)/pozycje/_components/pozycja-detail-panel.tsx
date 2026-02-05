@@ -137,7 +137,7 @@ export function PozycjaDetailPanel({ pozycja, onEdit, onDelete }: PozycjaDetailP
             title="Robocizna"
             items={pozycja.biblioteka_skladowe_robocizna || []}
             suma={robocizna}
-            colorClass="text-emerald-400"
+            variant="primary"
             editable
             onAdd={handleAddRobocizna}
             onEdit={handleEditRobocizna}
@@ -148,7 +148,7 @@ export function PozycjaDetailPanel({ pozycja, onEdit, onDelete }: PozycjaDetailP
             title="Materiały"
             items={pozycja.biblioteka_skladowe_materialy || []}
             suma={material}
-            colorClass="text-blue-400"
+            variant="secondary"
             editable
             onAdd={handleAddMaterial}
             onEdit={handleEditMaterial}

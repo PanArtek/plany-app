@@ -107,8 +107,8 @@
         "Typecheck passes"
       ],
       "priority": 6,
-      "passes": false,
-      "notes": "",
+      "passes": true,
+      "notes": "Added variant prop (primary/secondary), deprecated colorClass, amber-400 for titles/sums, hover:bg-amber-500/5",
       "dependsOn": []
     },
     {

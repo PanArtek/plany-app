@@ -34,3 +34,11 @@ Started: Thu Feb  5 15:43:06 CET 2026
 - Row hover: hover:bg-white/5
 - Selected row: bg-amber-500/10 border-l-2 border-l-amber-500 shadow-[inset_0_0_20px_rgba(245,158,11,0.05)]
 - Build passes
+
+## UX-006: Update skladowe-section with amber-only colors ✓
+- Added variant prop (primary/secondary) instead of colorClass
+- Title: text-amber-400 (primary) or text-amber-400/70 (secondary)
+- Sum value: text-amber-400 font-mono
+- Item row hover: hover:bg-amber-500/5
+- Updated pozycja-detail-panel to use variant prop
+- Build passes

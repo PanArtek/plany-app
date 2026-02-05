@@ -18,7 +18,9 @@ interface SkladoweSectionProps {
   title: string;
   items: SkladowaItem[];
   suma: number;
-  colorClass: string;
+  /** @deprecated Use amber styling internally */
+  colorClass?: string;
+  variant?: 'primary' | 'secondary';
   editable?: boolean;
   onAdd?: () => void;
   onEdit?: (item: SkladowaItem) => void;
@@ -48,18 +50,20 @@ export function SkladoweSection({
   title,
   items,
   suma,
-  colorClass,
+  variant = 'primary',
   editable = true,
   onAdd,
   onEdit,
   onDelete,
 }: SkladoweSectionProps) {
+  const titleColorClass = variant === 'primary' ? 'text-amber-400' : 'text-amber-400/70';
+
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <h4 className={cn('font-medium text-sm', colorClass)}>{title}</h4>
+        <h4 className={cn('font-medium text-sm', titleColorClass)}>{title}</h4>
         <div className="flex items-center gap-2">
-          <span className={cn('font-mono text-sm', colorClass)}>{formatCena(suma)}</span>
+          <span className="font-mono text-sm text-amber-400">{formatCena(suma)}</span>
           {editable && onAdd && (
             <Button
               variant="ghost"
@@ -86,7 +90,7 @@ export function SkladoweSection({
             return (
               <div
                 key={item.id}
-                className="group flex items-center justify-between py-1.5 px-2 bg-card rounded text-sm hover:bg-accent/50 transition-colors"
+                className="group flex items-center justify-between py-1.5 px-2 bg-card rounded text-sm hover:bg-amber-500/5 transition-colors"
               >
                 <div className="flex flex-col min-w-0 flex-1">
                   <span className="truncate">{label}</span>
