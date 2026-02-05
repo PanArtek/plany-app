@@ -42,6 +42,35 @@ Pliki Ralph:
 - `scripts/ralph/progress.txt` - log postępów
 - `scripts/ralph/RALPH.md` - kontekst dla agenta
 
+## Git Workflow
+
+**Repo:** https://github.com/PanArtek/plany-app
+
+**Branches:**
+- `main` - production, auto-deploy do Vercel
+- `feat/*` - nowe funkcjonalności
+- `fix/*` - bugfixy
+- `ralph/*` - taski Ralph-a
+
+**Commit convention:**
+```
+feat: nowa funkcjonalność
+fix: naprawa błędu
+docs: dokumentacja
+refactor: refaktoryzacja
+chore: maintenance
+```
+
+**Workflow:**
+1. Utwórz branch (`git checkout -b feat/nazwa`)
+2. Implementuj + commituj
+3. Push (`git push -u origin feat/nazwa`)
+4. PR do main (opcjonalnie)
+5. Merge do main → auto-deploy Vercel
+
+**WAŻNE:** Każdy commit musi przejść `npm run build` przed pushem.
+
 ## Reference
 - Wireframe: `/home/artur/Projekty/wireframe/`
 - Dokumentacja architektury: `/home/artur/Projekty/wireframe/docs/ARCHITECTURE.md`
+- Plan migracji: `docs/MIGRATION-PLAN.md`

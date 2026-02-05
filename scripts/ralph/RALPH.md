@@ -35,6 +35,22 @@ stores/        → Zustand stores
 - URL: https://tormvuvlcujetkagmwtc.supabase.co
 - Keys in `.env.local`
 
+## Git Workflow
+
+**WAŻNE:** Po każdym ukończonym tasku:
+1. `npm run build` - musi przejść!
+2. `git add <zmienione pliki>`
+3. `git commit -m "feat: [Story ID] - [Story Title]"`
+4. `git push`
+
+**Branch z PRD:** Sprawdź `branchName` w `prd.json` i pracuj na tym branchu.
+
+**Commit format:**
+```
+feat: [STORY-ID] - krótki opis
+```
+
 ## Reference
 - Wireframe: /home/artur/Projekty/wireframe/
 - Dokumentacja: /home/artur/Projekty/wireframe/docs/
+- Plan migracji: /home/artur/Projekty/plany-app/docs/MIGRATION-PLAN.md
