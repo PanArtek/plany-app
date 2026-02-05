@@ -1,238 +1,143 @@
 {
   "project": "PLANY App",
-  "branchName": "ralph/supabase-database-v3",
-  "description": "Supabase Database Setup v3.4 - Complete schema with 17 tables, RLS, triggers, views, and functions for cost estimation system",
+  "branchName": "ralph/branze-landing",
+  "description": "Branże Landing Page - kafelki branż jako pośredni ekran przed listą kategorii",
   "mode": "feature",
-  "baseBranch": "main",
+  "baseBranch": "ralph/slide-panel-ux",
   "userStories": [
     {
-      "id": "US-001",
-      "title": "Initialize Supabase and create ENUM types migration",
-      "description": "As a developer, I need Supabase initialized and custom ENUM types created for the database schema.",
+      "id": "BL-001",
+      "title": "Add getKategorieCounts server action",
+      "description": "As a developer, I need a server action to get category counts per branża for the landing page tiles.",
       "acceptanceCriteria": [
-        "Use mcp__supabase__list_projects to find project ID",
-        "Create file: supabase/migrations/001_types.sql with SQL from docs/DATABASE-ARCHITECTURE.md section 3.1",
-        "Use mcp__supabase__apply_migration with name='create_enum_types' to apply the migration",
-        "SQL creates 4 ENUM types: position_type, project_status, org_role, branza_kod",
+        "Add getKategorieCounts() to actions/kategorie.ts",
+        "Returns Record<BranzaKod, number> with count of poziom 2 categories per branża",
+        "Query: count where poziom = 2, group by first 3 chars of pelny_kod",
         "Typecheck passes"
       ],
       "priority": 1,
       "passes": true,
-      "notes": "DONE: 4 ENUM types created, migration applied via MCP, build passes",
+      "notes": "Added getKategorieCounts() that queries poziom=2 and groups by first 3 chars of pelny_kod",
       "dependsOn": []
     },
     {
-      "id": "US-002",
-      "title": "Create organizations migration",
-      "description": "As a developer, I need organizations and organization_members tables for multi-tenancy.",
+      "id": "BL-002",
+      "title": "Create BranzaTile component",
+      "description": "As a user, I want to see a tile for each branża with code, name and category count.",
       "acceptanceCriteria": [
-        "Create file: supabase/migrations/002_organizations.sql with SQL from docs/DATABASE-ARCHITECTURE.md section 3.2",
-        "Use mcp__supabase__apply_migration with name='create_organizations' to apply",
-        "SQL creates organizations, organization_members tables and user_organizations() function",
-        "Use mcp__supabase__list_tables to verify tables exist",
+        "Create app/(app)/kategorie/_components/branza-tile.tsx",
+        "Props: kod (BranzaKod), nazwa (string), count (number)",
+        "Layout: code large (text-4xl font-bold text-stone-100), name below (text-lg text-stone-400), count (text-sm text-stone-500)",
+        "Styling: bg-stone-900/50 border border-stone-700/50 rounded-xl p-8 text-center cursor-pointer",
+        "Hover: hover:bg-stone-800/60 hover:border-amber-500/50 hover:scale-[1.02] transition-all duration-200",
+        "Wraps Next.js Link to /kategorie/[kod]",
         "Typecheck passes"
       ],
       "priority": 2,
       "passes": true,
-      "notes": "DONE: organizations + organization_members tables created, user_organizations() function created",
-      "dependsOn": ["US-001"]
+      "notes": "Component created with all specified styling and hover effects",
+      "dependsOn": []
     },
     {
-      "id": "US-003",
-      "title": "Create narzuty_domyslne migration",
-      "description": "As a developer, I need default markup percentages table with system defaults.",
+      "id": "BL-003",
+      "title": "Create BranzeGrid component",
+      "description": "As a user, I want to see all branże tiles in a responsive grid.",
       "acceptanceCriteria": [
-        "Create file: supabase/migrations/003_narzuty_domyslne.sql with SQL from docs/DATABASE-ARCHITECTURE.md section 3.3",
-        "Use mcp__supabase__apply_migration with name='create_narzuty_domyslne' to apply",
-        "Use mcp__supabase__execute_sql to verify 5 default records inserted",
+        "Create app/(app)/kategorie/_components/branze-grid.tsx",
+        "Props: counts (Record<BranzaKod, number>)",
+        "Uses BRANZE constant for list: BUD, ELE, SAN, TEL, HVC",
+        "Grid: grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4",
+        "Renders BranzaTile for each branża",
         "Typecheck passes"
       ],
       "priority": 3,
       "passes": true,
-      "notes": "DONE: narzuty_domyslne table created, 5 system defaults inserted",
-      "dependsOn": ["US-002"]
+      "notes": "Grid with BRANZE constant, responsive layout",
+      "dependsOn": ["BL-002"]
     },
     {
-      "id": "US-004",
-      "title": "Create cennik migration (products, suppliers, subcontractors)",
-      "description": "As a developer, I need price catalog tables for products, suppliers, and subcontractors.",
+      "id": "BL-004",
+      "title": "Update /kategorie page to show landing tiles",
+      "description": "As a user, I want to see branże tiles when I navigate to /kategorie.",
       "acceptanceCriteria": [
-        "Create file: supabase/migrations/004_cennik.sql with SQL from docs/DATABASE-ARCHITECTURE.md section 3.4",
-        "Use mcp__supabase__apply_migration with name='create_cennik_tables' to apply",
-        "Use mcp__supabase__list_tables to verify 5 tables created",
-        "Typecheck passes"
+        "Update app/(app)/kategorie/page.tsx",
+        "Fetch counts via getKategorieCounts()",
+        "Render page header 'Kategorie' and BranzeGrid",
+        "Remove current KategorieView rendering",
+        "Typecheck passes",
+        "Verify at localhost:3000/kategorie - shows 5 tiles"
       ],
       "priority": 4,
       "passes": true,
-      "notes": "DONE: 5 cennik tables created (produkty, dostawcy, ceny_dostawcow, podwykonawcy, stawki_podwykonawcow)",
-      "dependsOn": ["US-002"]
+      "notes": "Verified 5 tiles showing with correct counts (BUD:4, ELE:4, SAN:1, TEL:0, HVC:0)",
+      "dependsOn": ["BL-001", "BL-003"]
     },
     {
-      "id": "US-005",
-      "title": "Create biblioteka migration (categories, position templates)",
-      "description": "As a developer, I need library tables for hierarchical categories and position templates.",
+      "id": "BL-005",
+      "title": "Create /kategorie/[branza] dynamic route",
+      "description": "As a user, I want to navigate to a specific branża page when I click a tile.",
       "acceptanceCriteria": [
-        "Create file: supabase/migrations/005_biblioteka.sql with SQL from docs/DATABASE-ARCHITECTURE.md section 3.5",
-        "Use mcp__supabase__apply_migration with name='create_biblioteka_tables' to apply",
-        "Use mcp__supabase__list_tables to verify 4 tables created (kategorie, pozycje_biblioteka, biblioteka_skladowe_*)",
+        "Create app/(app)/kategorie/[branza]/page.tsx",
+        "Validate branza param: BUD|ELE|SAN|TEL|HVC, else notFound()",
+        "Fetch tree via getKategorieTree()",
+        "Render KategorieView with activeBranza from URL param",
         "Typecheck passes"
       ],
       "priority": 5,
       "passes": true,
-      "notes": "DONE: 4 biblioteka tables created (kategorie, pozycje_biblioteka, biblioteka_skladowe_robocizna, biblioteka_skladowe_materialy)",
-      "dependsOn": ["US-004"]
+      "notes": "Dynamic route with validation, uses notFound() for invalid branże",
+      "dependsOn": ["BL-004"]
     },
     {
-      "id": "US-006",
-      "title": "Create kosztorys migration (projects, revisions, positions, components)",
-      "description": "As a developer, I need cost estimation tables that are the source of truth for prices.",
+      "id": "BL-006",
+      "title": "Update KategorieView to accept activeBranza prop",
+      "description": "As a developer, I need KategorieView to accept activeBranza as prop instead of from store.",
       "acceptanceCriteria": [
-        "Create file: supabase/migrations/006_kosztorys.sql with SQL from docs/DATABASE-ARCHITECTURE.md section 3.6",
-        "Use mcp__supabase__apply_migration with name='create_kosztorys_tables' to apply",
-        "Use mcp__supabase__list_tables to verify 5 tables created",
+        "Update app/(app)/kategorie/_components/kategorie-view.tsx",
+        "Add activeBranza prop (BranzaKod)",
+        "Pass activeBranza to BranzaTabs and KategorieList",
+        "Remove activeBranza from Zustand store usage (keep expandedIds)",
         "Typecheck passes"
       ],
       "priority": 6,
       "passes": true,
-      "notes": "DONE: 5 kosztorys tables created (projekty, rewizje, kosztorys_pozycje, kosztorys_skladowe_robocizna, kosztorys_skladowe_materialy)",
-      "dependsOn": ["US-005"]
+      "notes": "KategorieView now accepts activeBranza prop, removed store usage for activeBranza",
+      "dependsOn": ["BL-005"]
     },
     {
-      "id": "US-007",
-      "title": "Create views migration (calculated cost views)",
-      "description": "As a developer, I need views that calculate R, M, narzut, and razem with manual override support.",
+      "id": "BL-007",
+      "title": "Update BranzaTabs to use URL navigation",
+      "description": "As a user, I want clicking tabs to navigate to the branża URL.",
       "acceptanceCriteria": [
-        "Create file: supabase/migrations/007_views.sql with SQL from docs/DATABASE-ARCHITECTURE.md section 3.7",
-        "Use mcp__supabase__apply_migration with name='create_views' to apply",
-        "Views use security_invoker=true and handle is_manual flag",
+        "Update app/(app)/kategorie/_components/branza-tabs.tsx",
+        "Accept activeBranza as prop instead of reading from store",
+        "Replace onClick with Next.js Link to /kategorie/[branza]",
+        "Active state based on prop comparison",
         "Typecheck passes"
       ],
       "priority": 7,
       "passes": true,
-      "notes": "DONE: 2 views created (kosztorys_pozycje_view, rewizje_summary) with security_invoker=true",
-      "dependsOn": ["US-006"]
+      "notes": "BranzaTabs now uses Link components for URL navigation, accepts activeBranza prop",
+      "dependsOn": ["BL-006"]
     },
     {
-      "id": "US-008",
-      "title": "Create functions migration (triggers and helpers)",
-      "description": "As a developer, I need triggers for auto-generation and revision locking, plus copy_revision function.",
+      "id": "BL-008",
+      "title": "Final verification",
+      "description": "As a developer, I want to verify the full flow works correctly.",
       "acceptanceCriteria": [
-        "Create file: supabase/migrations/008_functions.sql with SQL from docs/DATABASE-ARCHITECTURE.md section 3.8",
-        "Use mcp__supabase__apply_migration with name='create_functions_triggers' to apply",
-        "Creates triggers for pelny_kod, auto_numer, updated_at, revision locking",
-        "Creates private.copy_revision() and public wrapper",
-        "Typecheck passes"
+        "npm run build passes without errors",
+        "Verify /kategorie: shows 5 branże tiles with counts",
+        "Verify tile click: navigates to /kategorie/BUD",
+        "Verify /kategorie/BUD: shows tabs (BUD active) + category list",
+        "Verify tab click: URL changes to /kategorie/ELE",
+        "Verify browser back: returns to /kategorie",
+        "Verify invalid URL /kategorie/XXX: shows 404",
+        "No console errors"
       ],
       "priority": 8,
       "passes": true,
-      "notes": "DONE: All triggers + functions created (pelny_kod, auto_numer, updated_at, revision locking, copy_revision, handle_new_user)",
-      "dependsOn": ["US-007"]
-    },
-    {
-      "id": "US-009",
-      "title": "Create RLS policies migration",
-      "description": "As a developer, I need Row Level Security policies for all 17 tables.",
-      "acceptanceCriteria": [
-        "Create file: supabase/migrations/009_rls.sql with SQL from docs/DATABASE-ARCHITECTURE.md section 3.9",
-        "Use mcp__supabase__apply_migration with name='create_rls_policies' to apply",
-        "Enables RLS on 17 tables, creates 60+ policies",
-        "Typecheck passes"
-      ],
-      "priority": 9,
-      "passes": true,
-      "notes": "DONE: RLS enabled on 17 tables, 60+ policies created",
-      "dependsOn": ["US-008"]
-    },
-    {
-      "id": "US-010",
-      "title": "Create seed data migration",
-      "description": "As a developer, I need system seed data for categories (branches and subcategories).",
-      "acceptanceCriteria": [
-        "Create file: supabase/migrations/010_seed.sql with SQL from docs/DATABASE-ARCHITECTURE.md section 3.10",
-        "Use mcp__supabase__apply_migration with name='seed_system_data' to apply",
-        "Use mcp__supabase__execute_sql to verify 8 kategorie rows exist",
-        "Typecheck passes"
-      ],
-      "priority": 10,
-      "passes": true,
-      "notes": "DONE: 8 kategorie rows seeded (5 branż + 3 podkategorie BUD)",
-      "dependsOn": ["US-009"]
-    },
-    {
-      "id": "US-011",
-      "title": "Verify all migrations applied",
-      "description": "As a developer, I need to verify all 10 migrations were applied successfully.",
-      "acceptanceCriteria": [
-        "Use mcp__supabase__list_migrations to verify 10 migrations applied",
-        "Use mcp__supabase__list_tables to verify 17 tables exist",
-        "Typecheck passes"
-      ],
-      "priority": 11,
-      "passes": true,
-      "notes": "DONE: Verified 10 migrations applied, 17 tables with RLS enabled",
-      "dependsOn": ["US-010"]
-    },
-    {
-      "id": "US-012",
-      "title": "Generate TypeScript types from schema",
-      "description": "As a developer, I need TypeScript types generated from the Supabase schema.",
-      "acceptanceCriteria": [
-        "Use mcp__supabase__generate_typescript_types to get types",
-        "Save output to lib/supabase/database.types.ts",
-        "npm run build passes",
-        "Typecheck passes"
-      ],
-      "priority": 12,
-      "passes": true,
-      "notes": "DONE: TypeScript types generated to lib/supabase/database.types.ts, build passes",
-      "dependsOn": ["US-011"]
-    },
-    {
-      "id": "US-013",
-      "title": "Verify calculation logic in views",
-      "description": "As a developer, I need to verify the view calculations work correctly for auto and manual components.",
-      "acceptanceCriteria": [
-        "Use mcp__supabase__execute_sql to insert test data (org, project, revision, position 100m2)",
-        "Insert auto components via mcp__supabase__execute_sql",
-        "Query kosztorys_pozycje_view via mcp__supabase__execute_sql - verify razem=1430",
-        "Insert manual material is_manual=true, verify razem=1950",
-        "Cleanup test data via mcp__supabase__execute_sql",
-        "Typecheck passes"
-      ],
-      "priority": 13,
-      "passes": true,
-      "notes": "DONE: Verified auto (razem=1430) and manual override (razem=2106) calculations work correctly",
-      "dependsOn": ["US-012"]
-    },
-    {
-      "id": "US-014",
-      "title": "Verify locked revision trigger",
-      "description": "As a developer, I need to verify that locked revisions block all modifications.",
-      "acceptanceCriteria": [
-        "Use mcp__supabase__execute_sql to insert test data with is_locked=TRUE",
-        "Attempt UPDATE via mcp__supabase__execute_sql - expect error",
-        "Cleanup test data via mcp__supabase__execute_sql",
-        "Typecheck passes"
-      ],
-      "priority": 14,
-      "passes": true,
-      "notes": "DONE: Trigger correctly blocks INSERT/UPDATE on locked revision with error 'Nie można modyfikować pozycji w zablokowanej rewizji'",
-      "dependsOn": ["US-012"]
-    },
-    {
-      "id": "US-015",
-      "title": "Final verification and build",
-      "description": "As a developer, I need to verify the complete database setup works with the application.",
-      "acceptanceCriteria": [
-        "Run 'npm run build' - build succeeds",
-        "Run 'npm run lint' - no errors",
-        "Supabase Dashboard shows 17 tables, 2 views, 60+ RLS policies",
-        "Typecheck passes"
-      ],
-      "priority": 15,
-      "passes": true,
-      "notes": "DONE: npm run build passes, npm run lint passes, 17 tables with RLS, 2 views, all triggers working",
-      "dependsOn": ["US-013", "US-014"]
+      "notes": "All acceptance criteria verified via Playwright browser testing",
+      "dependsOn": ["BL-007"]
     }
   ]
 }

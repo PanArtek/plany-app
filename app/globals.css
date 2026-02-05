@@ -4,39 +4,40 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
   --font-sans: var(--font-sans);
   --font-mono: var(--font-mono);
-  --color-sidebar-ring: var(--sidebar-ring);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar: var(--sidebar);
-  --color-chart-5: var(--chart-5);
-  --color-chart-4: var(--chart-4);
-  --color-chart-3: var(--chart-3);
-  --color-chart-2: var(--chart-2);
-  --color-chart-1: var(--chart-1);
-  --color-ring: var(--ring);
-  --color-input: var(--input);
-  --color-border: var(--border);
-  --color-destructive: var(--destructive);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-accent: var(--accent);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-muted: var(--muted);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-secondary: var(--secondary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-primary: var(--primary);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-popover: var(--popover);
-  --color-card-foreground: var(--card-foreground);
-  --color-card: var(--card);
+  --font-display: var(--font-display);
+  --color-sidebar-ring: hsl(var(--sidebar-ring));
+  --color-sidebar-border: hsl(var(--sidebar-border));
+  --color-sidebar-accent-foreground: hsl(var(--sidebar-accent-foreground));
+  --color-sidebar-accent: hsl(var(--sidebar-accent));
+  --color-sidebar-primary-foreground: hsl(var(--sidebar-primary-foreground));
+  --color-sidebar-primary: hsl(var(--sidebar-primary));
+  --color-sidebar-foreground: hsl(var(--sidebar-foreground));
+  --color-sidebar: hsl(var(--sidebar));
+  --color-chart-5: hsl(var(--chart-5));
+  --color-chart-4: hsl(var(--chart-4));
+  --color-chart-3: hsl(var(--chart-3));
+  --color-chart-2: hsl(var(--chart-2));
+  --color-chart-1: hsl(var(--chart-1));
+  --color-ring: hsl(var(--ring));
+  --color-input: hsl(var(--input));
+  --color-border: hsl(var(--border));
+  --color-destructive: hsl(var(--destructive));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-accent: hsl(var(--accent));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-muted: hsl(var(--muted));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  --color-secondary: hsl(var(--secondary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-primary: hsl(var(--primary));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+  --color-popover: hsl(var(--popover));
+  --color-card-foreground: hsl(var(--card-foreground));
+  --color-card: hsl(var(--card));
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -106,49 +107,63 @@
 }
 
 .dark {
-  /* Base colors */
-  --background: 0 0% 7%;           /* #111113 - bg-main */
-  --foreground: 0 0% 98%;          /* #fafafa - text-primary */
+  /* ===========================================
+     MINIMALIST DARK DESIGN SYSTEM
+     Atmospheric depth with warm amber accent
+     =========================================== */
 
-  --card: 0 0% 9%;                 /* #18181b - bg-card */
-  --card-foreground: 0 0% 98%;
+  /* Base: Layered slate palette */
+  --background: 240 20% 4%;        /* #0A0A0F - Deep slate (almost black but warmer) */
+  --background-alt: 240 17% 8%;    /* #12121A - Slightly elevated surfaces */
+  --foreground: 40 20% 95%;        /* Warm off-white (cream tint) */
 
-  --popover: 0 0% 9%;
-  --popover-foreground: 0 0% 98%;
+  /* Cards: Glass effect base colors */
+  --card: 240 16% 12%;             /* #1A1A24 - Card backgrounds */
+  --card-foreground: 40 20% 95%;   /* Warm off-white */
 
-  --muted: 240 4% 16%;             /* #27272a - bg-active */
-  --muted-foreground: 240 5% 65%; /* #a1a1aa - text-secondary */
+  --popover: 240 16% 12%;          /* Same as card for consistency */
+  --popover-foreground: 40 20% 95%; /* Warm off-white */
 
-  /* Primary = Amber accent */
-  --primary: 38 92% 50%;           /* #f59e0b */
-  --primary-foreground: 0 0% 98%;
+  /* Muted: Secondary surfaces */
+  --muted: 240 16% 12%;            /* #1A1A24 - Elevated surfaces */
+  --muted-foreground: 40 8% 55%;   /* Warm gray for secondary text */
 
-  --secondary: 240 4% 16%;
-  --secondary-foreground: 0 0% 98%;
+  /* Primary = Warm Amber Accent */
+  --primary: 38 92% 50%;           /* #F59E0B - amber-500, warm glowing */
+  --primary-foreground: 240 20% 4%; /* Dark text on amber */
 
-  --accent: 240 4% 16%;
-  --accent-foreground: 0 0% 98%;
+  /* Secondary */
+  --secondary: 240 16% 12%;
+  --secondary-foreground: 40 20% 95%; /* Warm off-white */
 
-  --destructive: 0 84% 60%;        /* #ef4444 - error */
-  --destructive-foreground: 0 0% 98%;
+  /* Accent (interactive hover states) */
+  --accent: 240 16% 16%;           /* Slightly lighter for hover */
+  --accent-foreground: 40 20% 95%; /* Warm off-white */
 
-  --border: 240 4% 16%;            /* #2a2a2e */
-  --input: 240 4% 16%;
-  --ring: 38 92% 50%;              /* amber for focus */
+  /* Destructive */
+  --destructive: 0 84% 60%;        /* #ef4444 - error red */
+  --destructive-foreground: 40 20% 95%; /* Warm off-white */
 
-  --chart-1: 220 70% 50%;
+  /* Borders: Very subtle, 8-15% opacity feel */
+  --border: 240 10% 20%;           /* Subtle border color */
+  --input: 240 10% 20%;
+  --ring: 38 92% 50%;              /* Amber focus ring */
+
+  /* Charts */
+  --chart-1: 38 92% 50%;           /* Amber */
   --chart-2: 160 60% 45%;
-  --chart-3: 30 80% 55%;
+  --chart-3: 220 70% 50%;
   --chart-4: 280 65% 60%;
   --chart-5: 340 75% 55%;
 
-  --sidebar: 0 0% 9%;
-  --sidebar-foreground: 0 0% 98%;
-  --sidebar-primary: 38 92% 50%;
-  --sidebar-primary-foreground: 0 0% 98%;
-  --sidebar-accent: 240 4% 16%;
-  --sidebar-accent-foreground: 0 0% 98%;
-  --sidebar-border: 240 4% 16%;
+  /* Sidebar */
+  --sidebar: 240 17% 8%;           /* background-alt */
+  --sidebar-foreground: 40 20% 95%; /* Warm off-white */
+  --sidebar-primary: 38 92% 50%;   /* Amber */
+  --sidebar-primary-foreground: 240 20% 4%;
+  --sidebar-accent: 240 16% 16%;
+  --sidebar-accent-foreground: 40 20% 95%; /* Warm off-white */
+  --sidebar-border: 240 10% 20%;
   --sidebar-ring: 38 92% 50%;
 
   /* Custom: position types */

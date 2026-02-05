@@ -1,0 +1,108 @@
+# Ralph Progress Log
+Started: Thu Feb  5 13:07:23 CET 2026
+---
+
+## POZ-001: Zod schemas for pozycje ✅
+- Created lib/validations/pozycje.ts
+- Schemas: createPozycjaSchema, updatePozycjaSchema, pozycjeFiltersSchema
+- Types exported: CreatePozycjaInput, UpdatePozycjaInput, PozycjeFilters
+- Fixed Zod enum error syntax (z.enum uses string param, not errorMap)
+- Added jednostkaOptions and typOptions exports for UI components
+
+## POZ-002: Server Actions for pozycje CRUD ✅
+- Created actions/pozycje.ts with full CRUD
+- Uses biblioteka_skladowe_robocizna and biblioteka_skladowe_materialy joins
+- Exports Pozycja type with nested skladowe
+
+## POZ-003: Install TanStack Table and shadcn select ✅
+- npm install @tanstack/react-table
+- npx shadcn@latest add select
+- Build passes
+
+## POZ-004: Helper obliczCenePozycji ✅
+- Created lib/utils/pozycje.ts
+- Calculates robocizna, material, cena from skladowe
+
+## POZ-005: Pozycje page with URL filters ✅
+- Server Component with searchParams parsing
+- Passes initialData, initialFilters, initialSelected to PozycjeView
+
+## POZ-006: PozycjeFilters component ✅
+- Branża buttons (BUD, ELE, SAN, TEL, HVC) with toggle
+- Search input with 300ms debounce
+- "Dodaj pozycję" button
+
+## POZ-007: PozycjeTable with TanStack ✅
+- useReactTable with getCoreRowModel, getSortedRowModel
+- Columns: kod, nazwa, jednostka, typ (Badge), cenaJednostkowa
+- Row selection with bg-muted
+
+## POZ-008: PozycjaDetailPanel ✅
+- Header: breadcrumb, nazwa, kod + jednostka
+- SkladoweSection for robocizna and materialy
+- Footer: cena jednostkowa NETTO, Edytuj, Delete buttons
+
+## POZ-009: SkladoweSection component ✅
+- Generic component for both robocizna and materialy
+- Empty state: "Brak składowych"
+
+## POZ-010: PozycjeView layout ✅
+- 40/60 split layout with filters on top
+- FormModal integration for add/edit
+- Wrapped in Suspense for useSearchParams
+
+## POZ-011: PozycjaFormModal ✅
+- react-hook-form with zodResolver
+- Fields: kod, nazwa, jednostka (Select), typ (Select)
+- Calls createPozycja or updatePozycja
+
+## POZ-012: Delete confirmation ✅
+- DeletePozycjaModal with usage protection
+- Removes ?selected param on successful delete
+- Toast feedback
+
+---
+## Phase 3b COMPLETE 🎉
+All 12 stories passed. Build passes.
+
+---
+# Phase 3a-UX: Kategorie Modal UX Fix
+Started: Thu Feb  5 2026
+
+## KAT-UX-001: Server Action getNextKod ✅
+- Added getNextKod(parentId: string | null) to actions/kategorie.ts
+- Uses .is('parent_id', null) for branża level
+- Finds first gap in 01-99 sequence among siblings
+
+## KAT-UX-002: Hook useKategoriaModal ✅
+- Created hooks/use-kategoria-modal.ts
+- State: open, mode, poziom, parentId, parentPath, parentNazwa, suggestedKod, isLoading
+- openAdd fetches suggestedKod async, openEdit skips fetch
+
+## KAT-UX-003: Modal z auto-sugestią ✅
+- Refactored kategoria-form-modal.tsx with new props
+- Shows parent info field (disabled)
+- Auto-fills kod with suggestedKod in add mode
+- Live fullKodPreview (parentPath + '.' + kod)
+- Suggestion hint below kod input
+
+## KAT-UX-004: Integracja w KategorieView ✅
+- KategorieView uses useKategoriaModal hook
+- Single modal instance at view level
+- KategoriaCard uses callbacks: onAddPodkategoria, onEditKategoria, onEditPodkategoria
+- Removed duplicate modals from KategoriaCard
+
+---
+## Phase 3a-UX COMPLETE 🎉
+All 4 stories passed. Build passes.
+
+---
+# Pozycje Kategoria Cascading Selects
+Started: Thu Feb  5 2026
+Design: docs/plans/2026-02-05-pozycje-kategoria-select-design.md
+
+Stories:
+- POZ-KAT-001: Server Action getKategorieByPoziom
+- POZ-KAT-002: Server Action getNextPozycjaKod
+- POZ-KAT-003: Hook usePozycjaForm
+- POZ-KAT-004: UI modal z cascading selectami

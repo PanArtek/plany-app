@@ -35,9 +35,12 @@ const navSections = [
 
 export function Sidebar() {
   return (
-    <aside className="fixed w-[240px] h-screen bg-card border-r border-border flex flex-col">
+    <aside
+      className="fixed w-[240px] h-screen border-r border-white/[0.08] flex flex-col"
+      style={{ backgroundColor: '#12121A' }}
+    >
       {/* Logo */}
-      <div className="h-[72px] flex items-center px-4 border-b border-border">
+      <div className="h-[72px] flex items-center px-4 border-b border-white/[0.08]">
         <span className="text-xl font-mono font-bold tracking-tight text-foreground">
           PLANY
         </span>
@@ -48,7 +51,7 @@ export function Sidebar() {
         {navSections.map((section) => (
           <div key={section.label} className="mb-6">
             <div className="px-4 mb-2">
-              <span className="text-[10px] font-mono font-medium text-muted-foreground uppercase tracking-wider">
+              <span className="text-[11px] font-medium text-zinc-500 uppercase tracking-wider">
                 {section.label}
               </span>
             </div>

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { fontMono, fontSans } from "@/lib/fonts";
+import { fontDisplay, fontMono, fontSans } from "@/lib/fonts";
+import { Toaster } from "sonner";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -15,9 +16,10 @@ export default function RootLayout({
   return (
     <html lang="pl" className="dark">
       <body
-        className={`${fontSans.variable} ${fontMono.variable} font-sans antialiased`}
+        className={`${fontSans.variable} ${fontMono.variable} ${fontDisplay.variable} font-sans antialiased`}
       >
         {children}
+        <Toaster position="bottom-right" />
       </body>
     </html>
   );

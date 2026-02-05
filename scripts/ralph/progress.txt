@@ -1,92 +1,36 @@
 # Ralph Progress Log
-Started: Supabase Database Setup v3.4
-
-## Current Phase
-**Supabase Database v3.4** (15 user stories)
-- Branch: `ralph/supabase-database-v3`
-- Goal: Complete database schema with 17 tables, RLS, triggers, views, functions
-
-## Key Architecture Decisions (from DATABASE-ARCHITECTURE.md v3.4)
-- **Multi-tenancy**: organization_id + RLS
-- **Kosztorys is source of truth**: prices copied from cennik, stored independently
-- **Manual override**: is_manual=true -> ilosc * cena (fixed), is_manual=false -> norma * cena * kp.ilosc
-- **Revision locking**: is_locked=true blocks all modifications via triggers
-- **Views**: security_invoker=true enforces RLS
-
-## Codebase Patterns
-- Use `createClient()` from `lib/supabase/client.ts` for browser-side Supabase
-- Use `createClient()` from `lib/supabase/server.ts` for server-side Supabase
-- shadcn/ui components in `components/ui/`
-- Server Actions in `actions/` directory with `'use server'`
-- All prices are NETTO
-- Position code format: BRANZA.KAT.PODKAT.NR (e.g., BUD.03.01.001)
-
-## Reference Documents
-- **Database Architecture**: `docs/DATABASE-ARCHITECTURE.md` (v3.4 - PRIMARY SOURCE)
-- **Implementation Plan**: `docs/plans/2026-02-05-supabase-database-setup.md`
-- Data Model: `/home/artur/Projekty/wireframe/docs/DATA-MODEL.md`
-- Business Logic: `/home/artur/Projekty/wireframe/docs/BUSINESS-LOGIC.md`
-
-## SQL Code Location
-All SQL is in `docs/DATABASE-ARCHITECTURE.md` sections 3.1-3.10. Copy from there.
-
-## Supabase MCP Tools (USE THESE!)
-You have Supabase MCP tools available - use them instead of CLI:
-- `mcp__supabase__apply_migration` - Apply SQL migrations (use this for 001-010 migrations)
-- `mcp__supabase__execute_sql` - Run raw SQL queries (for verification)
-- `mcp__supabase__list_tables` - List tables in schema
-- `mcp__supabase__list_migrations` - List applied migrations
-- `mcp__supabase__generate_typescript_types` - Generate TypeScript types
-- `mcp__supabase__list_projects` - Find project ID
-- `mcp__supabase__get_project` - Get project details
-
-**Workflow:**
-1. Use `mcp__supabase__list_projects` to find project ID
-2. Use `mcp__supabase__apply_migration` for each SQL file (name in snake_case)
-3. Use `mcp__supabase__execute_sql` to verify tables exist
-4. Use `mcp__supabase__generate_typescript_types` at the end
-
+Started: Thu Feb  5 16:28:24 CET 2026
 ---
 
-## Stories (15 total) - ALL COMPLETED ✅
-- [x] US-001: Initialize Supabase + ENUM types (001_types.sql)
-- [x] US-002: Organizations migration (002_organizations.sql)
-- [x] US-003: Narzuty domyslne migration (003_narzuty_domyslne.sql)
-- [x] US-004: Cennik migration (004_cennik.sql)
-- [x] US-005: Biblioteka migration (005_biblioteka.sql)
-- [x] US-006: Kosztorys migration (006_kosztorys.sql)
-- [x] US-007: Views migration (007_views.sql)
-- [x] US-008: Functions migration (008_functions.sql)
-- [x] US-009: RLS policies migration (009_rls.sql)
-- [x] US-010: Seed data migration (010_seed.sql)
-- [x] US-011: Verify all migrations applied
-- [x] US-012: Generate TypeScript types
-- [x] US-013: Verify calculation logic
-- [x] US-014: Verify locked revision trigger
-- [x] US-015: Final verification and build
+## BL-001: Add getKategorieCounts server action ✅
+- Added `getKategorieCounts()` to `actions/kategorie.ts`
+- Returns `Record<BranzaKod, number>` with counts of poziom 2 categories per branża
+- Query: selects pelny_kod where poziom=2, groups by first 3 chars
+- Typecheck passes
 
----
+## BL-002: Create BranzaTile component ✅
+- Created `branza-tile.tsx` with Link wrapper
+- Styling: stone-900/50 bg, amber hover effects, scale transform
 
-## Completion Summary (2026-02-05)
+## BL-003: Create BranzeGrid component ✅
+- Created `branze-grid.tsx` with responsive grid
+- Uses BRANZE constant for 5 branże
 
-**Database schema complete:**
-- 17 tables with RLS enabled
-- 2 views (kosztorys_pozycje_view, rewizje_summary) with security_invoker=true
-- 10 migrations applied via Supabase MCP
-- 60+ RLS policies
-- Triggers: pelny_kod, auto_numer, updated_at, revision locking
-- Functions: user_organizations(), copy_revision(), handle_new_user()
+## BL-004: Update /kategorie page to show landing tiles ✅
+- Replaced KategorieView with BranzeGrid on landing page
+- Verified 5 tiles display with correct counts
 
-**Verified:**
-- Auto calculations: R=500, M=600, razem=1430 ✅
-- Manual override: razem=2106 ✅
-- Locked revision trigger: blocks modifications ✅
-- TypeScript types generated: lib/supabase/database.types.ts ✅
-- Build: npm run build passes ✅
-- Lint: npm run lint passes ✅
+## BL-005/BL-006/BL-007: Dynamic route + props refactor ✅
+- Created `/kategorie/[branza]/page.tsx` with param validation
+- Updated KategorieView to accept `activeBranza` prop
+- Updated BranzaTabs to use Link navigation instead of store
 
-**Files created:**
-- supabase/migrations/001_types.sql - 010_seed.sql
-- lib/supabase/database.types.ts
-
----
+## BL-008: Final verification ✅
+All acceptance criteria verified:
+- Build passes
+- 5 tiles with counts on /kategorie
+- Tile click → /kategorie/BUD
+- Tabs work with URL navigation
+- Browser back works
+- Invalid URL shows 404
+- No console errors

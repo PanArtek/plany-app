@@ -1,0 +1,182 @@
+{
+  "project": "PLANY App",
+  "branchName": "ralph/phase3a-kategorie",
+  "description": "Phase 3a: Kategorie module - hierarchical categories management (BRANŻA → KATEGORIA → PODKATEGORIA)",
+  "mode": "feature",
+  "baseBranch": "main",
+  "userStories": [
+    {
+      "id": "KAT-001",
+      "title": "Zod schemas for kategorie",
+      "description": "As a developer, I need validation schemas for kategorie CRUD operations.",
+      "acceptanceCriteria": [
+        "Create lib/validations/kategorie.ts with createKategoriaSchema, updateKategoriaSchema",
+        "createKategoriaSchema: parentId (uuid|null), kod (string), nazwa (string min 3, max 255)",
+        "Kod validation: if parentId=null → 2-3 uppercase letters, else → 2 digits",
+        "updateKategoriaSchema: optional kod and nazwa, requires at least one field",
+        "Export TypeScript types: CreateKategoriaInput, UpdateKategoriaInput",
+        "Typecheck passes"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": "",
+      "dependsOn": []
+    },
+    {
+      "id": "KAT-002",
+      "title": "Server Actions for kategorie CRUD",
+      "description": "As a developer, I need server actions for kategorie create, update, delete operations.",
+      "acceptanceCriteria": [
+        "Create actions/kategorie.ts with 'use server' directive",
+        "createKategoria: validate with Zod, insert to Supabase, handle unique constraint (23505), revalidatePath('/kategorie')",
+        "updateKategoria: validate with Zod, update by id, handle unique constraint, revalidatePath",
+        "deleteKategoria: check children count first, check pozycje_biblioteka count, only delete if both are 0, return descriptive error otherwise",
+        "getKategorieTree: fetch all kategorie ordered by kod, build tree structure (roots with children arrays)",
+        "Typecheck passes"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["KAT-001"]
+    },
+    {
+      "id": "KAT-003",
+      "title": "Zustand store for kategorie UI",
+      "description": "As a developer, I need UI state management for kategorie view.",
+      "acceptanceCriteria": [
+        "Create stores/kategorie-ui-store.ts",
+        "State: activeBranza (BranzaKod type: 'BUD'|'ELE'|'SAN'|'TEL'|'HVC'), expandedIds (Set<string>)",
+        "Actions: setActiveBranza (collapses all on change), toggleExpanded, collapseAll",
+        "Default activeBranza: 'BUD'",
+        "Typecheck passes"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": "",
+      "dependsOn": []
+    },
+    {
+      "id": "KAT-004",
+      "title": "Install shadcn components for forms",
+      "description": "As a developer, I need shadcn components for modals and forms.",
+      "acceptanceCriteria": [
+        "Run: npx shadcn@latest add dialog",
+        "Run: npx shadcn@latest add form",
+        "Run: npx shadcn@latest add input",
+        "Run: npx shadcn@latest add label",
+        "Run: npm install sonner",
+        "Add Toaster from sonner to app/layout.tsx with position='bottom-right'",
+        "Typecheck passes"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": "",
+      "dependsOn": []
+    },
+    {
+      "id": "KAT-005",
+      "title": "Kategorie page with data fetch",
+      "description": "As a developer, I need the kategorie page to fetch and display data.",
+      "acceptanceCriteria": [
+        "Update app/(app)/kategorie/page.tsx as Server Component",
+        "Fetch data using getKategorieTree from actions/kategorie",
+        "Pass data to KategorieView client component as initialData prop",
+        "Page title: 'Kategorie' with text-2xl font-semibold font-mono",
+        "Typecheck passes"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["KAT-002"]
+    },
+    {
+      "id": "KAT-006",
+      "title": "BranzaTabs component",
+      "description": "As a developer, I need tab navigation for the 5 branże.",
+      "acceptanceCriteria": [
+        "Create app/(app)/kategorie/_components/branza-tabs.tsx as client component",
+        "Render 5 tabs: BUD (Budowlana), ELE (Elektryczna), SAN (Sanitarna), TEL (Teletechnika), HVC (HVAC)",
+        "Use Zustand setActiveBranza on click",
+        "Active tab: highlighted with primary color",
+        "Verify at localhost:3000/kategorie - tabs switch correctly",
+        "Typecheck passes"
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["KAT-003", "KAT-005"]
+    },
+    {
+      "id": "KAT-007",
+      "title": "KategorieView and KategoriaCard components",
+      "description": "As a developer, I need the main view wrapper and expandable category cards.",
+      "acceptanceCriteria": [
+        "Create app/(app)/kategorie/_components/kategorie-view.tsx as client wrapper",
+        "Create app/(app)/kategorie/_components/kategoria-card.tsx with expand/collapse",
+        "KategoriaCard shows: kod (mono font), nazwa, children count badge",
+        "Click card to toggle expand via Zustand toggleExpanded",
+        "When expanded, show podkategorie list with kod.nazwa format",
+        "Verify at localhost:3000/kategorie - cards expand/collapse correctly",
+        "Typecheck passes"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["KAT-003", "KAT-005", "KAT-006"]
+    },
+    {
+      "id": "KAT-008",
+      "title": "KategoriaFormModal component",
+      "description": "As a developer, I need a universal modal for add/edit kategorie at all levels.",
+      "acceptanceCriteria": [
+        "Create app/(app)/kategorie/_components/modals/kategoria-form-modal.tsx",
+        "Props: mode ('add'|'edit'), poziom (1|2|3), parentId, kategoria (for edit), open, onOpenChange",
+        "Use react-hook-form with zodResolver and createKategoriaSchema",
+        "Different labels based on poziom: branża/kategoria/podkategoria",
+        "Call createKategoria or updateKategoria Server Actions",
+        "Show toast on success/error using sonner",
+        "Typecheck passes"
+      ],
+      "priority": 6,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["KAT-001", "KAT-002", "KAT-004"]
+    },
+    {
+      "id": "KAT-009",
+      "title": "DeleteConfirmModal component",
+      "description": "As a developer, I need delete confirmation with protection checks.",
+      "acceptanceCriteria": [
+        "Create app/(app)/kategorie/_components/modals/delete-confirm-modal.tsx",
+        "Props: kategoria (id, kod, nazwa), hasChildren (boolean), open, onOpenChange",
+        "Show warning message with kategoria name",
+        "Disable delete button if hasChildren=true (UI protection)",
+        "Call deleteKategoria Server Action on confirm",
+        "Server validates independently (children + pozycje count)",
+        "Show toast with result message",
+        "Typecheck passes"
+      ],
+      "priority": 7,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["KAT-002", "KAT-004"]
+    },
+    {
+      "id": "KAT-010",
+      "title": "Wire up add/edit/delete buttons",
+      "description": "As a developer, I need action buttons in the UI to trigger modals.",
+      "acceptanceCriteria": [
+        "Add 'Dodaj kategorię' button next to branża header in KategorieView",
+        "Add edit (Pencil icon) and delete (Trash icon) buttons to each KategoriaCard",
+        "Add 'Dodaj podkategorię' button inside expanded card",
+        "All buttons open corresponding modals with correct props",
+        "Verify full CRUD flow at localhost:3000/kategorie",
+        "Typecheck passes"
+      ],
+      "priority": 8,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["KAT-007", "KAT-008", "KAT-009"]
+    }
+  ]
+}
