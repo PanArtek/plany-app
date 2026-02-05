@@ -181,8 +181,8 @@
         "Typecheck passes"
       ],
       "priority": 10,
-      "passes": false,
-      "notes": "",
+      "passes": true,
+      "notes": "Extended ColumnMeta for hideOnMobile/hideOnTablet, table uses meta to hide columns with responsive CSS",
       "dependsOn": ["UX-004"]
     },
     {

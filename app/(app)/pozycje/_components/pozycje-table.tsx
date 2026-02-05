@@ -46,10 +46,17 @@ export function PozycjeTable({ data, selectedId, onSelect }: PozycjeTableProps) 
         <thead className="bg-white/[0.03] border-b border-white/5 sticky top-0">
           {table.getHeaderGroups().map((headerGroup) => (
             <tr key={headerGroup.id}>
-              {headerGroup.headers.map((header) => (
+              {headerGroup.headers.map((header) => {
+                const hideOnMobile = header.column.columnDef.meta?.hideOnMobile;
+                const hideOnTablet = header.column.columnDef.meta?.hideOnTablet;
+                return (
                 <th
                   key={header.id}
-                  className="px-4 py-3 text-left text-sm font-medium text-muted-foreground"
+                  className={cn(
+                    "px-4 py-3 text-left text-sm font-medium text-muted-foreground",
+                    hideOnMobile && "hidden md:table-cell",
+                    hideOnTablet && "hidden lg:table-cell"
+                  )}
                 >
                   {header.isPlaceholder
                     ? null
@@ -58,7 +65,8 @@ export function PozycjeTable({ data, selectedId, onSelect }: PozycjeTableProps) 
                         header.getContext()
                       )}
                 </th>
-              ))}
+              );
+              })}
             </tr>
           ))}
         </thead>
@@ -73,11 +81,22 @@ export function PozycjeTable({ data, selectedId, onSelect }: PozycjeTableProps) 
                 selectedId === row.original.id && 'bg-amber-500/10 border-l-2 border-l-amber-500 shadow-[inset_0_0_20px_rgba(245,158,11,0.05)]'
               )}
             >
-              {row.getVisibleCells().map((cell) => (
-                <td key={cell.id} className="px-4 py-3">
+              {row.getVisibleCells().map((cell) => {
+                const hideOnMobile = cell.column.columnDef.meta?.hideOnMobile;
+                const hideOnTablet = cell.column.columnDef.meta?.hideOnTablet;
+                return (
+                <td
+                  key={cell.id}
+                  className={cn(
+                    "px-4 py-3",
+                    hideOnMobile && "hidden md:table-cell",
+                    hideOnTablet && "hidden lg:table-cell"
+                  )}
+                >
                   {flexRender(cell.column.columnDef.cell, cell.getContext())}
                 </td>
-              ))}
+              );
+              })}
             </tr>
           ))}
         </tbody>

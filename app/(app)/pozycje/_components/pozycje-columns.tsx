@@ -1,10 +1,19 @@
 'use client';
 
-import { ColumnDef } from '@tanstack/react-table';
+import { ColumnDef, RowData } from '@tanstack/react-table';
 import { Badge } from '@/components/ui/badge';
 import { type Pozycja } from '@/actions/pozycje';
 import { obliczCenePozycji } from '@/lib/utils/pozycje';
 import { ChevronDown, ChevronUp } from 'lucide-react';
+
+// Extend TanStack Table's ColumnMeta to add responsive visibility
+declare module '@tanstack/react-table' {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  interface ColumnMeta<TData extends RowData, TValue> {
+    hideOnMobile?: boolean;
+    hideOnTablet?: boolean;
+  }
+}
 
 const TYP_COLORS: Record<string, string> = {
   robocizna: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
@@ -65,7 +74,7 @@ export const pozycjeColumns: ColumnDef<Pozycja>[] = [
       </button>
     ),
     cell: ({ row }) => (
-      <span className="block min-w-[250px]">{row.getValue('nazwa')}</span>
+      <span className="block truncate max-w-[150px] md:max-w-none md:truncate-none md:min-w-[250px]">{row.getValue('nazwa')}</span>
     ),
     minSize: 250,
   },
@@ -76,6 +85,7 @@ export const pozycjeColumns: ColumnDef<Pozycja>[] = [
       <span className="text-muted-foreground text-center block">{row.getValue('jednostka')}</span>
     ),
     size: 80,
+    meta: { hideOnMobile: true },
   },
   {
     accessorKey: 'typ',
@@ -89,6 +99,7 @@ export const pozycjeColumns: ColumnDef<Pozycja>[] = [
       );
     },
     size: 100,
+    meta: { hideOnTablet: true },
   },
   {
     id: 'cenaJednostkowa',

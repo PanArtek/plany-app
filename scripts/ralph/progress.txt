@@ -66,3 +66,11 @@ Started: Thu Feb  5 15:43:06 CET 2026
 - Expanded section: bg-white/[0.02], border-white/[0.05]
 - Podkategoria hover: hover:bg-white/5
 - Build passes
+
+## UX-010: Add responsive table columns for mobile ✓
+- Extended ColumnMeta with hideOnMobile/hideOnTablet
+- Jednostka: hidden on < md via meta.hideOnMobile
+- Typ: hidden on < lg via meta.hideOnTablet
+- Nazwa: truncate max-w-[150px] on mobile, full width on md+
+- Table reads column meta and applies responsive CSS classes
+- Build passes
