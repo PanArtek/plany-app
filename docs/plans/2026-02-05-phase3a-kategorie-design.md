@@ -1,7 +1,7 @@
 # FAZA 3a: Kategorie — Design Document
 
 **Data:** 2026-02-05
-**Status:** Draft
+**Status:** Complete (with post-QA fixes)
 **Branch:** `ralph/phase3a-kategorie`
 
 ---
@@ -539,7 +539,53 @@ Po implementacji sprawdź:
 
 ---
 
-## 10. Referencje
+## 10. Known Issues & Fixes (Post-QA)
+
+### 10.1 Supabase RLS
+
+**Problem:** CRUD operations return success but data doesn't change.
+
+**Solution:** Disable RLS on `kategorie` and `pozycje_biblioteka` tables for development:
+```sql
+ALTER TABLE kategorie DISABLE ROW LEVEL SECURITY;
+ALTER TABLE pozycje_biblioteka DISABLE ROW LEVEL SECURITY;
+```
+
+### 10.2 Dialog Styling (Tailwind v4)
+
+**Problem:** Modal renders inline without overlay, transparent background.
+
+**Solution:** Add explicit inline `style` to DialogOverlay and DialogContent in `components/ui/dialog.tsx`:
+```tsx
+// DialogOverlay
+style={{ backgroundColor: 'rgba(0, 0, 0, 0.8)' }}
+
+// DialogContent
+style={{ backgroundColor: 'hsl(var(--card))' }}
+```
+
+Also change Input from `bg-transparent` to `bg-card` in `components/ui/input.tsx`.
+
+### 10.3 react-hook-form parentId not updating
+
+**Problem:** Adding category in ELE tab creates it under BUD.
+
+**Root cause:** `defaultValues` in `useForm` are only set on mount, not updated when props change.
+
+**Solution:** Add `useEffect` to reset form when `parentId` changes:
+```tsx
+useEffect(() => {
+  form.reset({
+    parentId: parentId,
+    kod: kategoria?.kod || '',
+    nazwa: kategoria?.nazwa || '',
+  });
+}, [parentId, kategoria, form]);
+```
+
+---
+
+## 11. Referencje
 
 - Wireframe: `/home/artur/Projekty/wireframe/js/views/kategorie.js`
 - Wireframe data: `/home/artur/Projekty/wireframe/js/data/kategorie.js`

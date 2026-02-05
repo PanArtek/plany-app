@@ -24,11 +24,14 @@ export interface KategoriaNode {
 
 // CREATE
 export async function createKategoria(input: unknown): Promise<ActionResult<KategoriaNode>> {
+  console.log('[createKategoria] Input:', input);
   const parsed = createKategoriaSchema.safeParse(input);
   if (!parsed.success) {
+    console.log('[createKategoria] Validation failed:', parsed.error.issues);
     return { success: false, error: parsed.error.issues[0].message };
   }
 
+  console.log('[createKategoria] Validated data:', parsed.data);
   const supabase = await createClient();
 
   // Determine poziom from parent
@@ -56,7 +59,10 @@ export async function createKategoria(input: unknown): Promise<ActionResult<Kate
     .select()
     .single();
 
+  console.log('[createKategoria] Supabase result:', { data, error });
+
   if (error) {
+    console.log('[createKategoria] Error:', error);
     if (error.code === '23505') {
       return { success: false, error: 'Kod już istnieje w tej kategorii' };
     }
@@ -64,6 +70,7 @@ export async function createKategoria(input: unknown): Promise<ActionResult<Kate
   }
 
   revalidatePath('/kategorie');
+  console.log('[createKategoria] Success, revalidated /kategorie');
   return { success: true, data: { ...data, children: [] } as KategoriaNode };
 }
 
@@ -93,50 +100,61 @@ export async function updateKategoria(id: string, input: unknown): Promise<Actio
 
 // DELETE (z ochroną)
 export async function deleteKategoria(id: string): Promise<ActionResult> {
+  console.log('[deleteKategoria] Starting delete for id:', id);
   const supabase = await createClient();
 
   // 1. Check children
-  const { count: childrenCount } = await supabase
+  const { count: childrenCount, error: childrenError } = await supabase
     .from('kategorie')
     .select('*', { count: 'exact', head: true })
     .eq('parent_id', id);
+
+  console.log('[deleteKategoria] Children check:', { childrenCount, childrenError });
 
   if (childrenCount && childrenCount > 0) {
     return { success: false, error: `Nie można usunąć - ma ${childrenCount} podkategorii` };
   }
 
   // 2. Check pozycje
-  const { count: pozycjeCount } = await supabase
+  const { count: pozycjeCount, error: pozycjeError } = await supabase
     .from('pozycje_biblioteka')
     .select('*', { count: 'exact', head: true })
     .eq('kategoria_id', id);
+
+  console.log('[deleteKategoria] Pozycje check:', { pozycjeCount, pozycjeError });
 
   if (pozycjeCount && pozycjeCount > 0) {
     return { success: false, error: `Nie można usunąć - ma ${pozycjeCount} przypisanych pozycji` };
   }
 
   // 3. Delete
-  const { error } = await supabase
+  const { error, count } = await supabase
     .from('kategorie')
     .delete()
     .eq('id', id);
+
+  console.log('[deleteKategoria] Delete result:', { error, count, id });
 
   if (error) {
     return { success: false, error: error.message };
   }
 
   revalidatePath('/kategorie');
+  console.log('[deleteKategoria] Success, revalidated /kategorie');
   return { success: true };
 }
 
 // READ - kategorie tree
 export async function getKategorieTree(): Promise<KategoriaNode[]> {
+  console.log('[getKategorieTree] Fetching...');
   const supabase = await createClient();
 
   const { data, error } = await supabase
     .from('kategorie')
     .select('*')
     .order('kod');
+
+  console.log('[getKategorieTree] Result:', { count: data?.length, error });
 
   if (error) throw error;
 

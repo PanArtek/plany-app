@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
@@ -60,6 +60,15 @@ export function KategoriaFormModal({
       nazwa: kategoria?.nazwa || '',
     },
   });
+
+  // Reset form when parentId changes (tab switch)
+  useEffect(() => {
+    form.reset({
+      parentId: parentId,
+      kod: kategoria?.kod || '',
+      nazwa: kategoria?.nazwa || '',
+    });
+  }, [parentId, kategoria, form]);
 
   async function onSubmit(data: CreateKategoriaInput) {
     setIsSubmitting(true);
