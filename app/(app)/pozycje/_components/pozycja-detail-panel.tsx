@@ -1,15 +1,17 @@
 'use client';
 
 import { useState } from 'react';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Pencil, Trash2 } from 'lucide-react';
 import { type Pozycja } from '@/actions/pozycje';
-import { type SkladowaRobocizna, type SkladowaMaterial } from '@/actions/skladowe';
+import { type SkladowaRobocizna, type SkladowaMaterial, deleteSkladowaRobocizna, deleteSkladowaMaterial } from '@/actions/skladowe';
 import { obliczCenePozycji } from '@/lib/utils/pozycje';
 import { SkladoweSection, type SkladowaItem } from './skladowe-section';
-import { SkladowaRobociznaModal } from './modals/skladowa-robocizna-modal';
-import { SkladowaMaterialModal } from './modals/skladowa-material-modal';
-import { DeleteSkladowaDialog, type SkladowaType } from './modals/delete-skladowa-dialog';
+import { SkladowaPanel } from './panels/skladowa-panel';
+import { DeleteConfirmPanel } from '../../kategorie/_components/panels/delete-confirm-panel';
+
+type SkladowaType = 'robocizna' | 'material';
 
 interface PozycjaDetailPanelProps {
   pozycja: Pozycja;
@@ -28,14 +30,14 @@ function formatCena(value: number): string {
 export function PozycjaDetailPanel({ pozycja, onEdit, onDelete }: PozycjaDetailPanelProps) {
   const { robocizna, material, cena } = obliczCenePozycji(pozycja);
 
-  // Składowe modal state
-  const [modalType, setModalType] = useState<'robocizna' | 'material' | null>(null);
-  const [modalMode, setModalMode] = useState<'add' | 'edit'>('add');
+  // Składowe panel state
+  const [panelType, setPanelType] = useState<'robocizna' | 'material' | null>(null);
+  const [panelMode, setPanelMode] = useState<'add' | 'edit'>('add');
   const [editingRobocizna, setEditingRobocizna] = useState<SkladowaRobocizna | undefined>();
   const [editingMaterial, setEditingMaterial] = useState<SkladowaMaterial | undefined>();
 
-  // Delete dialog state
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  // Delete panel state
+  const [deletePanelOpen, setDeletePanelOpen] = useState(false);
   const [deletingSkladowa, setDeletingSkladowa] = useState<{ id: string; nazwa: string } | null>(null);
   const [deletingSkladowaType, setDeletingSkladowaType] = useState<SkladowaType>('robocizna');
 
@@ -45,16 +47,16 @@ export function PozycjaDetailPanel({ pozycja, onEdit, onDelete }: PozycjaDetailP
 
   // Robocizna handlers
   const handleAddRobocizna = () => {
-    setModalType('robocizna');
-    setModalMode('add');
+    setPanelType('robocizna');
+    setPanelMode('add');
     setEditingRobocizna(undefined);
   };
 
   const handleEditRobocizna = (item: SkladowaItem) => {
     const skladowa = pozycja.biblioteka_skladowe_robocizna?.find(s => s.id === item.id);
     if (skladowa) {
-      setModalType('robocizna');
-      setModalMode('edit');
+      setPanelType('robocizna');
+      setPanelMode('edit');
       setEditingRobocizna(skladowa as SkladowaRobocizna);
     }
   };
@@ -62,21 +64,21 @@ export function PozycjaDetailPanel({ pozycja, onEdit, onDelete }: PozycjaDetailP
   const handleDeleteRobocizna = (item: SkladowaItem) => {
     setDeletingSkladowa({ id: item.id, nazwa: item.opis || '—' });
     setDeletingSkladowaType('robocizna');
-    setDeleteDialogOpen(true);
+    setDeletePanelOpen(true);
   };
 
   // Material handlers
   const handleAddMaterial = () => {
-    setModalType('material');
-    setModalMode('add');
+    setPanelType('material');
+    setPanelMode('add');
     setEditingMaterial(undefined);
   };
 
   const handleEditMaterial = (item: SkladowaItem) => {
     const skladowa = pozycja.biblioteka_skladowe_materialy?.find(s => s.id === item.id);
     if (skladowa) {
-      setModalType('material');
-      setModalMode('edit');
+      setPanelType('material');
+      setPanelMode('edit');
       setEditingMaterial(skladowa as SkladowaMaterial);
     }
   };
@@ -84,32 +86,58 @@ export function PozycjaDetailPanel({ pozycja, onEdit, onDelete }: PozycjaDetailP
   const handleDeleteMaterial = (item: SkladowaItem) => {
     setDeletingSkladowa({ id: item.id, nazwa: item.nazwa || '—' });
     setDeletingSkladowaType('material');
-    setDeleteDialogOpen(true);
+    setDeletePanelOpen(true);
   };
+
+  const handleConfirmDeleteSkladowa = async () => {
+    if (!deletingSkladowa) return;
+
+    const result = deletingSkladowaType === 'robocizna'
+      ? await deleteSkladowaRobocizna(deletingSkladowa.id)
+      : await deleteSkladowaMaterial(deletingSkladowa.id);
+
+    if (result.success) {
+      toast.success(`Usunięto "${deletingSkladowa.nazwa}"`);
+      setDeletePanelOpen(false);
+    } else {
+      toast.error(result.error || 'Błąd usuwania');
+    }
+  };
+
+  const typeLabel = deletingSkladowaType === 'robocizna' ? 'składową robocizny' : 'składową materiałową';
 
   return (
     <>
-      <div className="h-full flex flex-col border rounded-lg bg-card">
-        {/* Header */}
-        <div className="p-4 border-b">
-          {breadcrumb && (
-            <p className="text-xs text-muted-foreground font-mono mb-1">{breadcrumb}</p>
-          )}
-          <h3 className="text-lg font-medium">{pozycja.nazwa}</h3>
-          <div className="flex items-center gap-2 mt-1 text-sm text-muted-foreground">
-            <span className="font-mono">{pozycja.kod}</span>
-            <span>•</span>
-            <span>{pozycja.jednostka}</span>
+      {/* Minimalist Dark styled panel */}
+      <div className="h-full flex flex-col bg-[#0A0A0F] border-l border-white/[0.08] shadow-[-20px_0_60px_rgba(0,0,0,0.5)]">
+        {/* Header: kod in mono amber, nazwa as title */}
+        <div className="p-6 pb-4 border-b border-white/5">
+          <div className="flex items-center justify-between mb-2">
+            <span className="font-mono text-amber-500 text-sm">{pozycja.kod}</span>
+            <span className="text-white/40 text-sm">{pozycja.jednostka}</span>
           </div>
+          <h3 className="text-lg font-semibold text-white tracking-tight">{pozycja.nazwa}</h3>
+          {breadcrumb && (
+            <p className="text-xs text-white/40 font-mono mt-1">{breadcrumb}</p>
+          )}
         </div>
 
         {/* Scrollable Content */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-6">
+        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+          {/* Info podstawowe */}
+          {pozycja.typ && (
+            <div className="space-y-2">
+              <h4 className="font-medium text-sm text-white/50">Typ</h4>
+              <p className="text-sm text-white">{pozycja.typ}</p>
+            </div>
+          )}
+
+          {/* Składowe list */}
           <SkladoweSection
             title="Robocizna"
             items={pozycja.biblioteka_skladowe_robocizna || []}
             suma={robocizna}
-            colorClass="text-blue-600 dark:text-blue-400"
+            colorClass="text-emerald-400"
             editable
             onAdd={handleAddRobocizna}
             onEdit={handleEditRobocizna}
@@ -120,7 +148,7 @@ export function PozycjaDetailPanel({ pozycja, onEdit, onDelete }: PozycjaDetailP
             title="Materiały"
             items={pozycja.biblioteka_skladowe_materialy || []}
             suma={material}
-            colorClass="text-green-600 dark:text-green-400"
+            colorClass="text-blue-400"
             editable
             onAdd={handleAddMaterial}
             onEdit={handleEditMaterial}
@@ -129,28 +157,31 @@ export function PozycjaDetailPanel({ pozycja, onEdit, onDelete }: PozycjaDetailP
 
           {pozycja.opis && (
             <div className="space-y-2">
-              <h4 className="font-medium text-sm text-muted-foreground">Opis</h4>
-              <p className="text-sm whitespace-pre-wrap">{pozycja.opis}</p>
+              <h4 className="font-medium text-sm text-white/50">Opis</h4>
+              <p className="text-sm text-white/80 whitespace-pre-wrap">{pozycja.opis}</p>
             </div>
           )}
         </div>
 
-        {/* Footer */}
-        <div className="p-4 border-t bg-muted/30">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-sm text-muted-foreground">Cena jednostkowa NETTO</span>
-            <span className="text-xl font-mono font-semibold">{formatCena(cena)}</span>
+        {/* Footer with sticky positioning */}
+        <div className="sticky bottom-0 p-6 pt-4 border-t border-white/5 bg-[#0A0A0F]">
+          <div className="flex items-center justify-between mb-4">
+            <span className="text-sm text-white/50">Cena jednostkowa NETTO</span>
+            <span className="text-xl font-mono font-semibold text-amber-500">{formatCena(cena)}</span>
           </div>
           <div className="flex items-center gap-2">
-            <Button onClick={onEdit} className="flex-1">
+            <Button
+              onClick={onEdit}
+              className="flex-1 bg-amber-500 text-black hover:bg-amber-400"
+            >
               <Pencil className="h-4 w-4 mr-2" />
               Edytuj
             </Button>
             <Button
-              variant="outline"
+              variant="ghost"
               size="icon"
               onClick={onDelete}
-              className="text-destructive hover:text-destructive"
+              className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
             >
               <Trash2 className="h-4 w-4" />
             </Button>
@@ -158,29 +189,38 @@ export function PozycjaDetailPanel({ pozycja, onEdit, onDelete }: PozycjaDetailP
         </div>
       </div>
 
-      {/* Modals */}
-      <SkladowaRobociznaModal
-        open={modalType === 'robocizna'}
-        onOpenChange={(open) => !open && setModalType(null)}
-        mode={modalMode}
-        pozycjaId={pozycja.id}
-        skladowa={editingRobocizna}
-      />
+      {/* Panels */}
+      {panelType === 'robocizna' && (
+        <SkladowaPanel
+          type="robocizna"
+          open={panelType === 'robocizna'}
+          onOpenChange={(open) => !open && setPanelType(null)}
+          mode={panelMode}
+          pozycjaId={pozycja.id}
+          skladowa={editingRobocizna}
+        />
+      )}
 
-      <SkladowaMaterialModal
-        open={modalType === 'material'}
-        onOpenChange={(open) => !open && setModalType(null)}
-        mode={modalMode}
-        pozycjaId={pozycja.id}
-        skladowa={editingMaterial}
-      />
+      {panelType === 'material' && (
+        <SkladowaPanel
+          type="material"
+          open={panelType === 'material'}
+          onOpenChange={(open) => !open && setPanelType(null)}
+          mode={panelMode}
+          pozycjaId={pozycja.id}
+          skladowa={editingMaterial}
+        />
+      )}
 
-      <DeleteSkladowaDialog
-        open={deleteDialogOpen}
-        onOpenChange={setDeleteDialogOpen}
-        skladowa={deletingSkladowa}
-        type={deletingSkladowaType}
-      />
+      {deletingSkladowa && (
+        <DeleteConfirmPanel
+          itemName={deletingSkladowa.nazwa}
+          title={`Usuń ${typeLabel}`}
+          open={deletePanelOpen}
+          onOpenChange={setDeletePanelOpen}
+          onConfirm={handleConfirmDeleteSkladowa}
+        />
+      )}
     </>
   );
 }

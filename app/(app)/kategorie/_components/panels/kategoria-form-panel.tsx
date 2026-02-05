@@ -6,15 +6,16 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from '@/components/ui/dialog';
+  SlidePanel,
+  SlidePanelHeader,
+  SlidePanelTitle,
+  SlidePanelContent,
+  SlidePanelFooter,
+} from '@/components/ui/slide-panel';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
 import {
   Form,
   FormControl,
@@ -40,13 +41,13 @@ interface Props {
   isLoading?: boolean;
 }
 
-const POZIOM_LABELS: Record<number, { title: string; parentLabel: string; kodLabel: string }> = {
-  1: { title: 'branżę', parentLabel: '', kodLabel: 'Kod branży' },
-  2: { title: 'kategorię', parentLabel: 'Branża nadrzędna', kodLabel: 'Kod kategorii' },
-  3: { title: 'podkategorię', parentLabel: 'Kategoria nadrzędna', kodLabel: 'Kod podkategorii' },
+const POZIOM_LABELS: Record<number, { title: string; titleNom: string; parentLabel: string; kodLabel: string }> = {
+  1: { title: 'branżę', titleNom: 'Branża', parentLabel: '', kodLabel: 'Kod branży' },
+  2: { title: 'kategorię', titleNom: 'Kategoria', parentLabel: 'Branża nadrzędna', kodLabel: 'Kod kategorii' },
+  3: { title: 'podkategorię', titleNom: 'Podkategoria', parentLabel: 'Kategoria nadrzędna', kodLabel: 'Kod podkategorii' },
 };
 
-export function KategoriaFormModal({
+export function KategoriaFormPanel({
   mode,
   poziom,
   parentId,
@@ -131,53 +132,53 @@ export function KategoriaFormModal({
     }
   }
 
-  const dialogTitle = isEdit
+  const panelTitle = isEdit
     ? `Edytuj ${labels.title}`
     : `Dodaj ${labels.title}`;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>{dialogTitle}</DialogTitle>
-        </DialogHeader>
+    <SlidePanel open={open} onOpenChange={onOpenChange}>
+      <SlidePanelHeader onClose={() => onOpenChange(false)}>
+        <SlidePanelTitle>{panelTitle}</SlidePanelTitle>
+      </SlidePanelHeader>
 
+      <SlidePanelContent>
         {isLoading ? (
           <div className="flex items-center justify-center py-8">
-            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            <Loader2 className="h-6 w-6 animate-spin text-white/50" />
           </div>
         ) : (
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <form id="kategoria-form" onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+              {/* Parent breadcrumb as subtle badge */}
               {parentPath && parentNazwa && (
                 <div className="space-y-2">
-                  <Label className="text-muted-foreground text-sm">
+                  <Label className="text-white/50 text-sm">
                     {labels.parentLabel}
                   </Label>
-                  <Input
-                    value={`${parentPath} - ${parentNazwa}`}
-                    disabled
-                    className="bg-muted font-mono"
-                  />
+                  <Badge variant="secondary" className="bg-white/5 text-white/70 font-normal">
+                    {parentPath} - {parentNazwa}
+                  </Badge>
                 </div>
               )}
 
+              {/* Kod field */}
               <FormField
                 control={form.control}
                 name="kod"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>{labels.kodLabel}</FormLabel>
+                    <FormLabel className="text-white/80">{labels.kodLabel}</FormLabel>
                     <FormControl>
                       <Input
                         {...field}
-                        className="font-mono w-24"
+                        className="font-mono w-24 bg-white/5 border-white/10 text-white placeholder:text-white/30"
                         maxLength={2}
                         placeholder="01"
                       />
                     </FormControl>
                     {mode === 'add' && suggestedKod && (
-                      <FormDescription>
+                      <FormDescription className="text-white/40">
                         Sugestia: {suggestedKod} (następny wolny)
                       </FormDescription>
                     )}
@@ -186,47 +187,59 @@ export function KategoriaFormModal({
                 )}
               />
 
+              {/* Full kod preview with amber highlight */}
               <div className="space-y-2">
-                <Label className="text-muted-foreground text-sm">
+                <Label className="text-white/50 text-sm">
                   Pełny kod (podgląd)
                 </Label>
-                <Input
-                  value={fullKodPreview}
-                  disabled
-                  className="bg-muted font-mono"
-                />
+                <div className="px-3 py-2 rounded-md bg-white/5 border border-white/10">
+                  <span className="font-mono text-amber-500">
+                    {fullKodPreview}
+                  </span>
+                </div>
               </div>
 
+              {/* Nazwa field */}
               <FormField
                 control={form.control}
                 name="nazwa"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Nazwa</FormLabel>
+                    <FormLabel className="text-white/80">Nazwa</FormLabel>
                     <FormControl>
-                      <Input {...field} placeholder="np. Ściany działowe" />
+                      <Input
+                        {...field}
+                        className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
+                        placeholder="np. Ściany działowe"
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-
-              <DialogFooter>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => onOpenChange(false)}
-                >
-                  Anuluj
-                </Button>
-                <Button type="submit" disabled={isSubmitting}>
-                  {isSubmitting ? 'Zapisywanie...' : isEdit ? 'Zapisz' : 'Dodaj'}
-                </Button>
-              </DialogFooter>
             </form>
           </Form>
         )}
-      </DialogContent>
-    </Dialog>
+      </SlidePanelContent>
+
+      <SlidePanelFooter>
+        <Button
+          type="button"
+          variant="ghost"
+          onClick={() => onOpenChange(false)}
+          className="text-white/60 hover:text-white hover:bg-white/5"
+        >
+          Anuluj
+        </Button>
+        <Button
+          type="submit"
+          form="kategoria-form"
+          disabled={isSubmitting}
+          className="bg-amber-500 text-black hover:bg-amber-400"
+        >
+          {isSubmitting ? 'Zapisywanie...' : isEdit ? 'Zapisz' : 'Dodaj'}
+        </Button>
+      </SlidePanelFooter>
+    </SlidePanel>
   );
 }

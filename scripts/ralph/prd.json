@@ -1,174 +1,193 @@
 {
   "project": "PLANY App",
-  "branchName": "ralph/minimalist-dark-ui",
-  "description": "Full UI transformation to Minimalist Dark design system - atmospheric depth with warm amber accent",
+  "branchName": "ralph/slide-panel-ux",
+  "description": "Replace all modals with slide-out panels from right side - Minimalist Dark styling",
   "mode": "feature",
   "baseBranch": "ralph/phase3a-kategorie",
   "userStories": [
     {
-      "id": "UI-001",
-      "title": "Update design tokens in globals.css",
-      "description": "As a developer, I need updated CSS custom properties matching Minimalist Dark design system.",
+      "id": "SP-001",
+      "title": "Install shadcn Sheet component",
+      "description": "As a developer, I need the Sheet component as foundation for slide panels.",
       "acceptanceCriteria": [
-        "Update .dark section in app/globals.css",
-        "Set --background: 240 20% 4% (#0A0A0F deep slate)",
-        "Set --card: 240 16% 12% (#1A1A24)",
-        "Set --primary: 38 92% 50% (#F59E0B amber)",
-        "Set --muted-foreground: 240 4% 46% (#71717A)",
-        "Set --border: 240 10% 20% (subtle border)",
-        "Set --ring: 38 92% 50% (amber focus)",
+        "Run: npx shadcn@latest add sheet",
+        "Verify components/ui/sheet.tsx exists",
         "Typecheck passes"
       ],
       "priority": 1,
       "passes": true,
-      "notes": "Design tokens already implemented in globals.css. Verified build passes.",
+      "notes": "",
       "dependsOn": []
     },
     {
-      "id": "UI-002",
-      "title": "Add Space Grotesk and JetBrains Mono fonts",
-      "description": "As a developer, I need custom fonts for headlines and monospace text.",
+      "id": "SP-002",
+      "title": "Create SlidePanel wrapper component",
+      "description": "As a developer, I need a reusable SlidePanel component with Minimalist Dark styling.",
       "acceptanceCriteria": [
-        "Update lib/fonts.ts to import Space_Grotesk from next/font/google",
-        "Update lib/fonts.ts to import JetBrains_Mono from next/font/google",
-        "Export fontDisplay variable for Space Grotesk",
-        "Update app/layout.tsx to include fontDisplay.variable in body className",
-        "Add CSS custom properties: --font-display for Space Grotesk",
+        "Create components/ui/slide-panel.tsx",
+        "Wrap shadcn Sheet with custom styling",
+        "Background: #0A0A0F, border-left: rgba(255,255,255,0.08)",
+        "Shadow: -20px 0 60px rgba(0,0,0,0.5)",
+        "No overlay (SheetOverlay hidden or transparent)",
+        "Export variants: default (600px), narrow (400px), wide (800px)",
+        "Header section with title, close button, border-b border-white/5",
+        "Content section with overflow-y-auto",
+        "Footer section with sticky positioning, border-t border-white/5",
+        "Animation: slide from right, 300ms ease-out",
         "Typecheck passes"
       ],
       "priority": 2,
       "passes": true,
-      "notes": "Added Space_Grotesk to fonts.ts, exported fontDisplay, updated layout.tsx and globals.css.",
-      "dependsOn": ["UI-001"]
+      "notes": "Component already existed with all required features",
+      "dependsOn": ["SP-001"]
     },
     {
-      "id": "UI-003",
-      "title": "Restyle Dialog component with glass effect",
-      "description": "As a user, I want modals to have a glass effect so they are clearly visible against the dark background.",
+      "id": "SP-003",
+      "title": "Create KategoriaFormPanel component",
+      "description": "As a user, I want to add/edit categories in a slide panel instead of modal.",
       "acceptanceCriteria": [
-        "Update components/ui/dialog.tsx DialogContent",
-        "Set background: rgba(26, 26, 36, 0.85) with backdrop-filter: blur(12px)",
-        "Set border: 1px solid rgba(255,255,255,0.1)",
-        "Set border-radius: 12px (rounded-xl)",
-        "Set box-shadow: 0 25px 50px rgba(0,0,0,0.5)",
-        "Update DialogOverlay with backdrop-filter: blur(4px)",
-        "Typecheck passes",
-        "Verify in browser at /kategorie - click 'Dodaj kategorię', modal clearly visible with glass effect"
+        "Create app/(app)/kategorie/_components/panels/kategoria-form-panel.tsx",
+        "Copy logic from kategoria-form-modal.tsx",
+        "Use SlidePanel instead of Dialog",
+        "Header: dynamic title based on poziom (branża/kategoria/podkategoria)",
+        "Form fields in single column layout",
+        "Full kod preview with amber highlight (font-mono text-amber-500)",
+        "Parent breadcrumb as subtle badge",
+        "Footer with Cancel (ghost) and Submit (primary) buttons",
+        "Typecheck passes"
       ],
       "priority": 3,
       "passes": true,
-      "notes": "Glass effect applied with backdrop-blur. Verified in browser - modal clearly visible.",
-      "dependsOn": ["UI-001"]
+      "notes": "Created with SlidePanel, amber kod preview, parent badge",
+      "dependsOn": ["SP-002"]
     },
     {
-      "id": "UI-004",
-      "title": "Restyle Button component with amber accent",
-      "description": "As a user, I want primary buttons to be amber with glow effect on hover.",
+      "id": "SP-004",
+      "title": "Create DeleteConfirmPanel component",
+      "description": "As a user, I want delete confirmations in a narrow slide panel.",
       "acceptanceCriteria": [
-        "Update components/ui/button.tsx default variant",
-        "Primary: bg-amber-500 text-slate-950, hover:brightness-110 hover:shadow-[0_0_20px_rgba(245,158,11,0.4)]",
-        "Add active:scale-[0.98] for press effect",
-        "Outline: border-white/15, hover:bg-white/5 hover:border-white/25",
-        "Ghost: hover:bg-white/5",
-        "Focus-visible: ring-2 ring-amber-500 ring-offset-2 ring-offset-background",
-        "Typecheck passes",
-        "Verify in browser - buttons have amber glow on hover"
+        "Create app/(app)/kategorie/_components/panels/delete-confirm-panel.tsx",
+        "Use SlidePanel with variant='narrow' (400px)",
+        "Warning icon in header (Trash2 or AlertTriangle)",
+        "Clear message: 'Czy na pewno chcesz usunąć [name]?'",
+        "Show consequences if applicable (e.g., 'Usunie też X pozycji')",
+        "Footer: Ghost 'Anuluj', Destructive 'Usuń' (red variant)",
+        "Accept generic props for reuse across modules",
+        "Typecheck passes"
       ],
       "priority": 4,
       "passes": true,
-      "notes": "Amber primary button with glow effect. Verified in browser.",
-      "dependsOn": ["UI-001"]
+      "notes": "Generic reusable component with itemName, itemKod, warningMessage, blockReason props",
+      "dependsOn": ["SP-002"]
     },
     {
-      "id": "UI-005",
-      "title": "Restyle Input component with glass effect",
-      "description": "As a user, I want form inputs to have glass styling and amber focus states.",
+      "id": "SP-005",
+      "title": "Migrate kategorie-view to use panels",
+      "description": "As a user, I want the Kategorie module to use slide panels.",
       "acceptanceCriteria": [
-        "Update components/ui/input.tsx",
-        "Set background: rgba(26, 26, 36, 0.6) with backdrop-filter: blur(8px)",
-        "Set border: 1px solid rgba(255,255,255,0.1)",
-        "Set height: h-11 (44px) for touch-friendly targets",
-        "Focus: border-amber-500/50, shadow-[0_0_0_3px_rgba(245,158,11,0.15)]",
-        "Placeholder color: text-zinc-500",
+        "Update app/(app)/kategorie/_components/kategorie-view.tsx",
+        "Replace KategoriaFormModal with KategoriaFormPanel",
+        "Replace DeleteConfirmModal with DeleteConfirmPanel",
+        "Remove old modal imports",
+        "All CRUD operations work: add branża/kategoria/podkategoria, edit, delete",
         "Typecheck passes",
-        "Verify in browser - inputs visible, amber glow on focus"
+        "Verify in browser at /kategorie - panels slide from right, no overlay"
       ],
       "priority": 5,
       "passes": true,
-      "notes": "Glass effect with backdrop blur and amber focus. Verified in browser.",
-      "dependsOn": ["UI-001"]
+      "notes": "Updated kategorie-view.tsx and kategoria-card.tsx to use panels",
+      "dependsOn": ["SP-003", "SP-004"]
     },
     {
-      "id": "UI-006",
-      "title": "Restyle Select component with glass effect",
-      "description": "As a user, I want select dropdowns to match the glass styling of inputs.",
+      "id": "SP-006",
+      "title": "Create PozycjaFormPanel component",
+      "description": "As a user, I want to add/edit pozycje in a slide panel.",
       "acceptanceCriteria": [
-        "Update components/ui/select.tsx SelectTrigger",
-        "Apply same glass styling as Input: rgba(26,26,36,0.6), backdrop-blur, border",
-        "Set height: h-11",
-        "Update SelectContent with glass effect background",
-        "SelectItem hover: bg-white/8",
-        "Focus states: amber ring matching Input",
-        "Typecheck passes",
-        "Verify in browser - select dropdowns visible, consistent with inputs"
+        "Create app/(app)/pozycje/_components/panels/pozycja-form-panel.tsx",
+        "Copy logic from pozycja-form-modal.tsx",
+        "Use SlidePanel instead of Dialog",
+        "Cascading selects (Branża/Kategoria/Podkategoria) in single row",
+        "Auto-generated kod with amber glow when ready",
+        "Jednostka + Typ side by side",
+        "Textarea for opis field (more space in wide panel)",
+        "Typecheck passes"
       ],
       "priority": 6,
       "passes": true,
-      "notes": "Glass effect matching Input, h-11, white/8 hover on items.",
-      "dependsOn": ["UI-005"]
+      "notes": "Created with cascading selects, amber glow kod, opis textarea. Added shadcn textarea component.",
+      "dependsOn": ["SP-002"]
     },
     {
-      "id": "UI-007",
-      "title": "Restyle Sidebar navigation",
-      "description": "As a user, I want the sidebar to match Minimalist Dark with amber active states.",
+      "id": "SP-007",
+      "title": "Create SkladowaPanel component",
+      "description": "As a user, I want to add/edit składowe in a slide panel.",
       "acceptanceCriteria": [
-        "Locate sidebar component (app/(app)/layout.tsx or components/)",
-        "Set sidebar background: #12121A",
-        "Set border-right: 1px solid rgba(255,255,255,0.08)",
-        "Nav items: text-zinc-500, hover:bg-white/5 hover:text-white",
-        "Active nav item: bg-amber-500/10 text-amber-500",
-        "Section headers: text-[11px] uppercase tracking-wider text-zinc-500",
-        "Typecheck passes",
-        "Verify in browser - sidebar styled, active page highlighted amber"
+        "Create app/(app)/pozycje/_components/panels/skladowa-panel.tsx",
+        "Combine logic from skladowa-material-modal.tsx and skladowa-robocizna-modal.tsx",
+        "Use SlidePanel instead of Dialog",
+        "Badge showing składowa type (Materiał/Robocizna) in header",
+        "Form fields specific to type",
+        "Live price calculation preview",
+        "Typecheck passes"
       ],
       "priority": 7,
       "passes": true,
-      "notes": "Sidebar styled with #12121A background, amber active states, zinc-500 text.",
-      "dependsOn": ["UI-001"]
+      "notes": "Combined component with type discriminated union, badge with icon, live price preview",
+      "dependsOn": ["SP-002"]
     },
     {
-      "id": "UI-008",
-      "title": "Apply typography with Space Grotesk",
-      "description": "As a user, I want headlines to use Space Grotesk font for a technical, modern feel.",
+      "id": "SP-008",
+      "title": "Restyle PozycjaDetailPanel",
+      "description": "As a user, I want the pozycja detail view styled consistently with slide panels.",
       "acceptanceCriteria": [
-        "Update page headings (h1) to use font-display class",
-        "Pages to update: kategorie/page.tsx, pozycje/page.tsx",
-        "DialogTitle in dialog.tsx: add font-display class",
-        "Add tracking-tight to headings",
-        "Typecheck passes",
-        "Verify in browser - headings use Space Grotesk font"
+        "Update app/(app)/pozycje/_components/pozycja-detail-panel.tsx",
+        "Match SlidePanel styling: #0A0A0F background, border-l, shadow",
+        "Header: kod in mono amber, nazwa as title",
+        "Sections: Info podstawowe, Składowe list, (Historia if exists)",
+        "Edit button opens PozycjaFormPanel",
+        "Add składowa buttons open SkladowaPanel",
+        "Typecheck passes"
       ],
       "priority": 8,
       "passes": true,
-      "notes": "Space Grotesk applied to h1 in kategorie and pozycje pages, and DialogTitle.",
-      "dependsOn": ["UI-002"]
+      "notes": "Restyled with Minimalist Dark, uses SkladowaPanel and DeleteConfirmPanel",
+      "dependsOn": ["SP-006", "SP-007"]
     },
     {
-      "id": "UI-009",
-      "title": "Final verification and cleanup",
-      "description": "As a developer, I need to verify all UI changes work together and clean up any issues.",
+      "id": "SP-009",
+      "title": "Migrate pozycje-view to use panels",
+      "description": "As a user, I want the Pozycje module to use slide panels.",
       "acceptanceCriteria": [
-        "npm run build passes without errors",
-        "Verify /kategorie page: sidebar, heading, cards, modal all styled correctly",
-        "Verify /pozycje page: table, filters, detail panel, modals styled correctly",
-        "Verify modal forms: inputs, selects, buttons all visible and functional",
-        "No console errors related to styling",
-        "Take screenshot to confirm Minimalist Dark aesthetic achieved"
+        "Update app/(app)/pozycje/_components/pozycje-view.tsx",
+        "Replace PozycjaFormModal with PozycjaFormPanel",
+        "Replace delete modals with DeleteConfirmPanel (reuse from kategorie)",
+        "Replace skladowa modals with SkladowaPanel",
+        "Remove old modal imports",
+        "All CRUD operations work: add/edit/delete pozycja, add/edit/delete składowa",
+        "Typecheck passes",
+        "Verify in browser at /pozycje - all panels slide from right"
       ],
       "priority": 9,
       "passes": true,
-      "notes": "All UI components verified. Minimalist Dark aesthetic achieved. No console errors.",
-      "dependsOn": ["UI-003", "UI-004", "UI-005", "UI-006", "UI-007", "UI-008"]
+      "notes": "Updated pozycje-view.tsx to use PozycjaFormPanel and DeleteConfirmPanel",
+      "dependsOn": ["SP-005", "SP-006", "SP-007", "SP-008"]
+    },
+    {
+      "id": "SP-010",
+      "title": "Remove old modal files and final cleanup",
+      "description": "As a developer, I want to clean up unused modal components.",
+      "acceptanceCriteria": [
+        "Delete app/(app)/kategorie/_components/modals/ directory",
+        "Delete app/(app)/pozycje/_components/modals/ directory",
+        "Verify no imports reference deleted files",
+        "npm run build passes without errors",
+        "Verify in browser: /kategorie and /pozycje work correctly",
+        "No console errors"
+      ],
+      "priority": 10,
+      "passes": true,
+      "notes": "Deleted both modals directories, build passes, browser verification pending",
+      "dependsOn": ["SP-005", "SP-009"]
     }
   ]
 }

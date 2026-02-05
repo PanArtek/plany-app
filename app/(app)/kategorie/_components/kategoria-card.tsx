@@ -6,7 +6,9 @@ import { useKategorieUIStore } from '@/stores/kategorie-ui-store';
 import type { KategoriaNode } from '@/actions/kategorie';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { DeleteConfirmModal } from './modals/delete-confirm-modal';
+import { DeleteConfirmPanel } from './panels/delete-confirm-panel';
+import { deleteKategoria } from '@/actions/kategorie';
+import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
 interface Props {
@@ -148,19 +150,43 @@ export function KategoriaCard({
         </div>
       )}
 
-      <DeleteConfirmModal
-        kategoria={kategoria}
-        hasChildren={hasChildren}
+      <DeleteConfirmPanel
+        itemName={kategoria.nazwa}
+        itemKod={`${branzaKod}.${kategoria.kod}`}
+        title="Usuń kategorię"
+        isBlocked={hasChildren}
+        blockReason={hasChildren ? "Ta kategoria ma podkategorie. Usuń najpierw podkategorie." : undefined}
         open={deleteModalOpen}
         onOpenChange={setDeleteModalOpen}
+        onConfirm={async () => {
+          const result = await deleteKategoria(kategoria.id);
+          if (result.success) {
+            toast.success(`Usunięto "${kategoria.nazwa}"`);
+            setDeleteModalOpen(false);
+          } else {
+            toast.error(result.error || 'Błąd usuwania');
+          }
+        }}
       />
 
       {selectedPodkategoria && (
-        <DeleteConfirmModal
-          kategoria={selectedPodkategoria}
-          hasChildren={selectedPodkategoria.children.length > 0}
+        <DeleteConfirmPanel
+          itemName={selectedPodkategoria.nazwa}
+          itemKod={`${branzaKod}.${kategoria.kod}.${selectedPodkategoria.kod}`}
+          title="Usuń podkategorię"
+          isBlocked={selectedPodkategoria.children.length > 0}
+          blockReason={selectedPodkategoria.children.length > 0 ? "Ta podkategoria ma elementy podrzędne." : undefined}
           open={deleteSubModalOpen}
           onOpenChange={setDeleteSubModalOpen}
+          onConfirm={async () => {
+            const result = await deleteKategoria(selectedPodkategoria.id);
+            if (result.success) {
+              toast.success(`Usunięto "${selectedPodkategoria.nazwa}"`);
+              setDeleteSubModalOpen(false);
+            } else {
+              toast.error(result.error || 'Błąd usuwania');
+            }
+          }}
         />
       )}
     </div>

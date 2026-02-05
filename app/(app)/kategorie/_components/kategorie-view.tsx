@@ -3,7 +3,7 @@
 import { Plus } from 'lucide-react';
 import { BranzaTabs } from './branza-tabs';
 import { KategorieList } from './kategorie-list';
-import { KategoriaFormModal } from './modals/kategoria-form-modal';
+import { KategoriaFormPanel } from './panels/kategoria-form-panel';
 import { useKategorieUIStore, type BranzaKod } from '@/stores/kategorie-ui-store';
 import { useKategoriaModal } from '@/hooks/use-kategoria-modal';
 import type { KategoriaNode } from '@/actions/kategorie';
@@ -69,7 +69,7 @@ export function KategorieView({ initialData }: Props) {
         />
       </div>
 
-      <KategoriaFormModal
+      <KategoriaFormPanel
         mode={modal.state.mode}
         poziom={modal.state.poziom}
         parentId={modal.state.parentId}

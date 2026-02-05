@@ -2,13 +2,14 @@
 
 import { useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { type Pozycja } from '@/actions/pozycje';
+import { toast } from 'sonner';
+import { type Pozycja, deletePozycja } from '@/actions/pozycje';
 import { type PozycjeFilters } from '@/lib/validations/pozycje';
 import { PozycjeFilters as FiltersComponent } from './pozycje-filters';
 import { PozycjeTable } from './pozycje-table';
 import { PozycjaDetailPanel } from './pozycja-detail-panel';
-import { PozycjaFormModal } from './modals/pozycja-form-modal';
-import { DeletePozycjaModal } from './modals/delete-pozycja-modal';
+import { PozycjaFormPanel } from './panels/pozycja-form-panel';
+import { DeleteConfirmPanel } from '../../kategorie/_components/panels/delete-confirm-panel';
 
 interface PozycjeViewProps {
   initialData: Pozycja[];
@@ -16,7 +17,7 @@ interface PozycjeViewProps {
   initialSelected: string | null;
 }
 
-interface FormModalState {
+interface FormPanelState {
   open: boolean;
   mode: 'add' | 'edit';
 }
@@ -25,12 +26,12 @@ function PozycjeViewContent({ initialData, initialFilters, initialSelected }: Po
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const [formModal, setFormModal] = useState<FormModalState>({
+  const [formPanel, setFormPanel] = useState<FormPanelState>({
     open: false,
     mode: 'add',
   });
 
-  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [deletePanelOpen, setDeletePanelOpen] = useState(false);
 
   // Selected ID from URL
   const selectedId = searchParams.get('selected');
@@ -45,26 +46,35 @@ function PozycjeViewContent({ initialData, initialFilters, initialSelected }: Po
   };
 
   const handleAddClick = () => {
-    setFormModal({ open: true, mode: 'add' });
+    setFormPanel({ open: true, mode: 'add' });
   };
 
   const handleEdit = () => {
     if (selectedPozycja) {
-      setFormModal({ open: true, mode: 'edit' });
+      setFormPanel({ open: true, mode: 'edit' });
     }
   };
 
   const handleDelete = () => {
     if (selectedPozycja) {
-      setDeleteModalOpen(true);
+      setDeletePanelOpen(true);
     }
   };
 
-  const handleDeleted = () => {
-    // Close panel and deselect on successful delete
-    const params = new URLSearchParams(searchParams.toString());
-    params.delete('selected');
-    router.push(`/pozycje?${params.toString()}`);
+  const handleConfirmDelete = async () => {
+    if (!selectedPozycja) return;
+
+    const result = await deletePozycja(selectedPozycja.id);
+    if (result.success) {
+      toast.success(`Usunięto "${selectedPozycja.nazwa}"`);
+      setDeletePanelOpen(false);
+      // Close panel and deselect on successful delete
+      const params = new URLSearchParams(searchParams.toString());
+      params.delete('selected');
+      router.push(`/pozycje?${params.toString()}`);
+    } else {
+      toast.error(result.error || 'Błąd usuwania');
+    }
   };
 
   return (
@@ -90,30 +100,31 @@ function PozycjeViewContent({ initialData, initialFilters, initialSelected }: Po
               onDelete={handleDelete}
             />
           ) : (
-            <div className="h-full flex items-center justify-center border rounded-lg bg-card">
-              <p className="text-muted-foreground">Wybierz pozycję z listy</p>
+            <div className="h-full flex items-center justify-center bg-[#0A0A0F] border-l border-white/[0.08] shadow-[-20px_0_60px_rgba(0,0,0,0.5)]">
+              <p className="text-white/40">Wybierz pozycję z listy</p>
             </div>
           )}
         </div>
       </div>
 
-      <PozycjaFormModal
-        mode={formModal.mode}
-        pozycja={formModal.mode === 'edit' && selectedPozycja ? selectedPozycja : undefined}
-        open={formModal.open}
-        onOpenChange={(open) => setFormModal((prev) => ({ ...prev, open }))}
+      <PozycjaFormPanel
+        mode={formPanel.mode}
+        pozycja={formPanel.mode === 'edit' && selectedPozycja ? selectedPozycja : undefined}
+        open={formPanel.open}
+        onOpenChange={(open) => setFormPanel((prev) => ({ ...prev, open }))}
       />
 
-      <DeletePozycjaModal
-        pozycja={selectedPozycja ? {
-          id: selectedPozycja.id,
-          kod: selectedPozycja.kod,
-          nazwa: selectedPozycja.nazwa,
-        } : null}
-        open={deleteModalOpen}
-        onOpenChange={setDeleteModalOpen}
-        onDeleted={handleDeleted}
-      />
+      {selectedPozycja && (
+        <DeleteConfirmPanel
+          itemName={selectedPozycja.nazwa}
+          itemKod={selectedPozycja.kod}
+          title="Usuń pozycję"
+          warningMessage="Ta operacja jest nieodwracalna. Jeśli pozycja jest używana w kosztorysach, usunięcie zostanie zablokowane."
+          open={deletePanelOpen}
+          onOpenChange={setDeletePanelOpen}
+          onConfirm={handleConfirmDelete}
+        />
+      )}
     </div>
   );
 }
