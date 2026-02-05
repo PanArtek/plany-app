@@ -4,40 +4,40 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
   --font-sans: var(--font-sans);
   --font-mono: var(--font-mono);
   --font-display: var(--font-display);
-  --color-sidebar-ring: var(--sidebar-ring);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar: var(--sidebar);
-  --color-chart-5: var(--chart-5);
-  --color-chart-4: var(--chart-4);
-  --color-chart-3: var(--chart-3);
-  --color-chart-2: var(--chart-2);
-  --color-chart-1: var(--chart-1);
-  --color-ring: var(--ring);
-  --color-input: var(--input);
-  --color-border: var(--border);
-  --color-destructive: var(--destructive);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-accent: var(--accent);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-muted: var(--muted);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-secondary: var(--secondary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-primary: var(--primary);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-popover: var(--popover);
-  --color-card-foreground: var(--card-foreground);
-  --color-card: var(--card);
+  --color-sidebar-ring: hsl(var(--sidebar-ring));
+  --color-sidebar-border: hsl(var(--sidebar-border));
+  --color-sidebar-accent-foreground: hsl(var(--sidebar-accent-foreground));
+  --color-sidebar-accent: hsl(var(--sidebar-accent));
+  --color-sidebar-primary-foreground: hsl(var(--sidebar-primary-foreground));
+  --color-sidebar-primary: hsl(var(--sidebar-primary));
+  --color-sidebar-foreground: hsl(var(--sidebar-foreground));
+  --color-sidebar: hsl(var(--sidebar));
+  --color-chart-5: hsl(var(--chart-5));
+  --color-chart-4: hsl(var(--chart-4));
+  --color-chart-3: hsl(var(--chart-3));
+  --color-chart-2: hsl(var(--chart-2));
+  --color-chart-1: hsl(var(--chart-1));
+  --color-ring: hsl(var(--ring));
+  --color-input: hsl(var(--input));
+  --color-border: hsl(var(--border));
+  --color-destructive: hsl(var(--destructive));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-accent: hsl(var(--accent));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-muted: hsl(var(--muted));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  --color-secondary: hsl(var(--secondary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-primary: hsl(var(--primary));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+  --color-popover: hsl(var(--popover));
+  --color-card-foreground: hsl(var(--card-foreground));
+  --color-card: hsl(var(--card));
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -115,18 +115,18 @@
   /* Base: Layered slate palette */
   --background: 240 20% 4%;        /* #0A0A0F - Deep slate (almost black but warmer) */
   --background-alt: 240 17% 8%;    /* #12121A - Slightly elevated surfaces */
-  --foreground: 0 0% 98%;          /* #FAFAFA - Near-white text */
+  --foreground: 40 20% 95%;        /* Warm off-white (cream tint) */
 
   /* Cards: Glass effect base colors */
   --card: 240 16% 12%;             /* #1A1A24 - Card backgrounds */
-  --card-foreground: 0 0% 98%;
+  --card-foreground: 40 20% 95%;   /* Warm off-white */
 
   --popover: 240 16% 12%;          /* Same as card for consistency */
-  --popover-foreground: 0 0% 98%;
+  --popover-foreground: 40 20% 95%; /* Warm off-white */
 
   /* Muted: Secondary surfaces */
   --muted: 240 16% 12%;            /* #1A1A24 - Elevated surfaces */
-  --muted-foreground: 240 4% 46%;  /* #71717A - zinc-500, secondary text */
+  --muted-foreground: 40 8% 55%;   /* Warm gray for secondary text */
 
   /* Primary = Warm Amber Accent */
   --primary: 38 92% 50%;           /* #F59E0B - amber-500, warm glowing */
@@ -134,15 +134,15 @@
 
   /* Secondary */
   --secondary: 240 16% 12%;
-  --secondary-foreground: 0 0% 98%;
+  --secondary-foreground: 40 20% 95%; /* Warm off-white */
 
   /* Accent (interactive hover states) */
   --accent: 240 16% 16%;           /* Slightly lighter for hover */
-  --accent-foreground: 0 0% 98%;
+  --accent-foreground: 40 20% 95%; /* Warm off-white */
 
   /* Destructive */
   --destructive: 0 84% 60%;        /* #ef4444 - error red */
-  --destructive-foreground: 0 0% 98%;
+  --destructive-foreground: 40 20% 95%; /* Warm off-white */
 
   /* Borders: Very subtle, 8-15% opacity feel */
   --border: 240 10% 20%;           /* Subtle border color */
@@ -158,11 +158,11 @@
 
   /* Sidebar */
   --sidebar: 240 17% 8%;           /* background-alt */
-  --sidebar-foreground: 0 0% 98%;
+  --sidebar-foreground: 40 20% 95%; /* Warm off-white */
   --sidebar-primary: 38 92% 50%;   /* Amber */
   --sidebar-primary-foreground: 240 20% 4%;
   --sidebar-accent: 240 16% 16%;
-  --sidebar-accent-foreground: 0 0% 98%;
+  --sidebar-accent-foreground: 40 20% 95%; /* Warm off-white */
   --sidebar-border: 240 10% 20%;
   --sidebar-ring: 38 92% 50%;
 
