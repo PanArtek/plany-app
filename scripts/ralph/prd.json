@@ -52,8 +52,8 @@
         "Typecheck passes"
       ],
       "priority": 3,
-      "passes": false,
-      "notes": "",
+      "passes": true,
+      "notes": "Replaced Button with styled tab buttons matching BranzaTabs styling",
       "dependsOn": []
     },
     {

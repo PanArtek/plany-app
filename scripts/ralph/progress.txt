@@ -13,3 +13,8 @@ Started: Thu Feb  5 15:43:06 CET 2026
 - Inactive: text-white/50, hover:bg-white/5
 - Count badge styled with amber on active
 - Build passes
+
+## UX-003: Restyle PozycjeFilters with glass tabs ✓
+- Replaced Button components with styled tab buttons
+- Same glass container + amber glow styling as BranzaTabs
+- Build passes

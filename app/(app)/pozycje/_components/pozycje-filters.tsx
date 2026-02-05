@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Plus, Search } from 'lucide-react';
 import { useState, useCallback, useEffect } from 'react';
+import { cn } from '@/lib/utils';
 
 const BRANZE = ['BUD', 'ELE', 'SAN', 'TEL', 'HVC'] as const;
 
@@ -57,18 +58,24 @@ export function PozycjeFilters({ onAddClick }: PozycjeFiltersProps) {
 
   return (
     <div className="flex items-center justify-between gap-4 mb-4">
-      <div className="flex items-center gap-2">
-        {BRANZE.map((b) => (
-          <Button
-            key={b}
-            variant={currentBranza === b ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => handleBranzaClick(b)}
-            className="font-mono"
-          >
-            {b}
-          </Button>
-        ))}
+      <div className="bg-[#1A1A24]/40 backdrop-blur-sm border border-white/[0.08] rounded-lg p-1 inline-flex gap-1">
+        {BRANZE.map((b) => {
+          const isActive = currentBranza === b;
+          return (
+            <button
+              key={b}
+              onClick={() => handleBranzaClick(b)}
+              className={cn(
+                "px-4 py-2 font-mono text-sm rounded-md transition-all",
+                isActive
+                  ? "bg-amber-500/15 text-amber-500 shadow-[0_0_12px_rgba(245,158,11,0.2)]"
+                  : "text-white/50 hover:bg-white/5 hover:text-white/80"
+              )}
+            >
+              {b}
+            </button>
+          );
+        })}
       </div>
 
       <div className="flex items-center gap-2 flex-1 max-w-md">
