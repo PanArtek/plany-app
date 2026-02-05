@@ -144,6 +144,40 @@ export async function deleteKategoria(id: string): Promise<ActionResult> {
   return { success: true };
 }
 
+// GET NEXT KOD - sugeruje następny wolny kod dla danego parenta
+export async function getNextKod(parentId: string | null): Promise<string> {
+  const supabase = await createClient();
+
+  // Build query - handle null parentId for top-level (branża)
+  let query = supabase
+    .from('kategorie')
+    .select('kod')
+    .order('kod');
+
+  if (parentId === null) {
+    query = query.is('parent_id', null);
+  } else {
+    query = query.eq('parent_id', parentId);
+  }
+
+  const { data: siblings } = await query;
+
+  if (!siblings || siblings.length === 0) {
+    return '01';
+  }
+
+  const existingKods = new Set(siblings.map(s => s.kod));
+
+  for (let i = 1; i <= 99; i++) {
+    const candidate = i.toString().padStart(2, '0');
+    if (!existingKods.has(candidate)) {
+      return candidate;
+    }
+  }
+
+  return '99';
+}
+
 // READ - kategorie tree
 export async function getKategorieTree(): Promise<KategoriaNode[]> {
   console.log('[getKategorieTree] Fetching...');

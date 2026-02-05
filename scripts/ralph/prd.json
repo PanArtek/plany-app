@@ -1,220 +1,78 @@
 {
   "project": "PLANY App",
-  "branchName": "ralph/phase3b-pozycje",
-  "description": "Phase 3b: Pozycje module - library of costing positions with TanStack Table, URL filters, side detail panel (skladowe read-only)",
+  "branchName": "ralph/phase3a-kategorie",
+  "description": "Phase 3a-UX: Kategorie modal UX improvements - auto-suggestion of next kod, live preview of full kod, parent info display",
   "mode": "feature",
   "baseBranch": "main",
   "userStories": [
     {
-      "id": "POZ-001",
-      "title": "Zod schemas for pozycje",
-      "description": "As a developer, I need validation schemas for pozycje CRUD and URL filters.",
+      "id": "KAT-UX-001",
+      "title": "Server Action getNextKod",
+      "description": "As a developer, I need a server action that suggests the next available kod for a given parent category.",
       "acceptanceCriteria": [
-        "Create lib/validations/pozycje.ts",
-        "createPozycjaSchema: kod (regex BUD.03.01.001 or BUD.03.001), nazwa (3-500 chars), jednostka (enum), typ (enum), kategoriaId (uuid|null), opis (optional, max 2000)",
-        "updatePozycjaSchema: all fields optional",
-        "pozycjeFiltersSchema: branza (optional), kategoria (optional), podkategoria (optional), search (optional), selected (uuid optional)",
-        "Export types: CreatePozycjaInput, UpdatePozycjaInput, PozycjeFilters",
+        "Add getNextKod(parentId: string | null) to actions/kategorie.ts",
+        "Query siblings by parent_id, find first gap in 01-99 sequence",
+        "Return '01' if no siblings exist",
+        "Handle both null parentId (for branża level) and string parentId",
         "Typecheck passes"
       ],
       "priority": 1,
       "passes": true,
-      "notes": "Added jednostkaOptions and typOptions exports for UI selects",
+      "notes": "Fixed to handle null parentId using .is('parent_id', null) for branża level",
       "dependsOn": []
     },
     {
-      "id": "POZ-002",
-      "title": "Server Actions for pozycje CRUD",
-      "description": "As a developer, I need server actions for pozycje create, update, delete, and read with filters.",
+      "id": "KAT-UX-002",
+      "title": "Hook useKategoriaModal",
+      "description": "As a developer, I need a hook to manage modal state and fetch suggested kod on open.",
       "acceptanceCriteria": [
-        "Create actions/pozycje.ts with 'use server' directive",
-        "createPozycja: validate with Zod, insert to pozycje_biblioteka, handle unique constraint (23505), revalidatePath('/pozycje')",
-        "updatePozycja: validate, update by id, map camelCase to snake_case, handle unique constraint",
-        "deletePozycja: check kosztorys_pozycje.pozycja_biblioteka_id count first, block if used, revalidatePath on success",
-        "getPozycje(filters): fetch with skladowe_robocizna and skladowe_materialy joins, filter by kod prefix (branza.kategoria.podkategoria), filter by search (ilike kod or nazwa)",
-        "getPozycja(id): fetch single with skladowe, return null if not found",
+        "Create hooks/use-kategoria-modal.ts",
+        "State: open, mode, poziom, parentId, parentPath, parentNazwa, suggestedKod, kategoria",
+        "openAdd(parentId, parentKod, parentNazwa, poziom): fetches suggestedKod via getNextKod",
+        "openEdit(kategoria, parentKod, parentNazwa, poziom): sets state without fetch",
+        "close(): resets state",
+        "Export ModalState type",
         "Typecheck passes"
       ],
       "priority": 2,
-      "passes": true,
-      "notes": "Uses biblioteka_skladowe_robocizna and biblioteka_skladowe_materialy table names. Exports Pozycja type for use in components.",
-      "dependsOn": ["POZ-001"]
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["KAT-UX-001"]
     },
     {
-      "id": "POZ-003",
-      "title": "Install TanStack Table and shadcn select",
-      "description": "As a developer, I need table library and select component.",
+      "id": "KAT-UX-003",
+      "title": "Modal z auto-sugestią",
+      "description": "As a user, I want to see parent info, auto-suggested kod, and live full kod preview when adding/editing categories.",
       "acceptanceCriteria": [
-        "Run: npm install @tanstack/react-table",
-        "Run: npx shadcn@latest add select",
-        "Verify imports work: import { useReactTable } from '@tanstack/react-table'",
-        "Typecheck passes"
-      ],
-      "priority": 1,
-      "passes": true,
-      "notes": "Both packages installed and build passes",
-      "dependsOn": []
-    },
-    {
-      "id": "POZ-004",
-      "title": "Helper obliczCenePozycji",
-      "description": "As a developer, I need a utility to calculate position price from skladowe.",
-      "acceptanceCriteria": [
-        "Create lib/utils/pozycje.ts",
-        "obliczCenePozycji(pozycja): returns { robocizna: number, material: number, cena: number }",
-        "robocizna = sum of (stawka_domyslna * norma_domyslna) for each skladowa_robocizna",
-        "material = sum of (cena_domyslna * norma_domyslna) for each skladowa_material",
-        "cena = robocizna + material",
-        "Handle null/undefined values (default to 0)",
-        "Typecheck passes"
-      ],
-      "priority": 2,
-      "passes": true,
-      "notes": "Uses biblioteka_skladowe_robocizna and biblioteka_skladowe_materialy from Supabase join",
-      "dependsOn": []
-    },
-    {
-      "id": "POZ-005",
-      "title": "Pozycje page with URL filters",
-      "description": "As a developer, I need the pozycje page to parse URL params and fetch filtered data.",
-      "acceptanceCriteria": [
-        "Update app/(app)/pozycje/page.tsx as Server Component",
-        "Parse searchParams: branza, kategoria, podkategoria, search, selected",
-        "Fetch data using getPozycje(params) from actions/pozycje",
-        "Pass data to PozycjeView client component as initialData, initialFilters, initialSelected",
-        "Page title: 'Pozycje' with text-2xl font-semibold font-mono",
+        "Refactor kategoria-form-modal.tsx to accept new props: parentPath, parentNazwa, suggestedKod",
+        "Show disabled field with parent info (e.g. 'BUD - Budowlana')",
+        "Auto-fill kod field with suggestedKod in add mode",
+        "Show live preview of full kod (parentPath + '.' + kod)",
+        "Show suggestion hint text below kod input",
+        "Verify at localhost:3000/kategorie - modal shows correctly",
         "Typecheck passes"
       ],
       "priority": 3,
-      "passes": true,
-      "notes": "Created placeholder PozycjeView component, page is now dynamic. searchParams is Promise in Next.js 16.",
-      "dependsOn": ["POZ-002"]
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["KAT-UX-002"]
     },
     {
-      "id": "POZ-006",
-      "title": "PozycjeFilters component",
-      "description": "As a developer, I need hierarchical filter UI with URL updates.",
+      "id": "KAT-UX-004",
+      "title": "Integracja w KategorieView",
+      "description": "As a developer, I need to integrate the new modal hook in KategorieView and remove old modal state management.",
       "acceptanceCriteria": [
-        "Create app/(app)/pozycje/_components/pozycje-filters.tsx as client component",
-        "Render 5 branża buttons: BUD, ELE, SAN, TEL, HVC with toggle behavior",
-        "Render search input with placeholder 'Szukaj po kodzie lub nazwie...'",
-        "Render 'Dodaj pozycję' button on the right",
-        "Use useRouter and useSearchParams to update URL on filter change",
-        "Reset kategoria/podkategoria when branza changes",
-        "Verify at localhost:3000/pozycje - URL changes on filter click",
+        "Update KategorieView to use useKategoriaModal hook",
+        "Remove old formModal state management",
+        "Update KategoriaCard to call hook methods instead of setFormModal",
+        "Single modal instance controlled by hook",
+        "Verify at localhost:3000/kategorie - add/edit works from any level",
         "Typecheck passes"
       ],
       "priority": 4,
-      "passes": true,
-      "notes": "Includes debounced search (300ms). onAddClick callback passed from parent.",
-      "dependsOn": ["POZ-005"]
-    },
-    {
-      "id": "POZ-007",
-      "title": "PozycjeTable with TanStack",
-      "description": "As a developer, I need a data table with sorting and row selection.",
-      "acceptanceCriteria": [
-        "Create app/(app)/pozycje/_components/pozycje-columns.tsx with ColumnDef array",
-        "Columns: kod (font-mono), nazwa (truncate), jednostka, typ (Badge with color), cenaJednostkowa (font-mono, formatted)",
-        "Create app/(app)/pozycje/_components/pozycje-table.tsx using useReactTable",
-        "Enable getCoreRowModel and getSortedRowModel",
-        "Row click calls onSelect(id) prop, selected row has bg-muted",
-        "Header click toggles sorting, show chevron icons",
-        "Empty state: 'Brak pozycji spełniających kryteria'",
-        "Typecheck passes"
-      ],
-      "priority": 5,
-      "passes": true,
-      "notes": "Uses obliczCenePozycji for price calculation. Typ uses colored badges.",
-      "dependsOn": ["POZ-003", "POZ-004", "POZ-005"]
-    },
-    {
-      "id": "POZ-008",
-      "title": "PozycjaDetailPanel",
-      "description": "As a developer, I need a side panel showing position details and skladowe.",
-      "acceptanceCriteria": [
-        "Create app/(app)/pozycje/_components/pozycja-detail-panel.tsx",
-        "Header section: kategoriaBreadcrumb (small muted), nazwa (lg font), kod + jednostka",
-        "Scrollable content area with SkladoweSection for robocizna and materialy",
-        "Footer: cena jednostkowa NETTO (xl mono font), Edytuj button, Delete icon button",
-        "Props: pozycja, onEdit callback, onDelete callback",
-        "Typecheck passes"
-      ],
-      "priority": 6,
-      "passes": true,
-      "notes": "Breadcrumb extracted from kod (prefix without last segment). Uses obliczCenePozycji for totals.",
-      "dependsOn": ["POZ-004", "POZ-005"]
-    },
-    {
-      "id": "POZ-009",
-      "title": "SkladoweSection component",
-      "description": "As a developer, I need a read-only component to display skladowe lists.",
-      "acceptanceCriteria": [
-        "Create app/(app)/pozycje/_components/skladowe-section.tsx",
-        "Props: title, items (array), suma (number), colorClass",
-        "Header row: title with colorClass, suma formatted on right",
-        "List items: opis/nazwa truncated, cena formatted, bg-card rounded",
-        "Empty state: 'Brak składowych' in muted italic",
-        "Typecheck passes"
-      ],
-      "priority": 6,
-      "passes": true,
-      "notes": "Generic component for both robocizna (opis) and materialy (nazwa). Calculates item cena from stawka/cena * norma.",
-      "dependsOn": ["POZ-008"]
-    },
-    {
-      "id": "POZ-010",
-      "title": "PozycjeView layout component",
-      "description": "As a developer, I need the main view wrapper with 40/60 split layout.",
-      "acceptanceCriteria": [
-        "Create app/(app)/pozycje/_components/pozycje-view.tsx as client component",
-        "Layout: filters on top, then flex row with table (w-[40%]) and panel (w-[60%])",
-        "State: selectedId (string|null), formModal ({ open, mode })",
-        "Find selectedPozycja from initialData by selectedId",
-        "Show 'Wybierz pozycję z listy' placeholder when nothing selected",
-        "Verify at localhost:3000/pozycje - layout shows correctly",
-        "Typecheck passes"
-      ],
-      "priority": 5,
-      "passes": true,
-      "notes": "SelectedId from URL via searchParams. Delete handler is placeholder for POZ-012. Wrapped in Suspense for useSearchParams.",
-      "dependsOn": ["POZ-006", "POZ-007", "POZ-008"]
-    },
-    {
-      "id": "POZ-011",
-      "title": "PozycjaFormModal",
-      "description": "As a developer, I need a modal for add/edit pozycja.",
-      "acceptanceCriteria": [
-        "Create app/(app)/pozycje/_components/modals/pozycja-form-modal.tsx",
-        "Props: mode ('add'|'edit'), pozycja (for edit), open, onOpenChange",
-        "Use react-hook-form with zodResolver and createPozycjaSchema",
-        "Fields: kod (Input, font-mono), nazwa (Input), jednostka (Select), typ (Select)",
-        "Call createPozycja or updatePozycja Server Actions",
-        "Toast success/error using sonner",
-        "Typecheck passes"
-      ],
-      "priority": 7,
-      "passes": true,
-      "notes": "Uses shadcn Select component. Maps jednostka and typ from validation options.",
-      "dependsOn": ["POZ-001", "POZ-002"]
-    },
-    {
-      "id": "POZ-012",
-      "title": "Delete confirmation for pozycje",
-      "description": "As a developer, I need delete confirmation with usage protection.",
-      "acceptanceCriteria": [
-        "Reuse or adapt delete-confirm-modal from kategorie module",
-        "Show pozycja kod and nazwa in warning",
-        "Call deletePozycja Server Action on confirm",
-        "Server checks kosztorys_pozycje usage and returns error if used",
-        "Toast with success or error message",
-        "Close panel and deselect on successful delete",
-        "Typecheck passes"
-      ],
-      "priority": 8,
-      "passes": true,
-      "notes": "Created DeletePozycjaModal. Integrated into PozycjeView with handleDeleted callback that removes ?selected param.",
-      "dependsOn": ["POZ-002", "POZ-010"]
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["KAT-UX-003"]
     }
   ]
 }
