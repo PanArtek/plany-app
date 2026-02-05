@@ -67,10 +67,24 @@ function PozycjeViewContent({ initialData, initialFilters, initialSelected }: Po
     }
   };
 
+  const handleEditById = (id: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('selected', id);
+    router.push(`/pozycje?${params.toString()}`);
+    setFormPanel({ open: true, mode: 'edit' });
+  };
+
   const handleDelete = () => {
     if (selectedPozycja) {
       setDeletePanelOpen(true);
     }
+  };
+
+  const handleDeleteById = (id: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('selected', id);
+    router.push(`/pozycje?${params.toString()}`);
+    setDeletePanelOpen(true);
   };
 
   const handleConfirmDelete = async () => {
@@ -99,6 +113,8 @@ function PozycjeViewContent({ initialData, initialFilters, initialSelected }: Po
           data={initialData}
           selectedId={selectedId}
           onSelect={handleSelect}
+          onEdit={handleEditById}
+          onDelete={handleDeleteById}
         />
       </div>
 

@@ -4,7 +4,8 @@ import { ColumnDef, RowData } from '@tanstack/react-table';
 import { Badge } from '@/components/ui/badge';
 import { type Pozycja } from '@/actions/pozycje';
 import { obliczCenePozycji } from '@/lib/utils/pozycje';
-import { ChevronDown, ChevronUp } from 'lucide-react';
+import { ChevronDown, ChevronUp, Pencil, Trash2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 // Extend TanStack Table's ColumnMeta to add responsive visibility
 declare module '@tanstack/react-table' {
@@ -45,7 +46,13 @@ function SortIcon({ column }: { column: { getIsSorted: () => false | 'asc' | 'de
   );
 }
 
-export const pozycjeColumns: ColumnDef<Pozycja>[] = [
+interface PozycjeColumnsOptions {
+  onEdit: (id: string) => void;
+  onDelete: (id: string) => void;
+}
+
+export function getPozycjeColumns({ onEdit, onDelete }: PozycjeColumnsOptions): ColumnDef<Pozycja>[] {
+  return [
   {
     accessorKey: 'kod',
     header: ({ column }) => (
@@ -127,4 +134,34 @@ export const pozycjeColumns: ColumnDef<Pozycja>[] = [
     },
     size: 110,
   },
+  {
+    id: 'akcje',
+    header: () => null,
+    cell: ({ row }) => (
+      <div className="flex items-center gap-1">
+        <Button
+          variant="ghost"
+          className="h-7 w-7 p-0"
+          onClick={(e) => {
+            e.stopPropagation();
+            onEdit(row.original.id);
+          }}
+        >
+          <Pencil className="h-4 w-4" />
+        </Button>
+        <Button
+          variant="ghost"
+          className="h-7 w-7 p-0"
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete(row.original.id);
+          }}
+        >
+          <Trash2 className="h-4 w-4" />
+        </Button>
+      </div>
+    ),
+    size: 80,
+  },
 ];
+}

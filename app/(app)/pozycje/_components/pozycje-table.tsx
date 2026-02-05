@@ -9,21 +9,24 @@ import {
 } from '@tanstack/react-table';
 import { useState } from 'react';
 import { type Pozycja } from '@/actions/pozycje';
-import { pozycjeColumns } from './pozycje-columns';
+import { getPozycjeColumns } from './pozycje-columns';
 import { cn } from '@/lib/utils';
 
 interface PozycjeTableProps {
   data: Pozycja[];
   selectedId: string | null;
   onSelect: (id: string) => void;
+  onEdit: (id: string) => void;
+  onDelete: (id: string) => void;
 }
 
-export function PozycjeTable({ data, selectedId, onSelect }: PozycjeTableProps) {
+export function PozycjeTable({ data, selectedId, onSelect, onEdit, onDelete }: PozycjeTableProps) {
   const [sorting, setSorting] = useState<SortingState>([]);
+  const columns = getPozycjeColumns({ onEdit, onDelete });
 
   const table = useReactTable({
     data,
-    columns: pozycjeColumns,
+    columns,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     onSortingChange: setSorting,
