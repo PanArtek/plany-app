@@ -178,6 +178,43 @@ export async function getNextKod(parentId: string | null): Promise<string> {
   return '99';
 }
 
+// GET KATEGORIE BY POZIOM - for cascading selects
+export interface KategoriaOption {
+  id: string;
+  kod: string;
+  nazwa: string;
+}
+
+export async function getKategorieByPoziom(
+  poziom: number,
+  parentId?: string
+): Promise<KategoriaOption[]> {
+  const supabase = await createClient();
+
+  let query = supabase
+    .from('kategorie')
+    .select('id, kod, nazwa')
+    .eq('poziom', poziom)
+    .order('kod');
+
+  // For poziom 1 (branże), parentId should be null
+  // For poziom 2+ with parentId, filter by parent_id
+  if (poziom === 1) {
+    query = query.is('parent_id', null);
+  } else if (parentId) {
+    query = query.eq('parent_id', parentId);
+  }
+
+  const { data, error } = await query;
+
+  if (error) {
+    console.error('[getKategorieByPoziom] Error:', error);
+    return [];
+  }
+
+  return data || [];
+}
+
 // READ - kategorie tree
 export async function getKategorieTree(): Promise<KategoriaNode[]> {
   console.log('[getKategorieTree] Fetching...');
