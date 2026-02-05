@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { createKategoriaSchema, updateKategoriaSchema } from '@/lib/validations/kategorie';
+import type { BranzaKod } from '@/stores/kategorie-ui-store';
 
 export type ActionResult<T = unknown> = {
   success: boolean;
@@ -268,6 +269,36 @@ export async function getKategorieByPoziom(
   }
 
   return data || [];
+}
+
+// GET KATEGORIE COUNTS - count of poziom 2 categories per branża
+export async function getKategorieCounts(): Promise<Record<BranzaKod, number>> {
+  const supabase = await createClient();
+
+  // Get all kategorie at poziom 2 (categories under branże)
+  const { data, error } = await supabase
+    .from('kategorie')
+    .select('pelny_kod')
+    .eq('poziom', 2);
+
+  if (error) {
+    console.error('[getKategorieCounts] Error:', error);
+    return { BUD: 0, ELE: 0, SAN: 0, TEL: 0, HVC: 0 };
+  }
+
+  // Group by first 3 chars of pelny_kod (branża code)
+  const counts: Record<BranzaKod, number> = { BUD: 0, ELE: 0, SAN: 0, TEL: 0, HVC: 0 };
+
+  data?.forEach((item) => {
+    if (item.pelny_kod) {
+      const branzaKod = item.pelny_kod.substring(0, 3) as BranzaKod;
+      if (branzaKod in counts) {
+        counts[branzaKod]++;
+      }
+    }
+  });
+
+  return counts;
 }
 
 // READ - kategorie tree
