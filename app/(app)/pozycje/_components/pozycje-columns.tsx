@@ -45,25 +45,6 @@ function SortIcon({ column }: { column: { getIsSorted: () => false | 'asc' | 'de
   );
 }
 
-// Helper to get kategoria and podkategoria names
-function getKategoriaNames(pozycja: Pozycja): { kategoria: string | null; podkategoria: string | null } {
-  if (!pozycja.kategoria) return { kategoria: null, podkategoria: null };
-
-  // If poziom = 2, this is a subcategory - parent is the main category
-  if (pozycja.kategoria.poziom === 2 && pozycja.kategoria.parent) {
-    return {
-      kategoria: pozycja.kategoria.parent.nazwa,
-      podkategoria: pozycja.kategoria.nazwa,
-    };
-  }
-
-  // If poziom = 1, this is a main category
-  return {
-    kategoria: pozycja.kategoria.nazwa,
-    podkategoria: null,
-  };
-}
-
 export const pozycjeColumns: ColumnDef<Pozycja>[] = [
   {
     accessorKey: 'kod',
@@ -98,38 +79,6 @@ export const pozycjeColumns: ColumnDef<Pozycja>[] = [
       </span>
     ),
     minSize: 200,
-  },
-  {
-    id: 'kategoria',
-    header: () => <span className="text-xs uppercase tracking-wider font-medium">Kategoria</span>,
-    accessorFn: (row) => getKategoriaNames(row).kategoria,
-    cell: ({ row }) => {
-      const { kategoria } = getKategoriaNames(row.original);
-      if (!kategoria) return <span className="text-muted-foreground/50">—</span>;
-      return (
-        <span className="text-xs text-muted-foreground uppercase tracking-wide">
-          {kategoria}
-        </span>
-      );
-    },
-    size: 120,
-    meta: { hideOnMobile: true },
-  },
-  {
-    id: 'podkategoria',
-    header: () => <span className="text-xs uppercase tracking-wider font-medium">Podkategoria</span>,
-    accessorFn: (row) => getKategoriaNames(row).podkategoria,
-    cell: ({ row }) => {
-      const { podkategoria } = getKategoriaNames(row.original);
-      if (!podkategoria) return <span className="text-muted-foreground/50">—</span>;
-      return (
-        <span className="text-xs text-muted-foreground">
-          {podkategoria}
-        </span>
-      );
-    },
-    size: 120,
-    meta: { hideOnMobile: true },
   },
   {
     accessorKey: 'jednostka',
