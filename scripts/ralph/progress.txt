@@ -95,3 +95,14 @@ Started: Thu Feb  5 2026
 ---
 ## Phase 3a-UX COMPLETE 🎉
 All 4 stories passed. Build passes.
+
+---
+# Pozycje Kategoria Cascading Selects
+Started: Thu Feb  5 2026
+Design: docs/plans/2026-02-05-pozycje-kategoria-select-design.md
+
+Stories:
+- POZ-KAT-001: Server Action getKategorieByPoziom
+- POZ-KAT-002: Server Action getNextPozycjaKod
+- POZ-KAT-003: Hook usePozycjaForm
+- POZ-KAT-004: UI modal z cascading selectami
