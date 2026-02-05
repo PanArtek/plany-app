@@ -45,12 +45,31 @@ function SortIcon({ column }: { column: { getIsSorted: () => false | 'asc' | 'de
   );
 }
 
+// Helper to get kategoria and podkategoria names
+function getKategoriaNames(pozycja: Pozycja): { kategoria: string | null; podkategoria: string | null } {
+  if (!pozycja.kategoria) return { kategoria: null, podkategoria: null };
+
+  // If poziom = 2, this is a subcategory - parent is the main category
+  if (pozycja.kategoria.poziom === 2 && pozycja.kategoria.parent) {
+    return {
+      kategoria: pozycja.kategoria.parent.nazwa,
+      podkategoria: pozycja.kategoria.nazwa,
+    };
+  }
+
+  // If poziom = 1, this is a main category
+  return {
+    kategoria: pozycja.kategoria.nazwa,
+    podkategoria: null,
+  };
+}
+
 export const pozycjeColumns: ColumnDef<Pozycja>[] = [
   {
     accessorKey: 'kod',
     header: ({ column }) => (
       <button
-        className="flex items-center hover:text-foreground"
+        className="flex items-center hover:text-foreground text-xs uppercase tracking-wider font-medium"
         onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
       >
         Kod
@@ -58,7 +77,7 @@ export const pozycjeColumns: ColumnDef<Pozycja>[] = [
       </button>
     ),
     cell: ({ row }) => (
-      <span className="font-mono text-sm text-amber-500">{row.getValue('kod')}</span>
+      <span className="font-mono text-sm text-amber-500 font-medium">{row.getValue('kod')}</span>
     ),
     size: 140,
   },
@@ -66,7 +85,7 @@ export const pozycjeColumns: ColumnDef<Pozycja>[] = [
     accessorKey: 'nazwa',
     header: ({ column }) => (
       <button
-        className="flex items-center hover:text-foreground"
+        className="flex items-center hover:text-foreground text-xs uppercase tracking-wider font-medium"
         onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
       >
         Nazwa
@@ -74,22 +93,58 @@ export const pozycjeColumns: ColumnDef<Pozycja>[] = [
       </button>
     ),
     cell: ({ row }) => (
-      <span className="block truncate max-w-[150px] md:max-w-none md:truncate-none md:min-w-[250px]">{row.getValue('nazwa')}</span>
+      <span className="block truncate max-w-[150px] md:max-w-none font-medium text-foreground">
+        {row.getValue('nazwa')}
+      </span>
     ),
-    minSize: 250,
+    minSize: 200,
+  },
+  {
+    id: 'kategoria',
+    header: () => <span className="text-xs uppercase tracking-wider font-medium">Kategoria</span>,
+    accessorFn: (row) => getKategoriaNames(row).kategoria,
+    cell: ({ row }) => {
+      const { kategoria } = getKategoriaNames(row.original);
+      if (!kategoria) return <span className="text-muted-foreground/50">—</span>;
+      return (
+        <span className="text-xs text-muted-foreground uppercase tracking-wide">
+          {kategoria}
+        </span>
+      );
+    },
+    size: 120,
+    meta: { hideOnMobile: true },
+  },
+  {
+    id: 'podkategoria',
+    header: () => <span className="text-xs uppercase tracking-wider font-medium">Podkategoria</span>,
+    accessorFn: (row) => getKategoriaNames(row).podkategoria,
+    cell: ({ row }) => {
+      const { podkategoria } = getKategoriaNames(row.original);
+      if (!podkategoria) return <span className="text-muted-foreground/50">—</span>;
+      return (
+        <span className="text-xs text-muted-foreground">
+          {podkategoria}
+        </span>
+      );
+    },
+    size: 120,
+    meta: { hideOnMobile: true },
   },
   {
     accessorKey: 'jednostka',
-    header: () => <span className="text-center block">Jednostka</span>,
+    header: () => <span className="text-xs uppercase tracking-wider font-medium text-center block">Jedn.</span>,
     cell: ({ row }) => (
-      <span className="text-muted-foreground text-center block">{row.getValue('jednostka')}</span>
+      <span className="text-sm text-muted-foreground text-center block font-mono">
+        {row.getValue('jednostka')}
+      </span>
     ),
-    size: 80,
+    size: 70,
     meta: { hideOnMobile: true },
   },
   {
     accessorKey: 'typ',
-    header: 'Typ',
+    header: () => <span className="text-xs uppercase tracking-wider font-medium">Typ</span>,
     cell: ({ row }) => {
       const typ = row.getValue('typ') as string;
       return (
@@ -105,10 +160,10 @@ export const pozycjeColumns: ColumnDef<Pozycja>[] = [
     id: 'cenaJednostkowa',
     header: ({ column }) => (
       <button
-        className="flex items-center hover:text-foreground justify-end w-full"
+        className="flex items-center hover:text-foreground justify-end w-full text-xs uppercase tracking-wider font-medium"
         onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
       >
-        Cena jedn.
+        Cena
         <SortIcon column={column} />
       </button>
     ),
@@ -116,11 +171,11 @@ export const pozycjeColumns: ColumnDef<Pozycja>[] = [
     cell: ({ row }) => {
       const { cena } = obliczCenePozycji(row.original);
       return (
-        <span className="font-mono text-sm text-right block">
+        <span className="font-mono text-sm text-right block tabular-nums">
           {formatCena(cena)}
         </span>
       );
     },
-    size: 120,
+    size: 110,
   },
 ];

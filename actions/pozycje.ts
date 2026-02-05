@@ -38,6 +38,18 @@ export interface SkladowaMaterial {
   jednostka: string | null;
 }
 
+export interface KategoriaInfo {
+  id: string;
+  kod: string;
+  nazwa: string;
+  poziom: number;
+  parent: {
+    id: string;
+    kod: string;
+    nazwa: string;
+  } | null;
+}
+
 export interface Pozycja {
   id: string;
   kategoria_id: string | null;
@@ -51,6 +63,7 @@ export interface Pozycja {
   updated_at: string;
   biblioteka_skladowe_robocizna: SkladowaRobocizna[];
   biblioteka_skladowe_materialy: SkladowaMaterial[];
+  kategoria: KategoriaInfo | null;
 }
 
 // CREATE
@@ -169,7 +182,14 @@ export async function getPozycje(filters: PozycjeFilters): Promise<Pozycja[]> {
     .select(`
       *,
       biblioteka_skladowe_robocizna(*),
-      biblioteka_skladowe_materialy(*)
+      biblioteka_skladowe_materialy(*),
+      kategoria:kategorie!kategoria_id(
+        id,
+        kod,
+        nazwa,
+        poziom,
+        parent:kategorie!parent_id(id, kod, nazwa)
+      )
     `)
     .eq('aktywny', true)
     .order('kod');
