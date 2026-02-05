@@ -1,91 +1,36 @@
 # Ralph Progress Log
-Started: Thu Feb  5 15:43:06 CET 2026
+Started: Thu Feb  5 16:28:24 CET 2026
 ---
-## UX-001: Add mobile fullscreen support to SlidePanel ✓
-- Updated VARIANTS to include `w-full md:w-[Xpx]` for all sizes
-- Added `rounded-none md:rounded-l-xl` for mobile fullscreen
-- Added `border-l-0 md:border-l` to remove border on mobile
+
+## BL-001: Add getKategorieCounts server action ✅
+- Added `getKategorieCounts()` to `actions/kategorie.ts`
+- Returns `Record<BranzaKod, number>` with counts of poziom 2 categories per branża
+- Query: selects pelny_kod where poziom=2, groups by first 3 chars
+- Typecheck passes
+
+## BL-002: Create BranzaTile component ✅
+- Created `branza-tile.tsx` with Link wrapper
+- Styling: stone-900/50 bg, amber hover effects, scale transform
+
+## BL-003: Create BranzeGrid component ✅
+- Created `branze-grid.tsx` with responsive grid
+- Uses BRANZE constant for 5 branże
+
+## BL-004: Update /kategorie page to show landing tiles ✅
+- Replaced KategorieView with BranzeGrid on landing page
+- Verified 5 tiles display with correct counts
+
+## BL-005/BL-006/BL-007: Dynamic route + props refactor ✅
+- Created `/kategorie/[branza]/page.tsx` with param validation
+- Updated KategorieView to accept `activeBranza` prop
+- Updated BranzaTabs to use Link navigation instead of store
+
+## BL-008: Final verification ✅
+All acceptance criteria verified:
 - Build passes
-
-## UX-002: Restyle BranzaTabs with glass effect and amber glow ✓
-- Glass container: bg-[#1A1A24]/40 backdrop-blur-sm border border-white/[0.08] rounded-lg
-- Active tab: amber glow shadow-[0_0_12px_rgba(245,158,11,0.2)]
-- Inactive: text-white/50, hover:bg-white/5
-- Count badge styled with amber on active
-- Build passes
-
-## UX-003: Restyle PozycjeFilters with glass tabs ✓
-- Replaced Button components with styled tab buttons
-- Same glass container + amber glow styling as BranzaTabs
-- Build passes
-
-## UX-004: Update pozycje-columns with amber badges and widths ✓
-- All TYP_COLORS unified to amber: bg-amber-500/10 text-amber-400 border-amber-500/20
-- Kod column: text-amber-500, size: 140
-- Nazwa column: minSize: 250, removed truncate
-- Jednostka: size: 80, text-center
-- Typ: size: 100
-- Cena: size: 120
-- Build passes
-
-## UX-005: Restyle pozycje-table with glass effect ✓
-- Wrapper: glass effect with bg-[#1A1A24]/60 backdrop-blur-sm border-white/[0.08] rounded-xl
-- Header: bg-white/[0.03] border-b border-white/5 sticky top-0
-- Row hover: hover:bg-white/5
-- Selected row: bg-amber-500/10 border-l-2 border-l-amber-500 shadow-[inset_0_0_20px_rgba(245,158,11,0.05)]
-- Build passes
-
-## UX-006: Update skladowe-section with amber-only colors ✓
-- Added variant prop (primary/secondary) instead of colorClass
-- Title: text-amber-400 (primary) or text-amber-400/70 (secondary)
-- Sum value: text-amber-400 font-mono
-- Item row hover: hover:bg-amber-500/5
-- Updated pozycja-detail-panel to use variant prop
-- Build passes
-
-## UX-007: Convert PozycjaDetailPanel to SlidePanel content ✓
-- Wrapped in SlidePanel with variant="wide"
-- Added open/onOpenChange props
-- Header: kod + jednostka badge in SlidePanelHeader
-- Content: sections in SlidePanelContent
-- Footer: cena + buttons in SlidePanelFooter
-- Build passes
-
-## UX-008: Refactor pozycje-view for full-width table layout ✓
-- Removed 40%/60% split layout
-- Table takes full width
-- PozycjaDetailPanel opens as SlidePanel on row click
-- Closing panel clears selection from URL
-- Build passes
-
-## UX-009: Restyle KategoriaCard with glass effect ✓
-- Card: bg-[#1A1A24]/60 backdrop-blur-sm border-white/[0.08] rounded-xl
-- Card hover: hover:border-white/15
-- Kod text: text-amber-500 font-mono
-- Count badge: bg-amber-500/10 text-amber-400
-- Expanded section: bg-white/[0.02], border-white/[0.05]
-- Podkategoria hover: hover:bg-white/5
-- Build passes
-
-## UX-010: Add responsive table columns for mobile ✓
-- Extended ColumnMeta with hideOnMobile/hideOnTablet
-- Jednostka: hidden on < md via meta.hideOnMobile
-- Typ: hidden on < lg via meta.hideOnTablet
-- Nazwa: truncate max-w-[150px] on mobile, full width on md+
-- Table reads column meta and applies responsive CSS classes
-- Build passes
-
-## UX-011: Final verification and cleanup ✓
-- npm run build passes without errors
-- All UX stories completed successfully
-- Summary of changes:
-  - SlidePanel: mobile fullscreen, rounded-l-xl on desktop
-  - BranzaTabs & PozycjeFilters: glass container, amber glow on active
-  - PozycjeTable: glass effect, amber selected row, full-width layout
-  - PozycjaDetailPanel: converted to SlidePanel, opens on row click
-  - KategoriaCard: glass effect, amber accents
-  - Responsive: columns hide on mobile/tablet, nazwa truncates
-  - Skladowe: unified amber colors with variant prop
-
----
-PRD COMPLETE
+- 5 tiles with counts on /kategorie
+- Tile click → /kategorie/BUD
+- Tabs work with URL navigation
+- Browser back works
+- Invalid URL shows 404
+- No console errors

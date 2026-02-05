@@ -1,206 +1,143 @@
 {
   "project": "PLANY App",
-  "branchName": "ralph/ux-polish",
-  "description": "UX/UI polish for Pozycje and Kategorie modules - unified amber accent, glass effects, responsive",
+  "branchName": "ralph/branze-landing",
+  "description": "Branże Landing Page - kafelki branż jako pośredni ekran przed listą kategorii",
   "mode": "feature",
   "baseBranch": "ralph/slide-panel-ux",
   "userStories": [
     {
-      "id": "UX-001",
-      "title": "Add mobile fullscreen support to SlidePanel",
-      "description": "As a mobile user, I want SlidePanel to be fullscreen on small screens.",
+      "id": "BL-001",
+      "title": "Add getKategorieCounts server action",
+      "description": "As a developer, I need a server action to get category counts per branża for the landing page tiles.",
       "acceptanceCriteria": [
-        "Update components/ui/slide-panel.tsx",
-        "Add responsive classes: w-full h-full on < md breakpoint",
-        "Remove border-radius on mobile (rounded-none)",
-        "Keep current behavior on md+ screens",
+        "Add getKategorieCounts() to actions/kategorie.ts",
+        "Returns Record<BranzaKod, number> with count of poziom 2 categories per branża",
+        "Query: count where poziom = 2, group by first 3 chars of pelny_kod",
         "Typecheck passes"
       ],
       "priority": 1,
       "passes": true,
-      "notes": "Added w-full to all variants for mobile, rounded-none md:rounded-l-xl, border-l-0 md:border-l",
+      "notes": "Added getKategorieCounts() that queries poziom=2 and groups by first 3 chars of pelny_kod",
       "dependsOn": []
     },
     {
-      "id": "UX-002",
-      "title": "Restyle BranzaTabs with glass effect and amber glow",
-      "description": "As a user, I want the branza tabs to have glass effect and amber active state with glow.",
+      "id": "BL-002",
+      "title": "Create BranzaTile component",
+      "description": "As a user, I want to see a tile for each branża with code, name and category count.",
       "acceptanceCriteria": [
-        "Update app/(app)/kategorie/_components/branza-tabs.tsx",
-        "Container: bg-[#1A1A24]/40 backdrop-blur-sm border border-white/[0.08] rounded-lg p-1 inline-flex gap-1",
-        "Inactive tab: text-white/50 hover:bg-white/5 hover:text-white/80 rounded-md px-4 py-2",
-        "Active tab: bg-amber-500/15 text-amber-500 shadow-[0_0_12px_rgba(245,158,11,0.2)]",
-        "Count badge on active: bg-amber-500/20 text-amber-500",
-        "Font: font-mono text-sm",
+        "Create app/(app)/kategorie/_components/branza-tile.tsx",
+        "Props: kod (BranzaKod), nazwa (string), count (number)",
+        "Layout: code large (text-4xl font-bold text-stone-100), name below (text-lg text-stone-400), count (text-sm text-stone-500)",
+        "Styling: bg-stone-900/50 border border-stone-700/50 rounded-xl p-8 text-center cursor-pointer",
+        "Hover: hover:bg-stone-800/60 hover:border-amber-500/50 hover:scale-[1.02] transition-all duration-200",
+        "Wraps Next.js Link to /kategorie/[kod]",
         "Typecheck passes"
       ],
       "priority": 2,
       "passes": true,
-      "notes": "Applied glass container, amber glow on active, font-mono styling",
+      "notes": "Component created with all specified styling and hover effects",
       "dependsOn": []
     },
     {
-      "id": "UX-003",
-      "title": "Restyle PozycjeFilters with glass tabs",
-      "description": "As a user, I want the pozycje branza filter buttons to match the kategorie tabs style.",
+      "id": "BL-003",
+      "title": "Create BranzeGrid component",
+      "description": "As a user, I want to see all branże tiles in a responsive grid.",
       "acceptanceCriteria": [
-        "Update app/(app)/pozycje/_components/pozycje-filters.tsx",
-        "Replace Button components with styled tab buttons matching BranzaTabs",
-        "Container: bg-[#1A1A24]/40 backdrop-blur-sm border border-white/[0.08] rounded-lg p-1 inline-flex gap-1",
-        "Active state: bg-amber-500/15 text-amber-500 shadow-[0_0_12px_rgba(245,158,11,0.2)]",
-        "Inactive state: text-white/50 hover:bg-white/5",
+        "Create app/(app)/kategorie/_components/branze-grid.tsx",
+        "Props: counts (Record<BranzaKod, number>)",
+        "Uses BRANZE constant for list: BUD, ELE, SAN, TEL, HVC",
+        "Grid: grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4",
+        "Renders BranzaTile for each branża",
         "Typecheck passes"
       ],
       "priority": 3,
       "passes": true,
-      "notes": "Replaced Button with styled tab buttons matching BranzaTabs styling",
-      "dependsOn": []
+      "notes": "Grid with BRANZE constant, responsive layout",
+      "dependsOn": ["BL-002"]
     },
     {
-      "id": "UX-004",
-      "title": "Update pozycje-columns with amber badges and widths",
-      "description": "As a user, I want consistent amber badges for all typ values and better column widths.",
+      "id": "BL-004",
+      "title": "Update /kategorie page to show landing tiles",
+      "description": "As a user, I want to see branże tiles when I navigate to /kategorie.",
       "acceptanceCriteria": [
-        "Update app/(app)/pozycje/_components/pozycje-columns.tsx",
-        "All TYP_COLORS use amber: bg-amber-500/10 text-amber-400 border-amber-500/20",
-        "Kod column: w-[140px], text-amber-500 font-mono",
-        "Nazwa column: min-w-[250px] flex-1, no truncate (or larger max-width)",
-        "Jednostka: w-[80px] text-center",
-        "Typ: w-[100px]",
-        "Cena: w-[120px] text-right",
-        "Typecheck passes"
+        "Update app/(app)/kategorie/page.tsx",
+        "Fetch counts via getKategorieCounts()",
+        "Render page header 'Kategorie' and BranzeGrid",
+        "Remove current KategorieView rendering",
+        "Typecheck passes",
+        "Verify at localhost:3000/kategorie - shows 5 tiles"
       ],
       "priority": 4,
       "passes": true,
-      "notes": "All TYP_COLORS amber, kod amber-500, sizes set via size/minSize props",
-      "dependsOn": []
+      "notes": "Verified 5 tiles showing with correct counts (BUD:4, ELE:4, SAN:1, TEL:0, HVC:0)",
+      "dependsOn": ["BL-001", "BL-003"]
     },
     {
-      "id": "UX-005",
-      "title": "Restyle pozycje-table with glass effect",
-      "description": "As a user, I want the pozycje table to have glass effect and amber selected state.",
+      "id": "BL-005",
+      "title": "Create /kategorie/[branza] dynamic route",
+      "description": "As a user, I want to navigate to a specific branża page when I click a tile.",
       "acceptanceCriteria": [
-        "Update app/(app)/pozycje/_components/pozycje-table.tsx",
-        "Wrapper: bg-[#1A1A24]/60 backdrop-blur-sm border border-white/[0.08] rounded-xl overflow-hidden",
-        "Header: bg-white/[0.03] border-b border-white/5 sticky top-0",
-        "Row hover: hover:bg-white/5",
-        "Row selected: bg-amber-500/10 border-l-2 border-amber-500 shadow-[inset_0_0_20px_rgba(245,158,11,0.05)]",
-        "Row border: border-b border-white/[0.03]",
+        "Create app/(app)/kategorie/[branza]/page.tsx",
+        "Validate branza param: BUD|ELE|SAN|TEL|HVC, else notFound()",
+        "Fetch tree via getKategorieTree()",
+        "Render KategorieView with activeBranza from URL param",
         "Typecheck passes"
       ],
       "priority": 5,
       "passes": true,
-      "notes": "Applied glass wrapper, sticky header, amber selected state with glow",
-      "dependsOn": ["UX-004"]
+      "notes": "Dynamic route with validation, uses notFound() for invalid branże",
+      "dependsOn": ["BL-004"]
     },
     {
-      "id": "UX-006",
-      "title": "Update skladowe-section with amber-only colors",
-      "description": "As a user, I want skladowe sections to use amber colors instead of green/blue.",
+      "id": "BL-006",
+      "title": "Update KategorieView to accept activeBranza prop",
+      "description": "As a developer, I need KategorieView to accept activeBranza as prop instead of from store.",
       "acceptanceCriteria": [
-        "Update app/(app)/pozycje/_components/skladowe-section.tsx",
-        "Remove colorClass prop, use amber internally",
-        "Section title: text-amber-400 for primary, text-amber-400/70 for secondary distinction",
-        "Or use same amber with different typography weight",
-        "Sum value: text-amber-400 font-mono",
-        "Item row hover: hover:bg-amber-500/5",
+        "Update app/(app)/kategorie/_components/kategorie-view.tsx",
+        "Add activeBranza prop (BranzaKod)",
+        "Pass activeBranza to BranzaTabs and KategorieList",
+        "Remove activeBranza from Zustand store usage (keep expandedIds)",
         "Typecheck passes"
       ],
       "priority": 6,
       "passes": true,
-      "notes": "Added variant prop (primary/secondary), deprecated colorClass, amber-400 for titles/sums, hover:bg-amber-500/5",
-      "dependsOn": []
+      "notes": "KategorieView now accepts activeBranza prop, removed store usage for activeBranza",
+      "dependsOn": ["BL-005"]
     },
     {
-      "id": "UX-007",
-      "title": "Convert PozycjaDetailPanel to SlidePanel content",
-      "description": "As a user, I want pozycja details to open in a SlidePanel instead of fixed side panel.",
+      "id": "BL-007",
+      "title": "Update BranzaTabs to use URL navigation",
+      "description": "As a user, I want clicking tabs to navigate to the branża URL.",
       "acceptanceCriteria": [
-        "Update app/(app)/pozycje/_components/pozycja-detail-panel.tsx",
-        "Wrap content in SlidePanel with variant='wide' (800px)",
-        "Accept open/onOpenChange props",
-        "Header: kod in SlidePanelHeader, jednostka as badge",
-        "Content: existing sections in SlidePanelContent",
-        "Footer: cena + buttons in SlidePanelFooter",
-        "Update skladowe-section calls to use amber (no colorClass)",
+        "Update app/(app)/kategorie/_components/branza-tabs.tsx",
+        "Accept activeBranza as prop instead of reading from store",
+        "Replace onClick with Next.js Link to /kategorie/[branza]",
+        "Active state based on prop comparison",
         "Typecheck passes"
       ],
       "priority": 7,
       "passes": true,
-      "notes": "Wrapped in SlidePanel variant=wide, added open/onOpenChange props, used SlidePanelHeader/Content/Footer",
-      "dependsOn": ["UX-001", "UX-006"]
+      "notes": "BranzaTabs now uses Link components for URL navigation, accepts activeBranza prop",
+      "dependsOn": ["BL-006"]
     },
     {
-      "id": "UX-008",
-      "title": "Refactor pozycje-view for full-width table layout",
-      "description": "As a user, I want the pozycje page to have full-width table with SlidePanel for details.",
+      "id": "BL-008",
+      "title": "Final verification",
+      "description": "As a developer, I want to verify the full flow works correctly.",
       "acceptanceCriteria": [
-        "Update app/(app)/pozycje/_components/pozycje-view.tsx",
-        "Remove 40%/60% split layout",
-        "Table takes full width",
-        "PozycjaDetailPanel opens as SlidePanel on row click",
-        "Pass open/onOpenChange to PozycjaDetailPanel",
-        "Remove empty state panel (SlidePanel handles close)",
-        "Typecheck passes",
-        "Verify at localhost:3000/pozycje - table full width, click opens panel"
+        "npm run build passes without errors",
+        "Verify /kategorie: shows 5 branże tiles with counts",
+        "Verify tile click: navigates to /kategorie/BUD",
+        "Verify /kategorie/BUD: shows tabs (BUD active) + category list",
+        "Verify tab click: URL changes to /kategorie/ELE",
+        "Verify browser back: returns to /kategorie",
+        "Verify invalid URL /kategorie/XXX: shows 404",
+        "No console errors"
       ],
       "priority": 8,
       "passes": true,
-      "notes": "Removed split layout, full-width table, SlidePanel opens on click, closes clear selection",
-      "dependsOn": ["UX-005", "UX-007"]
-    },
-    {
-      "id": "UX-009",
-      "title": "Restyle KategoriaCard with glass effect",
-      "description": "As a user, I want kategoria cards to have glass effect and amber accents.",
-      "acceptanceCriteria": [
-        "Update app/(app)/kategorie/_components/kategoria-card.tsx",
-        "Card: bg-[#1A1A24]/60 backdrop-blur-sm border border-white/[0.08] rounded-xl",
-        "Card hover: hover:border-white/15",
-        "Kod text: text-amber-500 font-mono",
-        "Count badge: bg-amber-500/10 text-amber-400",
-        "Expanded section: bg-white/[0.02] instead of bg-muted/30",
-        "Podkategoria hover: hover:bg-white/5",
-        "Typecheck passes"
-      ],
-      "priority": 9,
-      "passes": true,
-      "notes": "Applied glass effect, amber kod, amber badge, white/5 hover states",
-      "dependsOn": []
-    },
-    {
-      "id": "UX-010",
-      "title": "Add responsive table columns for mobile",
-      "description": "As a mobile user, I want the table to show essential columns only on small screens.",
-      "acceptanceCriteria": [
-        "Update app/(app)/pozycje/_components/pozycje-columns.tsx",
-        "Add responsive visibility: Jednostka hidden on < md, Typ hidden on < lg",
-        "Use Tailwind responsive classes or column meta for visibility",
-        "Nazwa column: truncate on mobile with max-w-[150px]",
-        "Kod + Nazwa can stack on mobile if needed",
-        "Typecheck passes"
-      ],
-      "priority": 10,
-      "passes": true,
-      "notes": "Extended ColumnMeta for hideOnMobile/hideOnTablet, table uses meta to hide columns with responsive CSS",
-      "dependsOn": ["UX-004"]
-    },
-    {
-      "id": "UX-011",
-      "title": "Final verification and cleanup",
-      "description": "As a developer, I want to verify all UX changes work correctly.",
-      "acceptanceCriteria": [
-        "npm run build passes without errors",
-        "Verify /kategorie: glass cards, amber tabs with glow, hover states",
-        "Verify /pozycje: glass table, amber selected row, full-width layout",
-        "Verify pozycja detail: SlidePanel opens, amber skladowe, responsive",
-        "Verify mobile: SlidePanel fullscreen, table columns responsive",
-        "No console errors"
-      ],
-      "priority": 11,
-      "passes": true,
-      "notes": "Build passes. All UX stories completed: glass effects, amber accents, responsive layout, SlidePanel conversion.",
-      "dependsOn": ["UX-008", "UX-009", "UX-010"]
+      "notes": "All acceptance criteria verified via Playwright browser testing",
+      "dependsOn": ["BL-007"]
     }
   ]
 }
