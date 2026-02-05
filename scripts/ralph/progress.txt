@@ -1,17 +1,17 @@
 # Ralph Progress Log
-Started: Phase 1 - Database Setup
+Started: Supabase Database Setup v3.4
 
 ## Current Phase
-**FAZA 1: Database Setup** (11 user stories)
-- Branch: `ralph/phase1-database-setup`
-- Goal: Create SQL migration files for Supabase schema
+**Supabase Database v3.4** (15 user stories)
+- Branch: `ralph/supabase-database-v3`
+- Goal: Complete database schema with 17 tables, RLS, triggers, views, functions
 
-## IMPORTANT: Manual Step Required
-After Ralph completes DB-009, you must:
-1. Copy `supabase/migrations/000_all_tables.sql` content
-2. Paste into Supabase Dashboard → SQL Editor
-3. Run the SQL
-4. Then run: `supabase gen types typescript --project-id tormvuvlcujetkagmwtc > lib/supabase/database.types.ts`
+## Key Architecture Decisions (from DATABASE-ARCHITECTURE.md v3.4)
+- **Multi-tenancy**: organization_id + RLS
+- **Kosztorys is source of truth**: prices copied from cennik, stored independently
+- **Manual override**: is_manual=true -> ilosc * cena (fixed), is_manual=false -> norma * cena * kp.ilosc
+- **Revision locking**: is_locked=true blocks all modifications via triggers
+- **Views**: security_invoker=true enforces RLS
 
 ## Codebase Patterns
 - Use `createClient()` from `lib/supabase/client.ts` for browser-side Supabase
@@ -22,24 +22,71 @@ After Ralph completes DB-009, you must:
 - Position code format: BRANZA.KAT.PODKAT.NR (e.g., BUD.03.01.001)
 
 ## Reference Documents
+- **Database Architecture**: `docs/DATABASE-ARCHITECTURE.md` (v3.4 - PRIMARY SOURCE)
+- **Implementation Plan**: `docs/plans/2026-02-05-supabase-database-setup.md`
 - Data Model: `/home/artur/Projekty/wireframe/docs/DATA-MODEL.md`
 - Business Logic: `/home/artur/Projekty/wireframe/docs/BUSINESS-LOGIC.md`
-- Modules: `/home/artur/Projekty/wireframe/docs/MODULES.md`
+
+## SQL Code Location
+All SQL is in `docs/DATABASE-ARCHITECTURE.md` sections 3.1-3.10. Copy from there.
+
+## Supabase MCP Tools (USE THESE!)
+You have Supabase MCP tools available - use them instead of CLI:
+- `mcp__supabase__apply_migration` - Apply SQL migrations (use this for 001-010 migrations)
+- `mcp__supabase__execute_sql` - Run raw SQL queries (for verification)
+- `mcp__supabase__list_tables` - List tables in schema
+- `mcp__supabase__list_migrations` - List applied migrations
+- `mcp__supabase__generate_typescript_types` - Generate TypeScript types
+- `mcp__supabase__list_projects` - Find project ID
+- `mcp__supabase__get_project` - Get project details
+
+**Workflow:**
+1. Use `mcp__supabase__list_projects` to find project ID
+2. Use `mcp__supabase__apply_migration` for each SQL file (name in snake_case)
+3. Use `mcp__supabase__execute_sql` to verify tables exist
+4. Use `mcp__supabase__generate_typescript_types` at the end
 
 ---
 
-## Phase 1 Stories
-- [ ] DB-001: Create supabase migrations directory
-- [ ] DB-002: SQL for kategorie table
-- [ ] DB-003: SQL for produkty and dostawcy tables
-- [ ] DB-004: SQL for ceny_dostawcow table
-- [ ] DB-005: SQL for podwykonawcy and stawki tables
-- [ ] DB-006: SQL for pozycje_biblioteka table
-- [ ] DB-007: SQL for projekty and rewizje tables
-- [ ] DB-008: SQL for kosztorys_pozycje table
-- [ ] DB-009: Combined SQL file (000_all_tables.sql)
-- [ ] DB-010: TypeScript types placeholder
-- [ ] DB-011: Update Supabase clients
+## Stories (15 total) - ALL COMPLETED ✅
+- [x] US-001: Initialize Supabase + ENUM types (001_types.sql)
+- [x] US-002: Organizations migration (002_organizations.sql)
+- [x] US-003: Narzuty domyslne migration (003_narzuty_domyslne.sql)
+- [x] US-004: Cennik migration (004_cennik.sql)
+- [x] US-005: Biblioteka migration (005_biblioteka.sql)
+- [x] US-006: Kosztorys migration (006_kosztorys.sql)
+- [x] US-007: Views migration (007_views.sql)
+- [x] US-008: Functions migration (008_functions.sql)
+- [x] US-009: RLS policies migration (009_rls.sql)
+- [x] US-010: Seed data migration (010_seed.sql)
+- [x] US-011: Verify all migrations applied
+- [x] US-012: Generate TypeScript types
+- [x] US-013: Verify calculation logic
+- [x] US-014: Verify locked revision trigger
+- [x] US-015: Final verification and build
 
 ---
 
+## Completion Summary (2026-02-05)
+
+**Database schema complete:**
+- 17 tables with RLS enabled
+- 2 views (kosztorys_pozycje_view, rewizje_summary) with security_invoker=true
+- 10 migrations applied via Supabase MCP
+- 60+ RLS policies
+- Triggers: pelny_kod, auto_numer, updated_at, revision locking
+- Functions: user_organizations(), copy_revision(), handle_new_user()
+
+**Verified:**
+- Auto calculations: R=500, M=600, razem=1430 ✅
+- Manual override: razem=2106 ✅
+- Locked revision trigger: blocks modifications ✅
+- TypeScript types generated: lib/supabase/database.types.ts ✅
+- Build: npm run build passes ✅
+- Lint: npm run lint passes ✅
+
+**Files created:**
+- supabase/migrations/001_types.sql - 010_seed.sql
+- lib/supabase/database.types.ts
+
+---
