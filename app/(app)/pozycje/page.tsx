@@ -27,7 +27,7 @@ export default async function PozycjePage({ searchParams }: PageProps) {
 
   return (
     <div className="p-6">
-      <h1 className="text-2xl font-semibold font-mono mb-6">Pozycje</h1>
+      <h1 className="text-2xl font-semibold font-display tracking-tight mb-6">Pozycje</h1>
       <PozycjeView
         initialData={pozycje}
         initialFilters={filters}

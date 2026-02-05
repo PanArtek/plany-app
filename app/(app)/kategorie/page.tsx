@@ -6,7 +6,7 @@ export default async function KategoriePage() {
 
   return (
     <div className="p-6">
-      <h1 className="text-2xl font-semibold font-mono mb-6">Kategorie</h1>
+      <h1 className="text-2xl font-semibold font-display tracking-tight mb-6">Kategorie</h1>
       <KategorieView initialData={kategorieTree} />
     </div>
   );
