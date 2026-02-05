@@ -1,11 +1,13 @@
 'use client'
 
-import { useKategorieUIStore, type BranzaKod } from '@/stores/kategorie-ui-store';
+import Link from 'next/link';
+import type { BranzaKod } from '@/stores/kategorie-ui-store';
 import type { KategoriaNode } from '@/actions/kategorie';
 import { cn } from '@/lib/utils';
 
 interface Props {
   branzeList: KategoriaNode[];
+  activeBranza: BranzaKod;
 }
 
 const BRANZE: { kod: BranzaKod; nazwa: string }[] = [
@@ -16,9 +18,7 @@ const BRANZE: { kod: BranzaKod; nazwa: string }[] = [
   { kod: 'HVC', nazwa: 'HVAC' },
 ];
 
-export function BranzaTabs({ branzeList }: Props) {
-  const { activeBranza, setActiveBranza } = useKategorieUIStore();
-
+export function BranzaTabs({ branzeList, activeBranza }: Props) {
   return (
     <div className="bg-[#1A1A24]/40 backdrop-blur-sm border border-white/[0.08] rounded-lg p-1 inline-flex gap-1">
       {BRANZE.map(({ kod }) => {
@@ -27,9 +27,9 @@ export function BranzaTabs({ branzeList }: Props) {
         const count = branzaData?.children?.length || 0;
 
         return (
-          <button
+          <Link
             key={kod}
-            onClick={() => setActiveBranza(kod)}
+            href={`/kategorie/${kod}`}
             className={cn(
               "px-4 py-2 font-mono text-sm rounded-md transition-all",
               isActive
@@ -44,7 +44,7 @@ export function BranzaTabs({ branzeList }: Props) {
             )}>
               {count}
             </span>
-          </button>
+          </Link>
         );
       })}
     </div>

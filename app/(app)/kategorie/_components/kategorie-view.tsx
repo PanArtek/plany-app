@@ -4,13 +4,14 @@ import { Plus } from 'lucide-react';
 import { BranzaTabs } from './branza-tabs';
 import { KategorieList } from './kategorie-list';
 import { KategoriaFormPanel } from './panels/kategoria-form-panel';
-import { useKategorieUIStore, type BranzaKod } from '@/stores/kategorie-ui-store';
+import type { BranzaKod } from '@/stores/kategorie-ui-store';
 import { useKategoriaModal } from '@/hooks/use-kategoria-modal';
 import type { KategoriaNode } from '@/actions/kategorie';
 import { Button } from '@/components/ui/button';
 
 interface Props {
   initialData: KategoriaNode[];
+  activeBranza: BranzaKod;
 }
 
 const BRANZE_NAMES: Record<BranzaKod, string> = {
@@ -21,8 +22,7 @@ const BRANZE_NAMES: Record<BranzaKod, string> = {
   HVC: 'HVAC',
 };
 
-export function KategorieView({ initialData }: Props) {
-  const { activeBranza } = useKategorieUIStore();
+export function KategorieView({ initialData, activeBranza }: Props) {
   const modal = useKategoriaModal();
 
   const currentBranza = initialData.find(b => b.kod === activeBranza);
@@ -40,7 +40,7 @@ export function KategorieView({ initialData }: Props) {
 
   return (
     <div>
-      <BranzaTabs branzeList={initialData} />
+      <BranzaTabs branzeList={initialData} activeBranza={activeBranza} />
 
       <div className="mt-6">
         <div className="flex items-center justify-between mb-4">
