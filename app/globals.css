@@ -8,6 +8,7 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-sans);
   --font-mono: var(--font-mono);
+  --font-display: var(--font-display);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -106,49 +107,63 @@
 }
 
 .dark {
-  /* Base colors */
-  --background: 0 0% 7%;           /* #111113 - bg-main */
-  --foreground: 0 0% 98%;          /* #fafafa - text-primary */
+  /* ===========================================
+     MINIMALIST DARK DESIGN SYSTEM
+     Atmospheric depth with warm amber accent
+     =========================================== */
 
-  --card: 0 0% 9%;                 /* #18181b - bg-card */
+  /* Base: Layered slate palette */
+  --background: 240 20% 4%;        /* #0A0A0F - Deep slate (almost black but warmer) */
+  --background-alt: 240 17% 8%;    /* #12121A - Slightly elevated surfaces */
+  --foreground: 0 0% 98%;          /* #FAFAFA - Near-white text */
+
+  /* Cards: Glass effect base colors */
+  --card: 240 16% 12%;             /* #1A1A24 - Card backgrounds */
   --card-foreground: 0 0% 98%;
 
-  --popover: 0 0% 9%;
+  --popover: 240 16% 12%;          /* Same as card for consistency */
   --popover-foreground: 0 0% 98%;
 
-  --muted: 240 4% 16%;             /* #27272a - bg-active */
-  --muted-foreground: 240 5% 65%; /* #a1a1aa - text-secondary */
+  /* Muted: Secondary surfaces */
+  --muted: 240 16% 12%;            /* #1A1A24 - Elevated surfaces */
+  --muted-foreground: 240 4% 46%;  /* #71717A - zinc-500, secondary text */
 
-  /* Primary = Amber accent */
-  --primary: 38 92% 50%;           /* #f59e0b */
-  --primary-foreground: 0 0% 98%;
+  /* Primary = Warm Amber Accent */
+  --primary: 38 92% 50%;           /* #F59E0B - amber-500, warm glowing */
+  --primary-foreground: 240 20% 4%; /* Dark text on amber */
 
-  --secondary: 240 4% 16%;
+  /* Secondary */
+  --secondary: 240 16% 12%;
   --secondary-foreground: 0 0% 98%;
 
-  --accent: 240 4% 16%;
+  /* Accent (interactive hover states) */
+  --accent: 240 16% 16%;           /* Slightly lighter for hover */
   --accent-foreground: 0 0% 98%;
 
-  --destructive: 0 84% 60%;        /* #ef4444 - error */
+  /* Destructive */
+  --destructive: 0 84% 60%;        /* #ef4444 - error red */
   --destructive-foreground: 0 0% 98%;
 
-  --border: 240 4% 16%;            /* #2a2a2e */
-  --input: 240 4% 16%;
-  --ring: 38 92% 50%;              /* amber for focus */
+  /* Borders: Very subtle, 8-15% opacity feel */
+  --border: 240 10% 20%;           /* Subtle border color */
+  --input: 240 10% 20%;
+  --ring: 38 92% 50%;              /* Amber focus ring */
 
-  --chart-1: 220 70% 50%;
+  /* Charts */
+  --chart-1: 38 92% 50%;           /* Amber */
   --chart-2: 160 60% 45%;
-  --chart-3: 30 80% 55%;
+  --chart-3: 220 70% 50%;
   --chart-4: 280 65% 60%;
   --chart-5: 340 75% 55%;
 
-  --sidebar: 0 0% 9%;
+  /* Sidebar */
+  --sidebar: 240 17% 8%;           /* background-alt */
   --sidebar-foreground: 0 0% 98%;
-  --sidebar-primary: 38 92% 50%;
-  --sidebar-primary-foreground: 0 0% 98%;
-  --sidebar-accent: 240 4% 16%;
+  --sidebar-primary: 38 92% 50%;   /* Amber */
+  --sidebar-primary-foreground: 240 20% 4%;
+  --sidebar-accent: 240 16% 16%;
   --sidebar-accent-foreground: 0 0% 98%;
-  --sidebar-border: 240 4% 16%;
+  --sidebar-border: 240 10% 20%;
   --sidebar-ring: 38 92% 50%;
 
   /* Custom: position types */
