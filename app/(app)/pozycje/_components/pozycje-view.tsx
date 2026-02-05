@@ -32,6 +32,7 @@ function PozycjeViewContent({ initialData, initialFilters, initialSelected }: Po
   });
 
   const [deletePanelOpen, setDeletePanelOpen] = useState(false);
+  const [detailPanelOpen, setDetailPanelOpen] = useState(false);
 
   // Selected ID from URL
   const selectedId = searchParams.get('selected');
@@ -43,6 +44,17 @@ function PozycjeViewContent({ initialData, initialFilters, initialSelected }: Po
     const params = new URLSearchParams(searchParams.toString());
     params.set('selected', id);
     router.push(`/pozycje?${params.toString()}`);
+    setDetailPanelOpen(true);
+  };
+
+  const handleDetailPanelClose = (open: boolean) => {
+    setDetailPanelOpen(open);
+    if (!open) {
+      // Clear selection when panel closes
+      const params = new URLSearchParams(searchParams.toString());
+      params.delete('selected');
+      router.push(`/pozycje?${params.toString()}`);
+    }
   };
 
   const handleAddClick = () => {
@@ -81,31 +93,25 @@ function PozycjeViewContent({ initialData, initialFilters, initialSelected }: Po
     <div className="flex flex-col gap-4">
       <FiltersComponent onAddClick={handleAddClick} />
 
-      <div className="flex gap-4" style={{ height: 'calc(100vh - 220px)' }}>
-        {/* Table - 40% width */}
-        <div className="w-[40%] overflow-auto">
-          <PozycjeTable
-            data={initialData}
-            selectedId={selectedId}
-            onSelect={handleSelect}
-          />
-        </div>
-
-        {/* Panel - 60% width */}
-        <div className="w-[60%]">
-          {selectedPozycja ? (
-            <PozycjaDetailPanel
-              pozycja={selectedPozycja}
-              onEdit={handleEdit}
-              onDelete={handleDelete}
-            />
-          ) : (
-            <div className="h-full flex items-center justify-center bg-[#0A0A0F] border-l border-white/[0.08] shadow-[-20px_0_60px_rgba(0,0,0,0.5)]">
-              <p className="text-white/40">Wybierz pozycję z listy</p>
-            </div>
-          )}
-        </div>
+      {/* Full-width table */}
+      <div className="overflow-auto" style={{ height: 'calc(100vh - 220px)' }}>
+        <PozycjeTable
+          data={initialData}
+          selectedId={selectedId}
+          onSelect={handleSelect}
+        />
       </div>
+
+      {/* Detail panel as SlidePanel */}
+      {selectedPozycja && (
+        <PozycjaDetailPanel
+          pozycja={selectedPozycja}
+          open={detailPanelOpen}
+          onOpenChange={handleDetailPanelClose}
+          onEdit={handleEdit}
+          onDelete={handleDelete}
+        />
+      )}
 
       <PozycjaFormPanel
         mode={formPanel.mode}

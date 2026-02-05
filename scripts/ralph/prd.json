@@ -126,8 +126,8 @@
         "Typecheck passes"
       ],
       "priority": 7,
-      "passes": false,
-      "notes": "",
+      "passes": true,
+      "notes": "Wrapped in SlidePanel variant=wide, added open/onOpenChange props, used SlidePanelHeader/Content/Footer",
       "dependsOn": ["UX-001", "UX-006"]
     },
     {
@@ -145,8 +145,8 @@
         "Verify at localhost:3000/pozycje - table full width, click opens panel"
       ],
       "priority": 8,
-      "passes": false,
-      "notes": "",
+      "passes": true,
+      "notes": "Removed split layout, full-width table, SlidePanel opens on click, closes clear selection",
       "dependsOn": ["UX-005", "UX-007"]
     },
     {

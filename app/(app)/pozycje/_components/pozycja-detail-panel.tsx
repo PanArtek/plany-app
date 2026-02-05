@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Pencil, Trash2 } from 'lucide-react';
 import { type Pozycja } from '@/actions/pozycje';
 import { type SkladowaRobocizna, type SkladowaMaterial, deleteSkladowaRobocizna, deleteSkladowaMaterial } from '@/actions/skladowe';
@@ -10,11 +11,21 @@ import { obliczCenePozycji } from '@/lib/utils/pozycje';
 import { SkladoweSection, type SkladowaItem } from './skladowe-section';
 import { SkladowaPanel } from './panels/skladowa-panel';
 import { DeleteConfirmPanel } from '../../kategorie/_components/panels/delete-confirm-panel';
+import {
+  SlidePanel,
+  SlidePanelHeader,
+  SlidePanelTitle,
+  SlidePanelDescription,
+  SlidePanelContent,
+  SlidePanelFooter,
+} from '@/components/ui/slide-panel';
 
 type SkladowaType = 'robocizna' | 'material';
 
 interface PozycjaDetailPanelProps {
   pozycja: Pozycja;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
   onEdit: () => void;
   onDelete: () => void;
 }
@@ -27,7 +38,7 @@ function formatCena(value: number): string {
   }).format(value);
 }
 
-export function PozycjaDetailPanel({ pozycja, onEdit, onDelete }: PozycjaDetailPanelProps) {
+export function PozycjaDetailPanel({ pozycja, open, onOpenChange, onEdit, onDelete }: PozycjaDetailPanelProps) {
   const { robocizna, material, cena } = obliczCenePozycji(pozycja);
 
   // Składowe panel state
@@ -108,22 +119,21 @@ export function PozycjaDetailPanel({ pozycja, onEdit, onDelete }: PozycjaDetailP
 
   return (
     <>
-      {/* Minimalist Dark styled panel */}
-      <div className="h-full flex flex-col bg-[#0A0A0F] border-l border-white/[0.08] shadow-[-20px_0_60px_rgba(0,0,0,0.5)]">
-        {/* Header: kod in mono amber, nazwa as title */}
-        <div className="p-6 pb-4 border-b border-white/5">
-          <div className="flex items-center justify-between mb-2">
+      <SlidePanel open={open} onOpenChange={onOpenChange} variant="wide">
+        <SlidePanelHeader onClose={() => onOpenChange(false)}>
+          <div className="flex items-center gap-3">
             <span className="font-mono text-amber-500 text-sm">{pozycja.kod}</span>
-            <span className="text-white/40 text-sm">{pozycja.jednostka}</span>
+            <Badge variant="outline" className="bg-white/5 text-white/60 border-white/10">
+              {pozycja.jednostka}
+            </Badge>
           </div>
-          <h3 className="text-lg font-semibold text-white tracking-tight">{pozycja.nazwa}</h3>
+          <SlidePanelTitle className="mt-2">{pozycja.nazwa}</SlidePanelTitle>
           {breadcrumb && (
-            <p className="text-xs text-white/40 font-mono mt-1">{breadcrumb}</p>
+            <SlidePanelDescription className="font-mono">{breadcrumb}</SlidePanelDescription>
           )}
-        </div>
+        </SlidePanelHeader>
 
-        {/* Scrollable Content */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+        <SlidePanelContent className="space-y-6">
           {/* Info podstawowe */}
           {pozycja.typ && (
             <div className="space-y-2">
@@ -161,10 +171,9 @@ export function PozycjaDetailPanel({ pozycja, onEdit, onDelete }: PozycjaDetailP
               <p className="text-sm text-white/80 whitespace-pre-wrap">{pozycja.opis}</p>
             </div>
           )}
-        </div>
+        </SlidePanelContent>
 
-        {/* Footer with sticky positioning */}
-        <div className="sticky bottom-0 p-6 pt-4 border-t border-white/5 bg-[#0A0A0F]">
+        <SlidePanelFooter>
           <div className="flex items-center justify-between mb-4">
             <span className="text-sm text-white/50">Cena jednostkowa NETTO</span>
             <span className="text-xl font-mono font-semibold text-amber-500">{formatCena(cena)}</span>
@@ -186,8 +195,8 @@ export function PozycjaDetailPanel({ pozycja, onEdit, onDelete }: PozycjaDetailP
               <Trash2 className="h-4 w-4" />
             </Button>
           </div>
-        </div>
-      </div>
+        </SlidePanelFooter>
+      </SlidePanel>
 
       {/* Panels */}
       {panelType === 'robocizna' && (

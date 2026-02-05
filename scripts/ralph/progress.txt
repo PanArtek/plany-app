@@ -42,3 +42,18 @@ Started: Thu Feb  5 15:43:06 CET 2026
 - Item row hover: hover:bg-amber-500/5
 - Updated pozycja-detail-panel to use variant prop
 - Build passes
+
+## UX-007: Convert PozycjaDetailPanel to SlidePanel content ✓
+- Wrapped in SlidePanel with variant="wide"
+- Added open/onOpenChange props
+- Header: kod + jednostka badge in SlidePanelHeader
+- Content: sections in SlidePanelContent
+- Footer: cena + buttons in SlidePanelFooter
+- Build passes
+
+## UX-008: Refactor pozycje-view for full-width table layout ✓
+- Removed 40%/60% split layout
+- Table takes full width
+- PozycjaDetailPanel opens as SlidePanel on row click
+- Closing panel clears selection from URL
+- Build passes
