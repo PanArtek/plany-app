@@ -6,3 +6,10 @@ Started: Thu Feb  5 15:43:06 CET 2026
 - Added `rounded-none md:rounded-l-xl` for mobile fullscreen
 - Added `border-l-0 md:border-l` to remove border on mobile
 - Build passes
+
+## UX-002: Restyle BranzaTabs with glass effect and amber glow ✓
+- Glass container: bg-[#1A1A24]/40 backdrop-blur-sm border border-white/[0.08] rounded-lg
+- Active tab: amber glow shadow-[0_0_12px_rgba(245,158,11,0.2)]
+- Inactive: text-white/50, hover:bg-white/5
+- Count badge styled with amber on active
+- Build passes
