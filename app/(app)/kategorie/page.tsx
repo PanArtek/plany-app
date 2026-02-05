@@ -1,7 +1,13 @@
-import { PageHeader } from "@/components/layout/page-header";
+import { getKategorieTree } from '@/actions/kategorie';
+import { KategorieView } from './_components/kategorie-view';
 
-export default function KategoriePage() {
+export default async function KategoriePage() {
+  const kategorieTree = await getKategorieTree();
+
   return (
-    <PageHeader title="Kategorie" badge="Coming soon" />
+    <div className="p-6">
+      <h1 className="text-2xl font-semibold font-mono mb-6">Kategorie</h1>
+      <KategorieView initialData={kategorieTree} />
+    </div>
   );
 }
