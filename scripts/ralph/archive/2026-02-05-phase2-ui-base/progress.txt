@@ -1,0 +1,66 @@
+# Ralph Progress Log
+Started: Thu Feb  5 12:29:06 CET 2026
+---
+
+## UI-001: Install shadcn/ui with dark theme ✅
+- shadcn was pre-initialized (components.json existed)
+- Updated baseColor from 'neutral' to 'zinc' per requirements
+- Installed button, badge, skeleton components
+- Build passes
+
+## UI-002: Configure custom colors in globals.css ✅
+- Complete industrial dark theme with HSL colors (matching wireframe)
+- Added position type colors (robocizna, material, komplet)
+- Added project status colors (draft, ofertowanie, realizacja, zamkniety, odrzucony)
+- Force dark class on html element
+- Build passes
+
+## UI-003: Add fonts (JetBrains Mono + Plus Jakarta Sans) ✅
+- Created lib/fonts.ts with both fonts
+- CSS variables --font-mono and --font-sans exported
+- latin + latin-ext subsets
+- Build passes
+
+## UI-004: Create root layout with metadata and fonts ✅
+- Title: PLANY, description: Kosztorysowanie fit-out
+- Polish locale (lang=pl)
+- Custom fonts applied to body className
+- Dark mode enforced
+- Build passes
+
+## UI-005: Create app shell layout with sidebar area ✅
+- Route group (app) for authenticated pages
+- Fixed sidebar placeholder (240px)
+- Main content area with ml-[240px] and flex-1
+- Build passes
+
+## UI-006: Create Sidebar component ✅
+- Fixed 240px sidebar with logo section (72px)
+- 2 nav sections: BAZA DANYCH (5 items), PROJEKTY (3 items)
+- lucide-react icons
+- Build passes
+
+## UI-007: Create NavItem component with active state ✅
+- Client component with 'use client'
+- usePathname() for active state detection
+- Props: href, icon (LucideIcon), label
+- hover bg-muted, active text-primary + bg-muted
+- Build passes
+
+## UI-008: Create PageHeader component ✅
+- Reusable component with title and optional badge
+- Title: text-2xl font-semibold font-mono tracking-tight
+- Badge: shadcn Badge with variant='secondary'
+- Build passes
+
+## UI-009: Create 8 placeholder pages ✅
+- All 8 routes created: kategorie, pozycje, materialy, dostawcy, podwykonawcy, projekty, kosztorys, kalkulatory
+- Each page uses PageHeader with title and "Coming soon" badge
+- Fixed: Sidebar marked as 'use client' to fix RSC serialization of icon functions
+- Fixed: Badge simplified (removed Slot), Button import fixed
+- All pages respond with HTTP 200
+- Build passes
+
+---
+## Phase 2 COMPLETE ✅
+All 9 user stories completed successfully.

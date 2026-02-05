@@ -1,0 +1,37 @@
+# Ralph Progress Log
+Started: Thu Feb  5 13:38:22 CET 2026
+---
+
+## 2026-02-05 Session - Cascading Category Selects
+
+### Completed Stories:
+- [x] POZ-KAT-001: getKategorieByPoziom server action
+- [x] POZ-KAT-002: getNextPozycjaKod server action
+- [x] POZ-KAT-003: usePozycjaForm hook
+- [x] POZ-KAT-004: PozycjaFormModal with cascading selects
+
+### Key Implementation Details:
+1. **getKategorieByPoziom(poziom, parentId?)** - fetches categories at given level
+   - poziom=1: returns branże (parent_id is null)
+   - poziom=2,3: filters by parentId
+
+2. **getNextPozycjaKod(kategoriaId)** - generates next available position code
+   - Uses pelny_kod from kategoria as prefix
+   - Finds first available 3-digit number (001-999)
+
+3. **usePozycjaForm hook** - manages cascading state
+   - Fetches branze on mount
+   - setBranza → fetches kategorie, resets downstream
+   - setKategoria → fetches podkategorie, resets downstream
+   - setPodkategoria → fetches suggestedKod
+
+4. **PozycjaFormModal** - UI with cascading selects
+   - 3 selects in row: Branża → Kategoria → Podkategoria
+   - Each disabled until parent selected
+   - Kod field auto-populated and readonly
+   - Submit button disabled until kod generated
+
+### Learnings:
+- Database had only poziom 1-2 categories, needed to add test podkategoria (poziom 3)
+- Removed kod regex validation - kod now comes from server
+- Changed kategoriaId validation from nullable to required uuid

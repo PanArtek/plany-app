@@ -1,0 +1,84 @@
+{
+  "project": "PLANY App",
+  "branchName": "ralph/pozycje-kategoria-select",
+  "description": "Cascading category selects in pozycja form modal - Branża → Kategoria → Podkategoria with auto-generated position code",
+  "mode": "feature",
+  "baseBranch": "ralph/phase3a-kategorie",
+  "userStories": [
+    {
+      "id": "POZ-KAT-001",
+      "title": "Server Action getKategorieByPoziom",
+      "description": "As a developer, I need a server action that fetches categories filtered by poziom and optionally by parent_id for cascading selects.",
+      "acceptanceCriteria": [
+        "Add getKategorieByPoziom(poziom: number, parentId?: string) to actions/kategorie.ts",
+        "Returns array of { id, kod, nazwa } for categories at given poziom",
+        "When parentId provided, filter by parent_id",
+        "When parentId omitted and poziom=1, return all branże (parent_id is null)",
+        "Order results by kod",
+        "Typecheck passes"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": "",
+      "dependsOn": []
+    },
+    {
+      "id": "POZ-KAT-002",
+      "title": "Server Action getNextPozycjaKod",
+      "description": "As a developer, I need a server action that generates the next available position code for a given kategoria (podkategoria level).",
+      "acceptanceCriteria": [
+        "Add getNextPozycjaKod(kategoriaId: string) to actions/kategorie.ts",
+        "Fetch kategoria by id to get its pelny_kod (e.g. 'BUD.03.01')",
+        "Query pozycje_biblioteka for positions with kod starting with that prefix",
+        "Find first available 3-digit number (001-999)",
+        "Return full kod: e.g. 'BUD.03.01.003'",
+        "Return '{pelny_kod}.001' if no positions exist",
+        "Typecheck passes"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "",
+      "dependsOn": []
+    },
+    {
+      "id": "POZ-KAT-003",
+      "title": "Hook usePozycjaForm for cascading selects",
+      "description": "As a developer, I need a hook that manages cascading select state and fetches suggested kod when podkategoria is selected.",
+      "acceptanceCriteria": [
+        "Create hooks/use-pozycja-form.ts",
+        "State: branzaId, kategoriaId, podkategoriaId, branze[], kategorie[], podkategorie[], suggestedKod, isLoadingKod",
+        "On mount: fetch branze via getKategorieByPoziom(1)",
+        "setBranza(id): fetch kategorie via getKategorieByPoziom(2, id), reset kategoriaId/podkategoriaId",
+        "setKategoria(id): fetch podkategorie via getKategorieByPoziom(3, id), reset podkategoriaId",
+        "setPodkategoria(id): fetch suggestedKod via getNextPozycjaKod(id)",
+        "Export type for state",
+        "Typecheck passes"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["POZ-KAT-001", "POZ-KAT-002"]
+    },
+    {
+      "id": "POZ-KAT-004",
+      "title": "Update PozycjaFormModal with cascading selects",
+      "description": "As a user, I want to select Branża → Kategoria → Podkategoria when adding a position, and see auto-generated kod.",
+      "acceptanceCriteria": [
+        "Refactor pozycja-form-modal.tsx to use usePozycjaForm hook",
+        "Add three Select components in a row: Branża, Kategoria, Podkategoria",
+        "Kategoria select disabled until Branża selected",
+        "Podkategoria select disabled until Kategoria selected",
+        "Show disabled Input with suggestedKod when podkategoria selected",
+        "Remove manual kod input - kod is auto-generated",
+        "Update form submission to use suggestedKod as kod and podkategoriaId as kategoriaId",
+        "Update lib/validations/pozycje.ts - remove kod regex validation (kod comes from server)",
+        "Verify at localhost:3000/pozycje - can add pozycja with category selection",
+        "Typecheck passes"
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["POZ-KAT-003"]
+    }
+  ]
+}

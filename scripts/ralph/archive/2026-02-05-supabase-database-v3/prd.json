@@ -1,0 +1,156 @@
+{
+  "project": "PLANY App",
+  "branchName": "ralph/phase2-ui-base",
+  "description": "Phase 2: UI Base + Layout - shadcn/ui setup, custom theme, fonts, sidebar navigation, placeholder pages",
+  "mode": "feature",
+  "baseBranch": "main",
+  "userStories": [
+    {
+      "id": "UI-001",
+      "title": "Install shadcn/ui with dark theme",
+      "description": "As a developer, I need shadcn/ui initialized with dark mode and minimal components.",
+      "acceptanceCriteria": [
+        "Run 'npx shadcn@latest init' with dark mode, New York style, zinc base color",
+        "Install components: button, badge, skeleton via 'npx shadcn@latest add'",
+        "Verify components/ui/ folder created with 3 components",
+        "Typecheck passes"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": "",
+      "dependsOn": []
+    },
+    {
+      "id": "UI-002",
+      "title": "Configure custom colors in globals.css",
+      "description": "As a developer, I need industrial dark theme colors matching the wireframe.",
+      "acceptanceCriteria": [
+        "Update app/globals.css with CSS variables from docs/plans/2025-02-05-phase2-ui-base-design.md section 2",
+        "Add custom colors: --color-robocizna, --color-material, --color-komplet",
+        "Add project status colors: --color-draft, --color-ofertowanie, --color-realizacja, --color-zamkniety, --color-odrzucony",
+        "Force dark class on html element in layout.tsx",
+        "Typecheck passes"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["UI-001"]
+    },
+    {
+      "id": "UI-003",
+      "title": "Add fonts (JetBrains Mono + Plus Jakarta Sans)",
+      "description": "As a developer, I need industrial typography matching the wireframe.",
+      "acceptanceCriteria": [
+        "Create lib/fonts.ts with JetBrains_Mono and Plus_Jakarta_Sans from next/font/google",
+        "Export fontMono and fontSans with CSS variables --font-mono and --font-sans",
+        "Include 'latin' and 'latin-ext' subsets",
+        "Typecheck passes"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["UI-001"]
+    },
+    {
+      "id": "UI-004",
+      "title": "Create root layout with metadata and fonts",
+      "description": "As a developer, I need the root layout configured with proper metadata and fonts.",
+      "acceptanceCriteria": [
+        "Update app/layout.tsx with title 'PLANY' and description 'Kosztorysowanie fit-out'",
+        "Set lang='pl' on html element",
+        "Apply font variables from lib/fonts.ts to body className",
+        "Add 'dark' class to html element",
+        "Typecheck passes"
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["UI-002", "UI-003"]
+    },
+    {
+      "id": "UI-005",
+      "title": "Create app shell layout with sidebar area",
+      "description": "As a developer, I need the app route group with sidebar + main content layout.",
+      "acceptanceCriteria": [
+        "Create app/(app)/layout.tsx with flex container",
+        "Add placeholder div for sidebar (w-[240px], fixed)",
+        "Add main area with ml-[240px] and flex-1",
+        "Typecheck passes"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["UI-004"]
+    },
+    {
+      "id": "UI-006",
+      "title": "Create Sidebar component",
+      "description": "As a developer, I need the sidebar with logo and navigation sections.",
+      "acceptanceCriteria": [
+        "Create components/layout/sidebar.tsx with fixed 240px width, full height",
+        "Add logo section: 72px height, 'PLANY' text in font-mono, border-bottom",
+        "Add 2 nav sections: 'BAZA DANYCH' (5 items) and 'PROJEKTY' (3 items)",
+        "Use lucide-react icons: FolderTree, List, Package, Truck, Users, Briefcase, Calculator, Sliders",
+        "Typecheck passes"
+      ],
+      "priority": 6,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["UI-005"]
+    },
+    {
+      "id": "UI-007",
+      "title": "Create NavItem component with active state",
+      "description": "As a developer, I need nav items with hover and active states.",
+      "acceptanceCriteria": [
+        "Create components/layout/nav-item.tsx as client component ('use client')",
+        "Use usePathname() from next/navigation for active state detection",
+        "Props: href, icon (LucideIcon), label",
+        "Style: hover bg-muted, active text-primary + bg-muted",
+        "Use Link from next/link for navigation",
+        "Typecheck passes"
+      ],
+      "priority": 7,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["UI-006"]
+    },
+    {
+      "id": "UI-008",
+      "title": "Create PageHeader component",
+      "description": "As a developer, I need a reusable page header with title and optional badge.",
+      "acceptanceCriteria": [
+        "Create components/layout/page-header.tsx",
+        "Props: title (string), badge (optional string)",
+        "Title: text-2xl font-semibold font-mono tracking-tight",
+        "Badge: shadcn Badge with variant='secondary'",
+        "Typecheck passes"
+      ],
+      "priority": 8,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["UI-001"]
+    },
+    {
+      "id": "UI-009",
+      "title": "Create 8 placeholder pages",
+      "description": "As a developer, I need placeholder pages for all routes to verify navigation.",
+      "acceptanceCriteria": [
+        "Create app/(app)/kategorie/page.tsx with PageHeader title='Kategorie' badge='Coming soon'",
+        "Create app/(app)/pozycje/page.tsx with PageHeader title='Pozycje' badge='Coming soon'",
+        "Create app/(app)/materialy/page.tsx with PageHeader title='Materiały' badge='Coming soon'",
+        "Create app/(app)/dostawcy/page.tsx with PageHeader title='Dostawcy' badge='Coming soon'",
+        "Create app/(app)/podwykonawcy/page.tsx with PageHeader title='Podwykonawcy' badge='Coming soon'",
+        "Create app/(app)/projekty/page.tsx with PageHeader title='Projekty' badge='Coming soon'",
+        "Create app/(app)/kosztorys/page.tsx with PageHeader title='Kosztorys' badge='Coming soon'",
+        "Create app/(app)/kalkulatory/page.tsx with PageHeader title='Kalkulatory' badge='Coming soon'",
+        "Typecheck passes",
+        "Verify in browser: navigation between all 8 pages works, active state highlights correctly"
+      ],
+      "priority": 9,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["UI-005", "UI-007", "UI-008"]
+    }
+  ]
+}

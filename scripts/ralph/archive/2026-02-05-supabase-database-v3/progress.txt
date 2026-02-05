@@ -1,0 +1,44 @@
+# Ralph Progress Log
+Started: Phase 2 - UI Base + Layout
+
+## Current Phase
+**Phase 2: UI Base + Layout** (9 user stories)
+- Branch: `ralph/phase2-ui-base`
+- Goal: shadcn/ui setup, custom theme, fonts, sidebar navigation, placeholder pages
+
+## Design Document
+**docs/plans/2025-02-05-phase2-ui-base-design.md** - PRIMARY SOURCE for all decisions
+
+## Key Decisions (from design doc)
+- **Theming**: shadcn/ui with custom CSS variables
+- **Fonts**: JetBrains Mono + Plus Jakarta Sans
+- **Sidebar**: Fixed 240px, desktop-only
+- **Navigation**: 2 sections (BAZA DANYCH + PROJEKTY)
+- **Components**: Minimal (button, badge, skeleton)
+
+## Codebase Patterns
+- Use `createClient()` from `lib/supabase/client.ts` for browser-side Supabase
+- Use `createClient()` from `lib/supabase/server.ts` for server-side Supabase
+- shadcn/ui components in `components/ui/`
+- Custom layout components in `components/layout/`
+- Server Components by default, 'use client' only when needed
+
+## Reference Documents
+- **Design**: `docs/plans/2025-02-05-phase2-ui-base-design.md` (PRIMARY)
+- **Wireframe styles**: `/home/artur/Projekty/wireframe/styles.css`
+- **Migration plan**: `docs/MIGRATION-PLAN.md`
+
+---
+
+## Stories (9 total)
+- [ ] UI-001: Install shadcn/ui with dark theme
+- [ ] UI-002: Configure custom colors in globals.css
+- [ ] UI-003: Add fonts (JetBrains Mono + Plus Jakarta Sans)
+- [ ] UI-004: Create root layout with metadata and fonts
+- [ ] UI-005: Create app shell layout with sidebar area
+- [ ] UI-006: Create Sidebar component
+- [ ] UI-007: Create NavItem component with active state
+- [ ] UI-008: Create PageHeader component
+- [ ] UI-009: Create 8 placeholder pages
+
+---
