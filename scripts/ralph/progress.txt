@@ -1,5 +1,61 @@
 # Ralph Progress Log
-Started: Thu Feb  5 2026
-Feature: Phase 3B - Składowe CRUD
+Started: Thu Feb  5 14:13:08 CET 2026
 ---
 
+## 2026-02-05 - Minimalist Dark UI Transformation
+
+### Completed Stories (9/9)
+
+**UI-001: Update design tokens in globals.css** ✓
+- Design tokens already implemented in .dark section
+- Colors: background #0A0A0F, card #1A1A24, primary amber-500, muted-foreground zinc-500
+- Border subtle at 20% opacity, ring amber for focus
+
+**UI-002: Add Space Grotesk and JetBrains Mono fonts** ✓
+- Added Space_Grotesk to lib/fonts.ts as fontDisplay
+- Updated layout.tsx with fontDisplay.variable
+- Added --font-display CSS custom property
+
+**UI-003: Restyle Dialog component with glass effect** ✓
+- DialogContent: rgba(26,26,36,0.85), backdrop-blur-[12px], rounded-xl
+- Border: white/10, shadow 0 25px 50px rgba(0,0,0,0.5)
+- DialogOverlay: backdrop-blur-[4px]
+
+**UI-004: Restyle Button component with amber accent** ✓
+- Primary: bg-amber-500, hover:shadow-[0_0_20px_rgba(245,158,11,0.4)]
+- Active: scale-[0.98] for press effect
+- Outline: border-white/15, ghost: hover:bg-white/5
+- Focus: ring-2 ring-amber-500 ring-offset-2
+
+**UI-005: Restyle Input component with glass effect** ✓
+- Background: rgba(26,26,36,0.6), backdrop-blur-[8px]
+- Border: white/10, h-11 for touch targets
+- Focus: border-amber-500/50, shadow-[0_0_0_3px_rgba(245,158,11,0.15)]
+
+**UI-006: Restyle Select component with glass effect** ✓
+- Same glass styling as Input
+- SelectContent with glass effect
+- SelectItem hover: bg-white/[0.08]
+
+**UI-007: Restyle Sidebar navigation** ✓
+- Sidebar background: #12121A
+- Border: white/[0.08]
+- Nav items: text-zinc-500, hover:bg-white/5 hover:text-white
+- Active: bg-amber-500/10 text-amber-500
+- Section headers: text-[11px] uppercase tracking-wider
+
+**UI-008: Apply typography with Space Grotesk** ✓
+- Page headings in kategorie and pozycje: font-display tracking-tight
+- DialogTitle: font-display tracking-tight
+
+**UI-009: Final verification and cleanup** ✓
+- Build passes without errors
+- All pages verified in browser
+- No console errors
+- Screenshots confirm Minimalist Dark aesthetic
+
+### Learnings
+- Glass effect with rgba + backdrop-blur creates beautiful depth
+- Amber accent (#F59E0B) provides warm contrast against dark slate
+- Subtle borders (white/10) maintain structure without harsh lines
+- Space Grotesk adds technical, modern feel to headlines
