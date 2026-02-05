@@ -138,7 +138,7 @@ export function getPozycjeColumns({ onEdit, onDelete }: PozycjeColumnsOptions): 
     id: 'akcje',
     header: () => null,
     cell: ({ row }) => (
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
         <Button
           variant="ghost"
           className="h-7 w-7 p-0"

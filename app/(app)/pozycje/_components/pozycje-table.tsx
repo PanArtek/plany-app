@@ -79,7 +79,7 @@ export function PozycjeTable({ data, selectedId, onSelect, onEdit, onDelete }: P
               key={row.id}
               onClick={() => onSelect(row.original.id)}
               className={cn(
-                'cursor-pointer border-b border-white/[0.03] transition-colors',
+                'group cursor-pointer border-b border-white/[0.03] transition-colors',
                 'hover:bg-white/5',
                 selectedId === row.original.id && 'bg-amber-500/10 border-l-2 border-l-amber-500 shadow-[inset_0_0_20px_rgba(245,158,11,0.05)]'
               )}
