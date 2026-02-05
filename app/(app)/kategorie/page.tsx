@@ -1,13 +1,13 @@
-import { getKategorieTree } from '@/actions/kategorie';
-import { KategorieView } from './_components/kategorie-view';
+import { getKategorieCounts } from '@/actions/kategorie';
+import { BranzeGrid } from './_components/branze-grid';
 
 export default async function KategoriePage() {
-  const kategorieTree = await getKategorieTree();
+  const counts = await getKategorieCounts();
 
   return (
     <div className="p-6">
       <h1 className="text-2xl font-semibold font-display tracking-tight mb-6">Kategorie</h1>
-      <KategorieView initialData={kategorieTree} />
+      <BranzeGrid counts={counts} />
     </div>
   );
 }
