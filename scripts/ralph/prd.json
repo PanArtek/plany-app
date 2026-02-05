@@ -35,8 +35,8 @@
         "Typecheck passes"
       ],
       "priority": 2,
-      "passes": false,
-      "notes": "",
+      "passes": true,
+      "notes": "Hook supports null parentId for all levels. Returns state object with isLoading for async kod fetch.",
       "dependsOn": ["KAT-UX-001"]
     },
     {
@@ -53,8 +53,8 @@
         "Typecheck passes"
       ],
       "priority": 3,
-      "passes": false,
-      "notes": "",
+      "passes": true,
+      "notes": "Modal shows parent info, auto-fills suggestedKod, has live fullKodPreview.",
       "dependsOn": ["KAT-UX-002"]
     },
     {
@@ -70,8 +70,8 @@
         "Typecheck passes"
       ],
       "priority": 4,
-      "passes": false,
-      "notes": "",
+      "passes": true,
+      "notes": "KategorieView uses single modal controlled by hook. KategoriaCard uses callbacks passed down from parent.",
       "dependsOn": ["KAT-UX-003"]
     }
   ]

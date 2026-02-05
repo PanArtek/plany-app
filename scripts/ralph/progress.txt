@@ -64,3 +64,34 @@ Started: Thu Feb  5 13:07:23 CET 2026
 ---
 ## Phase 3b COMPLETE 🎉
 All 12 stories passed. Build passes.
+
+---
+# Phase 3a-UX: Kategorie Modal UX Fix
+Started: Thu Feb  5 2026
+
+## KAT-UX-001: Server Action getNextKod ✅
+- Added getNextKod(parentId: string | null) to actions/kategorie.ts
+- Uses .is('parent_id', null) for branża level
+- Finds first gap in 01-99 sequence among siblings
+
+## KAT-UX-002: Hook useKategoriaModal ✅
+- Created hooks/use-kategoria-modal.ts
+- State: open, mode, poziom, parentId, parentPath, parentNazwa, suggestedKod, isLoading
+- openAdd fetches suggestedKod async, openEdit skips fetch
+
+## KAT-UX-003: Modal z auto-sugestią ✅
+- Refactored kategoria-form-modal.tsx with new props
+- Shows parent info field (disabled)
+- Auto-fills kod with suggestedKod in add mode
+- Live fullKodPreview (parentPath + '.' + kod)
+- Suggestion hint below kod input
+
+## KAT-UX-004: Integracja w KategorieView ✅
+- KategorieView uses useKategoriaModal hook
+- Single modal instance at view level
+- KategoriaCard uses callbacks: onAddPodkategoria, onEditKategoria, onEditPodkategoria
+- Removed duplicate modals from KategoriaCard
+
+---
+## Phase 3a-UX COMPLETE 🎉
+All 4 stories passed. Build passes.
