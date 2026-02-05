@@ -18,3 +18,12 @@ Started: Thu Feb  5 15:43:06 CET 2026
 - Replaced Button components with styled tab buttons
 - Same glass container + amber glow styling as BranzaTabs
 - Build passes
+
+## UX-004: Update pozycje-columns with amber badges and widths ✓
+- All TYP_COLORS unified to amber: bg-amber-500/10 text-amber-400 border-amber-500/20
+- Kod column: text-amber-500, size: 140
+- Nazwa column: minSize: 250, removed truncate
+- Jednostka: size: 80, text-center
+- Typ: size: 100
+- Cena: size: 120
+- Build passes

@@ -7,9 +7,9 @@ import { obliczCenePozycji } from '@/lib/utils/pozycje';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 
 const TYP_COLORS: Record<string, string> = {
-  robocizna: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
-  material: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
-  komplet: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
+  robocizna: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+  material: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+  komplet: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
 };
 
 const TYP_LABELS: Record<string, string> = {
@@ -49,8 +49,9 @@ export const pozycjeColumns: ColumnDef<Pozycja>[] = [
       </button>
     ),
     cell: ({ row }) => (
-      <span className="font-mono text-sm">{row.getValue('kod')}</span>
+      <span className="font-mono text-sm text-amber-500">{row.getValue('kod')}</span>
     ),
+    size: 140,
   },
   {
     accessorKey: 'nazwa',
@@ -64,15 +65,17 @@ export const pozycjeColumns: ColumnDef<Pozycja>[] = [
       </button>
     ),
     cell: ({ row }) => (
-      <span className="truncate max-w-[200px] block">{row.getValue('nazwa')}</span>
+      <span className="block min-w-[250px]">{row.getValue('nazwa')}</span>
     ),
+    minSize: 250,
   },
   {
     accessorKey: 'jednostka',
-    header: 'Jednostka',
+    header: () => <span className="text-center block">Jednostka</span>,
     cell: ({ row }) => (
-      <span className="text-muted-foreground">{row.getValue('jednostka')}</span>
+      <span className="text-muted-foreground text-center block">{row.getValue('jednostka')}</span>
     ),
+    size: 80,
   },
   {
     accessorKey: 'typ',
@@ -85,6 +88,7 @@ export const pozycjeColumns: ColumnDef<Pozycja>[] = [
         </Badge>
       );
     },
+    size: 100,
   },
   {
     id: 'cenaJednostkowa',
@@ -106,5 +110,6 @@ export const pozycjeColumns: ColumnDef<Pozycja>[] = [
         </span>
       );
     },
+    size: 120,
   },
 ];

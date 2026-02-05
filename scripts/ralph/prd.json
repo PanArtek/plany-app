@@ -71,8 +71,8 @@
         "Typecheck passes"
       ],
       "priority": 4,
-      "passes": false,
-      "notes": "",
+      "passes": true,
+      "notes": "All TYP_COLORS amber, kod amber-500, sizes set via size/minSize props",
       "dependsOn": []
     },
     {
