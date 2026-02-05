@@ -164,8 +164,8 @@
         "Typecheck passes"
       ],
       "priority": 9,
-      "passes": false,
-      "notes": "",
+      "passes": true,
+      "notes": "Applied glass effect, amber kod, amber badge, white/5 hover states",
       "dependsOn": []
     },
     {

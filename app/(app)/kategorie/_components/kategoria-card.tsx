@@ -39,11 +39,11 @@ export function KategoriaCard({
   const kategoriaFullKod = `${branzaKod}.${kategoria.kod}`;
 
   return (
-    <div className="border border-border rounded-lg bg-card">
+    <div className="bg-[#1A1A24]/60 backdrop-blur-sm border border-white/[0.08] rounded-xl hover:border-white/15 transition-colors">
       <div
         className={cn(
           "flex items-center justify-between p-4",
-          "hover:bg-muted/50 transition-colors"
+          "hover:bg-white/[0.02] transition-colors"
         )}
       >
         <button
@@ -60,14 +60,14 @@ export function KategoriaCard({
             <div className="w-4" />
           )}
 
-          <span className="font-mono text-sm text-primary">
+          <span className="font-mono text-sm text-amber-500">
             {kategoria.kod}
           </span>
 
           <span className="text-sm">{kategoria.nazwa}</span>
 
           {hasChildren && (
-            <Badge variant="secondary" className="text-xs ml-2">
+            <Badge variant="secondary" className="text-xs ml-2 bg-amber-500/10 text-amber-400 border-transparent">
               {kategoria.children.length}
             </Badge>
           )}
@@ -100,14 +100,14 @@ export function KategoriaCard({
       </div>
 
       {isExpanded && (
-        <div className="border-t border-border px-4 py-2 bg-muted/30">
+        <div className="border-t border-white/[0.05] px-4 py-2 bg-white/[0.02]">
           {kategoria.children.map((podkategoria) => (
             <div
               key={podkategoria.id}
-              className="flex items-center justify-between py-2 px-4 hover:bg-muted/50 rounded"
+              className="flex items-center justify-between py-2 px-4 hover:bg-white/5 rounded transition-colors"
             >
               <div className="flex items-center gap-3">
-                <span className="font-mono text-xs text-muted-foreground">
+                <span className="font-mono text-xs text-white/40">
                   {kategoria.kod}.{podkategoria.kod}
                 </span>
                 <span className="text-sm">{podkategoria.nazwa}</span>

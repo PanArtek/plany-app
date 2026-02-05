@@ -57,3 +57,12 @@ Started: Thu Feb  5 15:43:06 CET 2026
 - PozycjaDetailPanel opens as SlidePanel on row click
 - Closing panel clears selection from URL
 - Build passes
+
+## UX-009: Restyle KategoriaCard with glass effect ✓
+- Card: bg-[#1A1A24]/60 backdrop-blur-sm border-white/[0.08] rounded-xl
+- Card hover: hover:border-white/15
+- Kod text: text-amber-500 font-mono
+- Count badge: bg-amber-500/10 text-amber-400
+- Expanded section: bg-white/[0.02], border-white/[0.05]
+- Podkategoria hover: hover:bg-white/5
+- Build passes
