@@ -42,7 +42,7 @@ export function KategoriaCard({
     <div className="bg-[#1A1A24]/60 backdrop-blur-sm border border-white/[0.08] rounded-xl hover:border-white/15 transition-colors">
       <div
         className={cn(
-          "flex items-center justify-between p-4",
+          "flex items-center justify-between p-3",
           "hover:bg-white/[0.02] transition-colors"
         )}
       >
@@ -100,7 +100,7 @@ export function KategoriaCard({
       </div>
 
       {isExpanded && (
-        <div className="border-t border-white/[0.05] px-4 py-2 bg-white/[0.02]">
+        <div className="border-t border-white/[0.05] px-3 py-2 bg-white/[0.02]">
           {kategoria.children.map((podkategoria) => (
             <div
               key={podkategoria.id}
