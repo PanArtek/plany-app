@@ -29,7 +29,7 @@ export function KategorieList({
   }
 
   return (
-    <div className="grid gap-3">
+    <div className="grid grid-cols-3 gap-4">
       {kategorie.map((kategoria) => (
         <KategoriaCard
           key={kategoria.id}
