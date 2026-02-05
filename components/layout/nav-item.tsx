@@ -20,8 +20,8 @@ export function NavItem({ href, icon: Icon, label }: NavItemProps) {
       href={href}
       className={cn(
         "flex items-center gap-3 px-4 py-2.5 text-[13px] transition-colors",
-        "hover:bg-muted",
-        isActive && "bg-muted text-primary"
+        "text-zinc-500 hover:bg-white/5 hover:text-white",
+        isActive && "bg-amber-500/10 text-amber-500"
       )}
     >
       <Icon className="h-4 w-4" />
