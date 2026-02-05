@@ -1,92 +1,76 @@
 # Ralph Progress Log
-Started: Supabase Database Setup v3.4
-
-## Current Phase
-**Supabase Database v3.4** (15 user stories)
-- Branch: `ralph/supabase-database-v3`
-- Goal: Complete database schema with 17 tables, RLS, triggers, views, functions
-
-## Key Architecture Decisions (from DATABASE-ARCHITECTURE.md v3.4)
-- **Multi-tenancy**: organization_id + RLS
-- **Kosztorys is source of truth**: prices copied from cennik, stored independently
-- **Manual override**: is_manual=true -> ilosc * cena (fixed), is_manual=false -> norma * cena * kp.ilosc
-- **Revision locking**: is_locked=true blocks all modifications via triggers
-- **Views**: security_invoker=true enforces RLS
-
-## Codebase Patterns
-- Use `createClient()` from `lib/supabase/client.ts` for browser-side Supabase
-- Use `createClient()` from `lib/supabase/server.ts` for server-side Supabase
-- shadcn/ui components in `components/ui/`
-- Server Actions in `actions/` directory with `'use server'`
-- All prices are NETTO
-- Position code format: BRANZA.KAT.PODKAT.NR (e.g., BUD.03.01.001)
-
-## Reference Documents
-- **Database Architecture**: `docs/DATABASE-ARCHITECTURE.md` (v3.4 - PRIMARY SOURCE)
-- **Implementation Plan**: `docs/plans/2026-02-05-supabase-database-setup.md`
-- Data Model: `/home/artur/Projekty/wireframe/docs/DATA-MODEL.md`
-- Business Logic: `/home/artur/Projekty/wireframe/docs/BUSINESS-LOGIC.md`
-
-## SQL Code Location
-All SQL is in `docs/DATABASE-ARCHITECTURE.md` sections 3.1-3.10. Copy from there.
-
-## Supabase MCP Tools (USE THESE!)
-You have Supabase MCP tools available - use them instead of CLI:
-- `mcp__supabase__apply_migration` - Apply SQL migrations (use this for 001-010 migrations)
-- `mcp__supabase__execute_sql` - Run raw SQL queries (for verification)
-- `mcp__supabase__list_tables` - List tables in schema
-- `mcp__supabase__list_migrations` - List applied migrations
-- `mcp__supabase__generate_typescript_types` - Generate TypeScript types
-- `mcp__supabase__list_projects` - Find project ID
-- `mcp__supabase__get_project` - Get project details
-
-**Workflow:**
-1. Use `mcp__supabase__list_projects` to find project ID
-2. Use `mcp__supabase__apply_migration` for each SQL file (name in snake_case)
-3. Use `mcp__supabase__execute_sql` to verify tables exist
-4. Use `mcp__supabase__generate_typescript_types` at the end
-
+Started: Thu Feb  5 12:43:45 CET 2026
 ---
 
-## Stories (15 total) - ALL COMPLETED ✅
-- [x] US-001: Initialize Supabase + ENUM types (001_types.sql)
-- [x] US-002: Organizations migration (002_organizations.sql)
-- [x] US-003: Narzuty domyslne migration (003_narzuty_domyslne.sql)
-- [x] US-004: Cennik migration (004_cennik.sql)
-- [x] US-005: Biblioteka migration (005_biblioteka.sql)
-- [x] US-006: Kosztorys migration (006_kosztorys.sql)
-- [x] US-007: Views migration (007_views.sql)
-- [x] US-008: Functions migration (008_functions.sql)
-- [x] US-009: RLS policies migration (009_rls.sql)
-- [x] US-010: Seed data migration (010_seed.sql)
-- [x] US-011: Verify all migrations applied
-- [x] US-012: Generate TypeScript types
-- [x] US-013: Verify calculation logic
-- [x] US-014: Verify locked revision trigger
-- [x] US-015: Final verification and build
+## KAT-001: Zod schemas for kategorie ✅
+- Created lib/validations/kategorie.ts
+- createKategoriaSchema with refine for dynamic kod validation (branża vs kategoria)
+- updateKategoriaSchema with optional fields
+- Exported TypeScript types
+- Build passes
+
+## KAT-002: Server Actions for kategorie CRUD ✅
+- Created actions/kategorie.ts with 'use server'
+- createKategoria: Zod validation, Supabase insert, unique constraint handling
+- updateKategoria: Zod validation, update by id
+- deleteKategoria: Checks children + pozycje count before delete
+- getKategorieTree: Fetches all, builds tree structure with buildTree helper
+- Build passes
+
+## KAT-003: Zustand store for kategorie UI ✅
+- Installed zustand package
+- Created stores/kategorie-ui-store.ts
+- State: activeBranza, expandedIds (Set)
+- Actions: setActiveBranza (collapses all), toggleExpanded, collapseAll
+- Build passes
+
+## KAT-004: Install shadcn components for forms ✅
+- Installed: dialog, form, input, label via shadcn CLI
+- Installed: sonner for toast notifications
+- Added Toaster to app/layout.tsx with position='bottom-right'
+- Build passes
+
+## KAT-005: Kategorie page with data fetch ✅
+- Updated app/(app)/kategorie/page.tsx as Server Component
+- Fetches data via getKategorieTree
+- Passes to KategorieView client component
+- Build passes
+
+## KAT-006: BranzaTabs component ✅
+- Created app/(app)/kategorie/_components/branza-tabs.tsx
+- 5 tabs: BUD, ELE, SAN, TEL, HVC with category count
+- Uses Zustand setActiveBranza
+- Active tab highlighted with border-primary
+- Build passes
+
+## KAT-007: KategorieView and KategoriaCard components ✅
+- Created kategorie-view.tsx (client wrapper with add button)
+- Created kategoria-card.tsx (expandable with edit/delete)
+- Created kategorie-list.tsx (grid of cards)
+- Expand/collapse via Zustand toggleExpanded
+- Build passes
+
+## KAT-008: KategoriaFormModal component ✅
+- Created modals/kategoria-form-modal.tsx
+- Universal for all 3 levels (branża/kategoria/podkategoria)
+- Uses react-hook-form + zodResolver
+- Calls Server Actions, shows toast
+- Build passes
+
+## KAT-009: DeleteConfirmModal component ✅
+- Created modals/delete-confirm-modal.tsx
+- Shows warning with kategoria name
+- Disables button if hasChildren (UI protection)
+- Server validates independently
+- Build passes
+
+## KAT-010: Wire up add/edit/delete buttons ✅
+- Added 'Dodaj kategorię' button in KategorieView
+- Added edit/delete buttons to KategoriaCard
+- Added 'Dodaj podkategorię' inside expanded cards
+- All modals wired with correct props
+- Build passes
 
 ---
-
-## Completion Summary (2026-02-05)
-
-**Database schema complete:**
-- 17 tables with RLS enabled
-- 2 views (kosztorys_pozycje_view, rewizje_summary) with security_invoker=true
-- 10 migrations applied via Supabase MCP
-- 60+ RLS policies
-- Triggers: pelny_kod, auto_numer, updated_at, revision locking
-- Functions: user_organizations(), copy_revision(), handle_new_user()
-
-**Verified:**
-- Auto calculations: R=500, M=600, razem=1430 ✅
-- Manual override: razem=2106 ✅
-- Locked revision trigger: blocks modifications ✅
-- TypeScript types generated: lib/supabase/database.types.ts ✅
-- Build: npm run build passes ✅
-- Lint: npm run lint passes ✅
-
-**Files created:**
-- supabase/migrations/001_types.sql - 010_seed.sql
-- lib/supabase/database.types.ts
-
----
+## Phase 3a COMPLETE ✅
+All 10 user stories completed successfully.
