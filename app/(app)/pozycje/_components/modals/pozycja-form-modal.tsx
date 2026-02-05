@@ -35,6 +35,7 @@ import {
   type CreatePozycjaInput,
 } from '@/lib/validations/pozycje';
 import { createPozycja, updatePozycja, type Pozycja } from '@/actions/pozycje';
+import { usePozycjaForm } from '@/hooks/use-pozycja-form';
 
 interface Props {
   mode: 'add' | 'edit';
@@ -51,6 +52,7 @@ const TYP_LABELS: Record<string, string> = {
 
 export function PozycjaFormModal({ mode, pozycja, open, onOpenChange }: Props) {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { state: categoryState, setBranza, setKategoria, setPodkategoria, reset: resetCategories } = usePozycjaForm();
 
   const isEdit = mode === 'edit';
 
@@ -61,22 +63,49 @@ export function PozycjaFormModal({ mode, pozycja, open, onOpenChange }: Props) {
       nazwa: pozycja?.nazwa || '',
       jednostka: pozycja?.jednostka as CreatePozycjaInput['jednostka'] || 'm²',
       typ: pozycja?.typ || 'komplet',
-      kategoriaId: pozycja?.kategoria_id || null,
+      kategoriaId: pozycja?.kategoria_id || '',
       opis: pozycja?.opis || '',
     },
   });
 
-  // Reset form when pozycja changes
+  // Reset form when pozycja changes (edit mode)
   useEffect(() => {
-    form.reset({
-      kod: pozycja?.kod || '',
-      nazwa: pozycja?.nazwa || '',
-      jednostka: pozycja?.jednostka as CreatePozycjaInput['jednostka'] || 'm²',
-      typ: pozycja?.typ || 'komplet',
-      kategoriaId: pozycja?.kategoria_id || null,
-      opis: pozycja?.opis || '',
-    });
-  }, [pozycja, form]);
+    if (isEdit && pozycja) {
+      form.reset({
+        kod: pozycja.kod || '',
+        nazwa: pozycja.nazwa || '',
+        jednostka: pozycja.jednostka as CreatePozycjaInput['jednostka'] || 'm²',
+        typ: pozycja.typ || 'komplet',
+        kategoriaId: pozycja.kategoria_id || '',
+        opis: pozycja.opis || '',
+      });
+    }
+  }, [pozycja, form, isEdit]);
+
+  // Reset categories when modal opens for add mode
+  useEffect(() => {
+    if (open && !isEdit) {
+      resetCategories();
+      form.reset({
+        kod: '',
+        nazwa: '',
+        jednostka: 'm²',
+        typ: 'komplet',
+        kategoriaId: '',
+        opis: '',
+      });
+    }
+  }, [open, isEdit, resetCategories, form]);
+
+  // Update form fields when category selection changes
+  useEffect(() => {
+    if (categoryState.suggestedKod) {
+      form.setValue('kod', categoryState.suggestedKod);
+    }
+    if (categoryState.podkategoriaId) {
+      form.setValue('kategoriaId', categoryState.podkategoriaId);
+    }
+  }, [categoryState.suggestedKod, categoryState.podkategoriaId, form]);
 
   async function onSubmit(data: CreatePozycjaInput) {
     setIsSubmitting(true);
@@ -95,6 +124,7 @@ export function PozycjaFormModal({ mode, pozycja, open, onOpenChange }: Props) {
           toast.success('Dodano pozycję');
           onOpenChange(false);
           form.reset();
+          resetCategories();
         } else {
           toast.error(result.error || 'Błąd dodawania');
         }
@@ -108,13 +138,78 @@ export function PozycjaFormModal({ mode, pozycja, open, onOpenChange }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle>{dialogTitle}</DialogTitle>
         </DialogHeader>
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            {/* Cascading category selects - only in add mode */}
+            {!isEdit && (
+              <div className="grid grid-cols-3 gap-2">
+                <FormItem>
+                  <FormLabel>Branża</FormLabel>
+                  <Select
+                    value={categoryState.branzaId}
+                    onValueChange={setBranza}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Wybierz" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {categoryState.branze.map((b) => (
+                        <SelectItem key={b.id} value={b.id}>
+                          {b.kod} - {b.nazwa}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </FormItem>
+
+                <FormItem>
+                  <FormLabel>Kategoria</FormLabel>
+                  <Select
+                    value={categoryState.kategoriaId}
+                    onValueChange={setKategoria}
+                    disabled={!categoryState.branzaId}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Wybierz" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {categoryState.kategorie.map((k) => (
+                        <SelectItem key={k.id} value={k.id}>
+                          {k.kod} - {k.nazwa}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </FormItem>
+
+                <FormItem>
+                  <FormLabel>Podkategoria</FormLabel>
+                  <Select
+                    value={categoryState.podkategoriaId}
+                    onValueChange={setPodkategoria}
+                    disabled={!categoryState.kategoriaId}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Wybierz" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {categoryState.podkategorie.map((p) => (
+                        <SelectItem key={p.id} value={p.id}>
+                          {p.kod} - {p.nazwa}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </FormItem>
+              </div>
+            )}
+
+            {/* Auto-generated kod - read only */}
             <FormField
               control={form.control}
               name="kod"
@@ -124,8 +219,10 @@ export function PozycjaFormModal({ mode, pozycja, open, onOpenChange }: Props) {
                   <FormControl>
                     <Input
                       {...field}
-                      placeholder="BUD.03.01.001"
+                      placeholder={categoryState.isLoadingKod ? 'Generowanie...' : 'Wybierz podkategorię'}
                       className="font-mono"
+                      disabled={!isEdit}
+                      readOnly={!isEdit}
                     />
                   </FormControl>
                   <FormMessage />
@@ -207,7 +304,10 @@ export function PozycjaFormModal({ mode, pozycja, open, onOpenChange }: Props) {
               >
                 Anuluj
               </Button>
-              <Button type="submit" disabled={isSubmitting}>
+              <Button
+                type="submit"
+                disabled={isSubmitting || (!isEdit && !categoryState.suggestedKod)}
+              >
                 {isSubmitting ? 'Zapisywanie...' : isEdit ? 'Zapisz' : 'Dodaj'}
               </Button>
             </DialogFooter>

@@ -1,9 +1,5 @@
 import { z } from 'zod';
 
-// Regex dla kodu pozycji: BUD.03.01.001 (4 segmenty) lub BUD.03.001 (3 segmenty)
-// Format: BRANZA.KAT.PODKAT.NR lub BRANZA.KAT.NR
-const kodPozycjiRegex = /^[A-Z]{2,3}\.\d{2}(\.\d{2})?\.\d{3}$/;
-
 // Jednostki pozycji
 const jednostkaValues = ['m²', 'm', 'mb', 'szt', 'kpl', 'h', 'kg', 'm³'] as const;
 
@@ -11,23 +7,21 @@ const jednostkaValues = ['m²', 'm', 'mb', 'szt', 'kpl', 'h', 'kg', 'm³'] as co
 const typValues = ['robocizna', 'material', 'komplet'] as const;
 
 // Schema dla tworzenia pozycji
+// Kod is auto-generated from server, just validate it's non-empty
 export const createPozycjaSchema = z.object({
-  kod: z.string()
-    .regex(kodPozycjiRegex, "Format kodu: BUD.03.01.001 lub BUD.03.001"),
+  kod: z.string().min(1, "Kod jest wymagany"),
   nazwa: z.string()
     .min(3, "Min 3 znaki")
     .max(500, "Max 500 znaków"),
   jednostka: z.enum(jednostkaValues, "Wybierz jednostkę"),
   typ: z.enum(typValues, "Wybierz typ pozycji"),
-  kategoriaId: z.string().uuid().nullable(),
+  kategoriaId: z.string().uuid("Wybierz podkategorię"),
   opis: z.string().max(2000, "Max 2000 znaków").optional(),
 });
 
 // Schema dla edycji pozycji (wszystkie pola opcjonalne)
 export const updatePozycjaSchema = z.object({
-  kod: z.string()
-    .regex(kodPozycjiRegex, "Format kodu: BUD.03.01.001 lub BUD.03.001")
-    .optional(),
+  kod: z.string().min(1, "Kod jest wymagany").optional(),
   nazwa: z.string()
     .min(3, "Min 3 znaki")
     .max(500, "Max 500 znaków")
