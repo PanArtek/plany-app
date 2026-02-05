@@ -1,118 +1,174 @@
 {
   "project": "PLANY App",
-  "branchName": "ralph/phase3b-skladowe",
-  "description": "Phase 3B: CRUD for składowe (robocizna + materiały) in pozycja detail panel with inline editing",
+  "branchName": "ralph/minimalist-dark-ui",
+  "description": "Full UI transformation to Minimalist Dark design system - atmospheric depth with warm amber accent",
   "mode": "feature",
   "baseBranch": "ralph/phase3a-kategorie",
   "userStories": [
     {
-      "id": "SKL-001",
-      "title": "Validation schemas for składowe",
-      "description": "As a developer, I need Zod validation schemas for składowe robocizna and materiały forms.",
+      "id": "UI-001",
+      "title": "Update design tokens in globals.css",
+      "description": "As a developer, I need updated CSS custom properties matching Minimalist Dark design system.",
       "acceptanceCriteria": [
-        "Create lib/validations/skladowe.ts",
-        "createSkladowaRobociznaSchema: opis (string 1-500, required), norma_domyslna (number > 0, required), jednostka (enum h|szt|kpl, default h), stawka_domyslna (number >= 0, nullable optional)",
-        "createSkladowaMaterialSchema: nazwa (string 1-255, required), norma_domyslna (number > 0, required), jednostka (enum m²|mb|szt|l|kg|kpl, nullable optional), cena_domyslna (number >= 0, nullable optional)",
-        "Export TypeScript types: CreateSkladowaRobociznaInput, CreateSkladowaMaterialInput",
+        "Update .dark section in app/globals.css",
+        "Set --background: 240 20% 4% (#0A0A0F deep slate)",
+        "Set --card: 240 16% 12% (#1A1A24)",
+        "Set --primary: 38 92% 50% (#F59E0B amber)",
+        "Set --muted-foreground: 240 4% 46% (#71717A)",
+        "Set --border: 240 10% 20% (subtle border)",
+        "Set --ring: 38 92% 50% (amber focus)",
         "Typecheck passes"
       ],
       "priority": 1,
-      "passes": false,
-      "notes": "",
+      "passes": true,
+      "notes": "Design tokens already implemented in globals.css. Verified build passes.",
       "dependsOn": []
     },
     {
-      "id": "SKL-002",
-      "title": "Server Actions CRUD for składowe",
-      "description": "As a developer, I need server actions to create, update, and delete składowe robocizna and materiały.",
+      "id": "UI-002",
+      "title": "Add Space Grotesk and JetBrains Mono fonts",
+      "description": "As a developer, I need custom fonts for headlines and monospace text.",
       "acceptanceCriteria": [
-        "Create actions/skladowe.ts with 'use server'",
-        "createSkladowaRobocizna(pozycjaId, data): INSERT with auto-increment lp (MAX(lp)+1 for pozycja), revalidatePath('/pozycje')",
-        "updateSkladowaRobocizna(id, data): UPDATE by id, revalidatePath('/pozycje')",
-        "deleteSkladowaRobocizna(id): DELETE by id, revalidatePath('/pozycje')",
-        "createSkladowaMaterial(pozycjaId, data): same pattern for materiały",
-        "updateSkladowaMaterial(id, data): UPDATE materiały",
-        "deleteSkladowaMaterial(id): DELETE materiały",
-        "All actions return { success: true, data } or { success: false, error: string }",
+        "Update lib/fonts.ts to import Space_Grotesk from next/font/google",
+        "Update lib/fonts.ts to import JetBrains_Mono from next/font/google",
+        "Export fontDisplay variable for Space Grotesk",
+        "Update app/layout.tsx to include fontDisplay.variable in body className",
+        "Add CSS custom properties: --font-display for Space Grotesk",
         "Typecheck passes"
       ],
       "priority": 2,
-      "passes": false,
-      "notes": "",
-      "dependsOn": ["SKL-001"]
+      "passes": true,
+      "notes": "Added Space_Grotesk to fonts.ts, exported fontDisplay, updated layout.tsx and globals.css.",
+      "dependsOn": ["UI-001"]
     },
     {
-      "id": "SKL-003",
-      "title": "Modal for składowa robocizny",
-      "description": "As a user, I want a modal to add or edit a składowa robocizny with fields: opis, norma, jednostka, stawka.",
+      "id": "UI-003",
+      "title": "Restyle Dialog component with glass effect",
+      "description": "As a user, I want modals to have a glass effect so they are clearly visible against the dark background.",
       "acceptanceCriteria": [
-        "Create app/(app)/pozycje/_components/modals/skladowa-robocizna-modal.tsx",
-        "Props: open, onOpenChange, mode ('add'|'edit'), pozycjaId, skladowa? (for edit)",
-        "Form fields: opis (Input), norma_domyslna (Input type=number), jednostka (Select: h/szt/kpl), stawka_domyslna (Input type=number, optional)",
-        "On submit: call createSkladowaRobocizna or updateSkladowaRobocizna",
-        "Show toast on success/error",
-        "Close modal on success",
-        "Typecheck passes"
+        "Update components/ui/dialog.tsx DialogContent",
+        "Set background: rgba(26, 26, 36, 0.85) with backdrop-filter: blur(12px)",
+        "Set border: 1px solid rgba(255,255,255,0.1)",
+        "Set border-radius: 12px (rounded-xl)",
+        "Set box-shadow: 0 25px 50px rgba(0,0,0,0.5)",
+        "Update DialogOverlay with backdrop-filter: blur(4px)",
+        "Typecheck passes",
+        "Verify in browser at /kategorie - click 'Dodaj kategorię', modal clearly visible with glass effect"
       ],
       "priority": 3,
-      "passes": false,
-      "notes": "",
-      "dependsOn": ["SKL-002"]
+      "passes": true,
+      "notes": "Glass effect applied with backdrop-blur. Verified in browser - modal clearly visible.",
+      "dependsOn": ["UI-001"]
     },
     {
-      "id": "SKL-004",
-      "title": "Modal for składowa materiałowa",
-      "description": "As a user, I want a modal to add or edit a składowa materiałowa with fields: nazwa, norma, jednostka, cena.",
+      "id": "UI-004",
+      "title": "Restyle Button component with amber accent",
+      "description": "As a user, I want primary buttons to be amber with glow effect on hover.",
       "acceptanceCriteria": [
-        "Create app/(app)/pozycje/_components/modals/skladowa-material-modal.tsx",
-        "Props: open, onOpenChange, mode ('add'|'edit'), pozycjaId, skladowa? (for edit)",
-        "Form fields: nazwa (Input), norma_domyslna (Input type=number), jednostka (Select: m²/mb/szt/l/kg/kpl), cena_domyslna (Input type=number, optional)",
-        "On submit: call createSkladowaMaterial or updateSkladowaMaterial",
-        "Show toast on success/error",
-        "Close modal on success",
-        "Typecheck passes"
+        "Update components/ui/button.tsx default variant",
+        "Primary: bg-amber-500 text-slate-950, hover:brightness-110 hover:shadow-[0_0_20px_rgba(245,158,11,0.4)]",
+        "Add active:scale-[0.98] for press effect",
+        "Outline: border-white/15, hover:bg-white/5 hover:border-white/25",
+        "Ghost: hover:bg-white/5",
+        "Focus-visible: ring-2 ring-amber-500 ring-offset-2 ring-offset-background",
+        "Typecheck passes",
+        "Verify in browser - buttons have amber glow on hover"
       ],
       "priority": 4,
-      "passes": false,
-      "notes": "",
-      "dependsOn": ["SKL-002"]
+      "passes": true,
+      "notes": "Amber primary button with glow effect. Verified in browser.",
+      "dependsOn": ["UI-001"]
     },
     {
-      "id": "SKL-005",
-      "title": "Interactive SkladoweSection with buttons",
-      "description": "As a user, I want to see [+ Dodaj], [edit], [delete] buttons in the składowe sections.",
+      "id": "UI-005",
+      "title": "Restyle Input component with glass effect",
+      "description": "As a user, I want form inputs to have glass styling and amber focus states.",
       "acceptanceCriteria": [
-        "Modify app/(app)/pozycje/_components/skladowe-section.tsx",
-        "Add props: editable (boolean, default true), onAdd, onEdit(item), onDelete(item)",
-        "Show [+ Dodaj] button in section header when editable",
-        "Show edit (Pencil) and delete (Trash2) icons on each item row when editable",
-        "Display norma × stawka/cena info on each row (e.g. '1.0 h × 12.50 zł/h')",
-        "Typecheck passes"
+        "Update components/ui/input.tsx",
+        "Set background: rgba(26, 26, 36, 0.6) with backdrop-filter: blur(8px)",
+        "Set border: 1px solid rgba(255,255,255,0.1)",
+        "Set height: h-11 (44px) for touch-friendly targets",
+        "Focus: border-amber-500/50, shadow-[0_0_0_3px_rgba(245,158,11,0.15)]",
+        "Placeholder color: text-zinc-500",
+        "Typecheck passes",
+        "Verify in browser - inputs visible, amber glow on focus"
       ],
       "priority": 5,
-      "passes": false,
-      "notes": "",
-      "dependsOn": ["SKL-003", "SKL-004"]
+      "passes": true,
+      "notes": "Glass effect with backdrop blur and amber focus. Verified in browser.",
+      "dependsOn": ["UI-001"]
     },
     {
-      "id": "SKL-006",
-      "title": "Integration in PozycjaDetailPanel",
-      "description": "As a user, I want to add/edit/delete składowe from the pozycja detail panel with working modals and confirmations.",
+      "id": "UI-006",
+      "title": "Restyle Select component with glass effect",
+      "description": "As a user, I want select dropdowns to match the glass styling of inputs.",
       "acceptanceCriteria": [
-        "Modify app/(app)/pozycje/_components/pozycja-detail-panel.tsx",
-        "Add state: modalType ('robocizna'|'material'|null), modalMode ('add'|'edit'), editingSkladowa, deleteDialogOpen, deletingSkladowa",
-        "Create app/(app)/pozycje/_components/modals/delete-skladowa-dialog.tsx with confirmation",
-        "Pass onAdd, onEdit, onDelete callbacks to both SkladoweSection components",
-        "Wire up SkladowaRobociznaModal for robocizna section",
-        "Wire up SkladowaMaterialModal for materiały section",
-        "Wire up DeleteSkladowaDialog - call deleteSkladowaRobocizna or deleteSkladowaMaterial based on type",
-        "Verify at localhost:3000/pozycje - select a pozycja, add/edit/delete składowe works",
-        "Typecheck passes"
+        "Update components/ui/select.tsx SelectTrigger",
+        "Apply same glass styling as Input: rgba(26,26,36,0.6), backdrop-blur, border",
+        "Set height: h-11",
+        "Update SelectContent with glass effect background",
+        "SelectItem hover: bg-white/8",
+        "Focus states: amber ring matching Input",
+        "Typecheck passes",
+        "Verify in browser - select dropdowns visible, consistent with inputs"
       ],
       "priority": 6,
-      "passes": false,
-      "notes": "",
-      "dependsOn": ["SKL-005"]
+      "passes": true,
+      "notes": "Glass effect matching Input, h-11, white/8 hover on items.",
+      "dependsOn": ["UI-005"]
+    },
+    {
+      "id": "UI-007",
+      "title": "Restyle Sidebar navigation",
+      "description": "As a user, I want the sidebar to match Minimalist Dark with amber active states.",
+      "acceptanceCriteria": [
+        "Locate sidebar component (app/(app)/layout.tsx or components/)",
+        "Set sidebar background: #12121A",
+        "Set border-right: 1px solid rgba(255,255,255,0.08)",
+        "Nav items: text-zinc-500, hover:bg-white/5 hover:text-white",
+        "Active nav item: bg-amber-500/10 text-amber-500",
+        "Section headers: text-[11px] uppercase tracking-wider text-zinc-500",
+        "Typecheck passes",
+        "Verify in browser - sidebar styled, active page highlighted amber"
+      ],
+      "priority": 7,
+      "passes": true,
+      "notes": "Sidebar styled with #12121A background, amber active states, zinc-500 text.",
+      "dependsOn": ["UI-001"]
+    },
+    {
+      "id": "UI-008",
+      "title": "Apply typography with Space Grotesk",
+      "description": "As a user, I want headlines to use Space Grotesk font for a technical, modern feel.",
+      "acceptanceCriteria": [
+        "Update page headings (h1) to use font-display class",
+        "Pages to update: kategorie/page.tsx, pozycje/page.tsx",
+        "DialogTitle in dialog.tsx: add font-display class",
+        "Add tracking-tight to headings",
+        "Typecheck passes",
+        "Verify in browser - headings use Space Grotesk font"
+      ],
+      "priority": 8,
+      "passes": true,
+      "notes": "Space Grotesk applied to h1 in kategorie and pozycje pages, and DialogTitle.",
+      "dependsOn": ["UI-002"]
+    },
+    {
+      "id": "UI-009",
+      "title": "Final verification and cleanup",
+      "description": "As a developer, I need to verify all UI changes work together and clean up any issues.",
+      "acceptanceCriteria": [
+        "npm run build passes without errors",
+        "Verify /kategorie page: sidebar, heading, cards, modal all styled correctly",
+        "Verify /pozycje page: table, filters, detail panel, modals styled correctly",
+        "Verify modal forms: inputs, selects, buttons all visible and functional",
+        "No console errors related to styling",
+        "Take screenshot to confirm Minimalist Dark aesthetic achieved"
+      ],
+      "priority": 9,
+      "passes": true,
+      "notes": "All UI components verified. Minimalist Dark aesthetic achieved. No console errors.",
+      "dependsOn": ["UI-003", "UI-004", "UI-005", "UI-006", "UI-007", "UI-008"]
     }
   ]
 }
