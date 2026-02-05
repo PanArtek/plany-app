@@ -13,7 +13,7 @@ export const createSkladowaRobociznaSchema = z.object({
     .max(500, "Max 500 znaków"),
   norma_domyslna: z.number()
     .positive("Norma musi być większa od 0"),
-  jednostka: z.enum(jednostkaRobociznaValues).default('h'),
+  jednostka: z.enum(jednostkaRobociznaValues),
   stawka_domyslna: z.number()
     .min(0, "Stawka nie może być ujemna")
     .nullable()
