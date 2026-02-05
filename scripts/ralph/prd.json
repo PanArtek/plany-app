@@ -1,5 +1,191 @@
 {
-  "branchName": "main",
-  "description": "PLANY App - Next.js infrastructure setup complete",
-  "userStories": []
+  "project": "PLANY App",
+  "branchName": "ralph/phase1-database-setup",
+  "description": "Phase 1: Database Schema Setup - Create SQL migration files and TypeScript types",
+  "mode": "feature",
+  "baseBranch": "main",
+  "userStories": [
+    {
+      "id": "DB-001",
+      "title": "Create supabase migrations directory structure",
+      "description": "As a developer, I need a directory to store SQL migration files for version control.",
+      "acceptanceCriteria": [
+        "Create directory: supabase/migrations/",
+        "Create file: supabase/README.md with instructions on how to run migrations",
+        "Typecheck passes"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": "Simple directory and readme creation",
+      "dependsOn": []
+    },
+    {
+      "id": "DB-002",
+      "title": "Create SQL migration for kategorie table",
+      "description": "As a developer, I need SQL to create the kategorie table with adjacency list pattern for hierarchical categories.",
+      "acceptanceCriteria": [
+        "Create file: supabase/migrations/001_kategorie.sql",
+        "SQL creates kategorie table with: id (UUID PK), kod (VARCHAR 20), pelny_kod (VARCHAR 50 UNIQUE), nazwa (VARCHAR 255), parent_id (UUID FK self), poziom (INT), kolejnosc (INT), created_at (TIMESTAMPTZ)",
+        "SQL includes indexes on parent_id and pelny_kod",
+        "SQL enables RLS on the table",
+        "Typecheck passes"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "Adjacency list pattern - pelny_kod format: BUD, BUD.03, BUD.03.01. Refer to /home/artur/Projekty/wireframe/docs/DATA-MODEL.md section 8",
+      "dependsOn": ["DB-001"]
+    },
+    {
+      "id": "DB-003",
+      "title": "Create SQL migration for produkty and dostawcy tables",
+      "description": "As a developer, I need SQL to create produkty (materials catalog) and dostawcy (suppliers) tables.",
+      "acceptanceCriteria": [
+        "Create file: supabase/migrations/002_produkty_dostawcy.sql",
+        "SQL creates produkty table with: id (UUID PK), sku (VARCHAR 50 UNIQUE), nazwa (VARCHAR 255), producent (VARCHAR 100), kategoria_kod (VARCHAR 20), jednostka (VARCHAR 20), created_at, updated_at",
+        "SQL creates dostawcy table with: id (UUID PK), nazwa (VARCHAR 255), telefon (VARCHAR 50), email (VARCHAR 255), kategorie_kody (TEXT[]), notatki (TEXT), aktywny (BOOLEAN default true), created_at, updated_at",
+        "SQL includes appropriate indexes",
+        "SQL enables RLS on both tables",
+        "Typecheck passes"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": "Refer to /home/artur/Projekty/wireframe/docs/DATA-MODEL.md sections 2-3",
+      "dependsOn": ["DB-001"]
+    },
+    {
+      "id": "DB-004",
+      "title": "Create SQL migration for ceny_dostawcow table",
+      "description": "As a developer, I need SQL to create ceny_dostawcow (supplier prices) table.",
+      "acceptanceCriteria": [
+        "Create file: supabase/migrations/003_ceny_dostawcow.sql",
+        "SQL creates ceny_dostawcow table with: id (UUID PK), dostawca_id (UUID FK), produkt_sku (VARCHAR 50 FK), cena (DECIMAL 12,2), data_aktualizacji (DATE), created_at",
+        "SQL includes UNIQUE constraint on (dostawca_id, produkt_sku)",
+        "SQL includes CASCADE delete from dostawcy and produkty",
+        "SQL includes indexes on produkt_sku and dostawca_id",
+        "SQL enables RLS",
+        "Typecheck passes"
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": "All prices are NETTO. Refer to DATA-MODEL.md section 4",
+      "dependsOn": ["DB-003"]
+    },
+    {
+      "id": "DB-005",
+      "title": "Create SQL migration for podwykonawcy and stawki tables",
+      "description": "As a developer, I need SQL to create podwykonawcy (subcontractors) and stawki_podwykonawcow (rates) tables.",
+      "acceptanceCriteria": [
+        "Create file: supabase/migrations/004_podwykonawcy.sql",
+        "SQL creates podwykonawcy table with: id (UUID PK), nazwa (VARCHAR 255), telefon (VARCHAR 50), email (VARCHAR 255), kategorie_kody (TEXT[]), notatki (TEXT), aktywny (BOOLEAN default true), created_at, updated_at",
+        "SQL creates stawki_podwykonawcow table with: id (UUID PK), podwykonawca_id (UUID FK CASCADE), pozycja_kod (VARCHAR 50), stawka (DECIMAL 12,2), data_aktualizacji (DATE), created_at",
+        "SQL includes UNIQUE on (podwykonawca_id, pozycja_kod)",
+        "SQL includes appropriate indexes",
+        "SQL enables RLS on both tables",
+        "Typecheck passes"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": "kategorie_kody stores position code prefixes like BUD.02, BUD.03. Refer to DATA-MODEL.md sections 5-6",
+      "dependsOn": ["DB-001"]
+    },
+    {
+      "id": "DB-006",
+      "title": "Create SQL migration for pozycje_biblioteka table",
+      "description": "As a developer, I need SQL to create pozycje_biblioteka (position library) table with JSONB skladowe.",
+      "acceptanceCriteria": [
+        "Create file: supabase/migrations/005_pozycje_biblioteka.sql",
+        "SQL creates pozycje_biblioteka table with: id (UUID PK), kod (VARCHAR 50 UNIQUE), nazwa (VARCHAR 255), typ (VARCHAR 20 CHECK IN robocizna/material/komplet), jednostka (VARCHAR 20), skladowe (JSONB default {}), aktywna (BOOLEAN default true), created_at, updated_at",
+        "SQL includes indexes on kod and typ",
+        "SQL enables RLS",
+        "SQL includes comment explaining skladowe JSONB structure",
+        "Typecheck passes"
+      ],
+      "priority": 6,
+      "passes": false,
+      "notes": "skladowe JSONB: {robocizna: [{id, opis, preferowanyPodwykonawcaId, stawkaReczna}], materialy: [{id, productSku, ilosc, preferowanyDostawcaId, cenaReczna}]}. Refer to DATA-MODEL.md section 7",
+      "dependsOn": ["DB-001"]
+    },
+    {
+      "id": "DB-007",
+      "title": "Create SQL migration for projekty and rewizje tables",
+      "description": "As a developer, I need SQL to create projekty (projects) and rewizje (revisions) tables.",
+      "acceptanceCriteria": [
+        "Create file: supabase/migrations/006_projekty_rewizje.sql",
+        "SQL creates projekty table with: id (UUID PK), nazwa (VARCHAR 255), slug (VARCHAR 100 UNIQUE), status (VARCHAR 50 CHECK IN draft/active/closed default draft), klient (VARCHAR 255), adres (TEXT), metraz (DECIMAL 10,2), budzet (DECIMAL 14,2), created_at, updated_at",
+        "SQL creates rewizje table with: id (UUID PK), projekt_id (UUID FK CASCADE), numer (VARCHAR 20), nazwa (VARCHAR 255), is_locked (BOOLEAN default false), created_at",
+        "SQL includes UNIQUE on (projekt_id, numer)",
+        "SQL includes appropriate indexes",
+        "SQL enables RLS on both tables",
+        "Typecheck passes"
+      ],
+      "priority": 7,
+      "passes": false,
+      "notes": "slug is URL-friendly identifier. Locked revisions are read-only. Refer to DATA-MODEL.md section 9",
+      "dependsOn": ["DB-001"]
+    },
+    {
+      "id": "DB-008",
+      "title": "Create SQL migration for kosztorys_pozycje table",
+      "description": "As a developer, I need SQL to create kosztorys_pozycje (estimate positions) table with JSONB overrides.",
+      "acceptanceCriteria": [
+        "Create file: supabase/migrations/007_kosztorys_pozycje.sql",
+        "SQL creates kosztorys_pozycje table with all fields from DATA-MODEL.md section 10",
+        "SQL includes FK to rewizje (CASCADE) and pozycje_biblioteka.kod (nullable)",
+        "SQL includes UNIQUE on (rewizja_id, lp)",
+        "SQL includes appropriate indexes",
+        "SQL enables RLS",
+        "SQL includes comment explaining overrides JSONB structure",
+        "Typecheck passes"
+      ],
+      "priority": 8,
+      "passes": false,
+      "notes": "overrides JSONB stores per-position skladowe overrides. All prices NETTO. Default narzut_percent is 30. Refer to DATA-MODEL.md section 10",
+      "dependsOn": ["DB-006", "DB-007"]
+    },
+    {
+      "id": "DB-009",
+      "title": "Create combined SQL file for easy execution",
+      "description": "As a developer, I need a single SQL file that combines all migrations in correct order for easy execution in Supabase Dashboard.",
+      "acceptanceCriteria": [
+        "Create file: supabase/migrations/000_all_tables.sql",
+        "File combines all migrations (001-007) in correct dependency order",
+        "File includes comments separating each table section",
+        "File can be copy-pasted into Supabase SQL Editor and executed",
+        "Typecheck passes"
+      ],
+      "priority": 9,
+      "passes": false,
+      "notes": "This is a convenience file for manual execution in Supabase Dashboard",
+      "dependsOn": ["DB-002", "DB-003", "DB-004", "DB-005", "DB-006", "DB-007", "DB-008"]
+    },
+    {
+      "id": "DB-010",
+      "title": "Generate TypeScript types from Supabase schema",
+      "description": "As a developer, I need TypeScript types generated from the database schema after tables are created.",
+      "acceptanceCriteria": [
+        "Update supabase/README.md with instruction: After running SQL, execute: supabase gen types typescript --project-id tormvuvlcujetkagmwtc > lib/supabase/database.types.ts",
+        "Create placeholder file: lib/supabase/database.types.ts with TODO comment explaining to run supabase gen types after creating tables",
+        "Typecheck passes"
+      ],
+      "priority": 10,
+      "passes": false,
+      "notes": "Types can only be generated AFTER tables exist in Supabase. User must run SQL first, then generate types.",
+      "dependsOn": ["DB-009"]
+    },
+    {
+      "id": "DB-011",
+      "title": "Update Supabase clients to use Database type",
+      "description": "As a developer, I need Supabase clients prepared to use the Database type once it's generated.",
+      "acceptanceCriteria": [
+        "Update lib/supabase/client.ts to import Database type (with conditional check or TODO)",
+        "Update lib/supabase/server.ts to import Database type (with conditional check or TODO)",
+        "Add TODO comments explaining: after running supabase gen types, update createClient calls to use Database generic",
+        "Typecheck passes"
+      ],
+      "priority": 11,
+      "passes": false,
+      "notes": "This prepares the codebase for typed Supabase queries",
+      "dependsOn": ["DB-010"]
+    }
+  ]
 }

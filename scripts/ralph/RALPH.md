@@ -1,5 +1,11 @@
 # Ralph Agent - PLANY App (Next.js + Supabase)
 
+## CRITICAL: Before Starting Any Task
+1. Read `prd.json` - find first story with `passes: false`
+2. Check `dependsOn` - ensure all dependencies have `passes: true`
+3. Work on ONE story at a time
+4. After completion: verify ALL acceptance criteria
+
 ## Stack
 - Frontend: Next.js 15 + shadcn/ui + TanStack Table
 - Database: Supabase SDK (bez Drizzle)
@@ -8,8 +14,8 @@
 
 ## Komendy weryfikacji
 ```bash
-npm run build
-npm run lint
+npm run build    # MUSI PRZEJŚĆ przed commitem
+npm run lint     # Opcjonalne ale zalecane
 ```
 
 ## Struktura projektu
@@ -50,7 +56,23 @@ stores/        → Zustand stores
 feat: [STORY-ID] - krótki opis
 ```
 
+## Task Completion Checklist
+For EACH story, before marking as complete:
+- [ ] All acceptance criteria met
+- [ ] `npm run build` passes
+- [ ] Code committed with message: `feat: [STORY-ID] - title`
+- [ ] Update `prd.json`: set `passes: true`, add notes if needed
+- [ ] Append learnings to `progress.txt`
+
+## Acceptance Criteria Rules
+- Must be VERIFIABLE (not vague like "works correctly")
+- Always include: `"Typecheck passes"` (run `npm run build`)
+- For UI: `"Verify at localhost:3000/path using dev-browser skill"`
+- For tests: `"Tests pass"` (run `npm run test`)
+
 ## Reference
 - Wireframe: /home/artur/Projekty/wireframe/
 - Dokumentacja: /home/artur/Projekty/wireframe/docs/
 - Plan migracji: /home/artur/Projekty/plany-app/docs/MIGRATION-PLAN.md
+- Business Logic: /home/artur/Projekty/wireframe/docs/BUSINESS-LOGIC.md
+- Data Model: /home/artur/Projekty/wireframe/docs/DATA-MODEL.md

@@ -1,19 +1,45 @@
 # Ralph Progress Log
-Started: Initial setup
+Started: Phase 1 - Database Setup
+
+## Current Phase
+**FAZA 1: Database Setup** (11 user stories)
+- Branch: `ralph/phase1-database-setup`
+- Goal: Create SQL migration files for Supabase schema
+
+## IMPORTANT: Manual Step Required
+After Ralph completes DB-009, you must:
+1. Copy `supabase/migrations/000_all_tables.sql` content
+2. Paste into Supabase Dashboard → SQL Editor
+3. Run the SQL
+4. Then run: `supabase gen types typescript --project-id tormvuvlcujetkagmwtc > lib/supabase/database.types.ts`
 
 ## Codebase Patterns
 - Use `createClient()` from `lib/supabase/client.ts` for browser-side Supabase
 - Use `createClient()` from `lib/supabase/server.ts` for server-side Supabase
 - shadcn/ui components in `components/ui/`
 - Server Actions in `actions/` directory with `'use server'`
+- All prices are NETTO
+- Position code format: BRANZA.KAT.PODKAT.NR (e.g., BUD.03.01.001)
+
+## Reference Documents
+- Data Model: `/home/artur/Projekty/wireframe/docs/DATA-MODEL.md`
+- Business Logic: `/home/artur/Projekty/wireframe/docs/BUSINESS-LOGIC.md`
+- Modules: `/home/artur/Projekty/wireframe/docs/MODULES.md`
 
 ---
 
-## Initial Setup - Infrastructure
-- Project created with Next.js 15, TypeScript, Tailwind
-- shadcn/ui initialized with default configuration
-- Supabase SDK installed and configured
-- GitHub repo: PanArtek/plany-app
-- Ralph agent configured
+## Phase 1 Stories
+- [ ] DB-001: Create supabase migrations directory
+- [ ] DB-002: SQL for kategorie table
+- [ ] DB-003: SQL for produkty and dostawcy tables
+- [ ] DB-004: SQL for ceny_dostawcow table
+- [ ] DB-005: SQL for podwykonawcy and stawki tables
+- [ ] DB-006: SQL for pozycje_biblioteka table
+- [ ] DB-007: SQL for projekty and rewizje tables
+- [ ] DB-008: SQL for kosztorys_pozycje table
+- [ ] DB-009: Combined SQL file (000_all_tables.sql)
+- [ ] DB-010: TypeScript types placeholder
+- [ ] DB-011: Update Supabase clients
 
 ---
+

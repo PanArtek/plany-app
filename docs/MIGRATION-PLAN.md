@@ -1,316 +1,17 @@
 # PLANY App - Plan Migracji z Wireframe
 
-## Źródło
-- Wireframe: `/home/artur/Projekty/wireframe/`
-- Dokumentacja: `/home/artur/Projekty/wireframe/docs/`
-
-## Docelowy Stack
-- Next.js 15 (App Router)
-- shadcn/ui + Tailwind CSS
-- Supabase (PostgreSQL + Auth)
-- TanStack Table
-- Zustand (UI state only)
-
----
-
-## FAZA 1: Database Schema (Supabase)
-
-**Cel:** Utworzyć wszystkie tabele w Supabase na podstawie mock data.
-
-**Tabele do utworzenia:**
-
-### 1.1 Hierarchia kategorii
-```
-branzes (5 rekordów)
-  - kod: TEXT PRIMARY KEY (BUD, ELE, SAN, TEL, HVC)
-  - nazwa: TEXT
-  - opis: TEXT
-
-kategorie
-  - kod: TEXT (np. "03")
-  - branza_kod: TEXT FK → branzes
-  - nazwa: TEXT
-  - opis: TEXT
-  - PRIMARY KEY (branza_kod, kod)
-
-podkategorie
-  - kod: TEXT (np. "01")
-  - kategoria_kod: TEXT
-  - branza_kod: TEXT
-  - nazwa: TEXT
-  - opis: TEXT
-  - PRIMARY KEY (branza_kod, kategoria_kod, kod)
-```
-
-### 1.2 Pozycje kosztorysowe (biblioteka)
-```
-pozycje
-  - kod: TEXT PRIMARY KEY (np. "BUD.03.01.001")
-  - branza_kod: TEXT FK
-  - kategoria_kod: TEXT FK
-  - podkategoria_kod: TEXT FK
-  - opis: TEXT
-  - jednostka: TEXT (m2, m, szt, kpl)
-  - notatki: TEXT
-```
-
-### 1.3 Materiały i dostawcy
-```
-produkty
-  - sku: TEXT PRIMARY KEY
-  - nazwa: TEXT
-  - jednostka: TEXT
-  - kategoria: TEXT
-
-dostawcy
-  - id: UUID PRIMARY KEY
-  - nazwa: TEXT
-  - email: TEXT
-  - telefon: TEXT
-  - kategorie: TEXT[]
-
-cenniki_dostawcow
-  - id: UUID PRIMARY KEY
-  - produkt_sku: TEXT FK
-  - dostawca_id: UUID FK
-  - cena_netto: DECIMAL
-  - data_aktualizacji: TIMESTAMP
-```
-
-### 1.4 Podwykonawcy
-```
-podwykonawcy
-  - id: UUID PRIMARY KEY
-  - nazwa: TEXT
-  - specjalizacja: TEXT
-  - kontakt: JSONB
-
-stawki_podwykonawcow
-  - id: UUID PRIMARY KEY
-  - podwykonawca_id: UUID FK
-  - pozycja_kod: TEXT FK
-  - stawka_za_jednostke: DECIMAL
-```
-
-### 1.5 Projekty i kosztorysy
-```
-projekty
-  - id: UUID PRIMARY KEY
-  - nazwa: TEXT
-  - klient: TEXT
-  - adres: TEXT
-  - status: TEXT (draft, active, completed)
-  - created_at: TIMESTAMP
-
-wersje_kosztorysu
-  - id: UUID PRIMARY KEY
-  - projekt_id: UUID FK
-  - numer: INTEGER
-  - status: TEXT (draft, locked, approved)
-  - created_at: TIMESTAMP
-
-pozycje_kosztorysu
-  - id: UUID PRIMARY KEY
-  - wersja_id: UUID FK
-  - pozycja_kod: TEXT FK
-  - ilosc: DECIMAL
-  - cena_material_override: DECIMAL NULL
-  - cena_robocizna_override: DECIMAL NULL
-  - notatki: TEXT
-```
-
-### 1.6 Kalkulatory (opcjonalne)
-```
-kalkulatory
-  - id: UUID PRIMARY KEY
-  - typ: TEXT (farby, plytki, gk, sufity)
-  - parametry: JSONB
-  - wynik: JSONB
-```
-
-**Źródło danych:** `wireframe/js/data/*.js`
-
----
-
-## FAZA 2: Podstawowa struktura UI
-
-**Cel:** Layout, nawigacja, dark theme, podstawowe komponenty.
-
-### 2.1 Layout i nawigacja
-```
-app/
-  layout.tsx        # Root layout z dark theme
-  page.tsx          # Redirect do /kosztorys lub dashboard
-
-  (main)/
-    layout.tsx      # Sidebar + header
-
-    pozycje/
-      page.tsx
-    kategorie/
-      page.tsx
-    kalkulatory/
-      page.tsx
-    materialy/
-      page.tsx
-    podwykonawcy/
-      page.tsx
-    dostawcy/
-      page.tsx
-    projekty/
-      page.tsx
-    kosztorys/
-      page.tsx
-```
-
-### 2.2 Komponenty shadcn do zainstalowania
-```bash
-npx shadcn@latest add button card dialog table tabs toast input select badge
-```
-
-### 2.3 Dark theme
-- Konfiguracja Tailwind dla dark mode
-- Kolory z wireframe (industrial AutoCAD style)
-- Fonty: JetBrains Mono (kod), Plus Jakarta Sans (tekst)
-
-### 2.4 Sidebar nawigacja
-- 8 linków do widoków
-- Ikony (Lucide)
-- Active state
-
----
-
-## FAZA 3: Biblioteka pozycji
-
-**Cel:** CRUD dla hierarchii kategorii i pozycji.
-
-### 3.1 Kategorie (najważniejsze - już przetestowane w wireframe)
-- Widok z tabs dla 5 branż
-- Karty kategorii (expandable)
-- Podkategorie wewnątrz kart
-- CRUD modals (add/edit/delete)
-- Walidacja kodów i nazw
-
-**Źródło:** `wireframe/js/views/kategorie.js` (768 linii)
-
-### 3.2 Pozycje
-- Tabela z filtrowaniem (branża, kategoria, search)
-- Modal szczegółów pozycji
-- Przypisane materiały i stawki
-
-**Źródło:** `wireframe/js/views/pozycje.js`
-
----
-
-## FAZA 4: Materiały i dostawcy
-
-**Cel:** Zarządzanie produktami i cenami.
-
-### 4.1 Materiały
-- Agregacja produktów z najtańszą ceną
-- Tabela z filtrami
-- Modal szczegółów (wszystkie ceny od dostawców)
-
-**Źródło:** `wireframe/js/views/materialy.js`
-
-### 4.2 Dostawcy
-- Lista dostawców z kontaktem
-- Przypisane kategorie materiałów
-- CRUD
-
-**Źródło:** `wireframe/js/views/dostawcy.js`
-
-### 4.3 Cenniki
-- Edycja cen dla produktu/dostawcy
-- Historia zmian cen
-
----
-
-## FAZA 5: Podwykonawcy
-
-**Cel:** Zarządzanie podwykonawcami i stawkami.
-
-### 5.1 Lista podwykonawców
-- Tabela z filtrami (specjalizacja)
-- Dane kontaktowe
-- CRUD
-
-### 5.2 Stawki
-- Przypisanie stawek do pozycji
-- Edycja stawek
-
-**Źródło:** `wireframe/js/views/podwykonawcy.js`
-
----
-
-## FAZA 6: Kalkulatory
-
-**Cel:** Specjalne kalkulatory pomocnicze.
-
-### 6.1 Typy kalkulatorów
-- Farby (na podstawie metrażu)
-- Płytki (z fugą i stratami)
-- Systemy GK (wysokość)
-- Sufity podwieszane
-
-### 6.2 Implementacja
-- Formularze z parametrami
-- Obliczenia w czasie rzeczywistym
-- Eksport wyników do kosztorysu
-
-**Źródło:** `wireframe/js/views/kalkulatory.js`
-
----
-
-## FAZA 7: Moduł kosztorysowania (CORE)
-
-**Cel:** Główna funkcjonalność aplikacji - tworzenie kosztorysów.
-
-### 7.1 Tabela pozycji kosztorysu
-- Pozycje z ilościami
-- Ceny (materiał + robocizna + usługi)
-- Sumy częściowe i całkowite
-- Grupowanie po branżach
-
-### 7.2 Edycja pozycji
-- Modal z detalami
-- Override cen (custom pricing)
-- Składowe kosztów
-
-### 7.3 KPIs
-- Suma kosztorysu
-- Rozbicie po branżach (% udziału)
-- Szacowane czasy
-
-### 7.4 Logika obliczeniowa
-- `calculatePosition()` - suma dla pozycji
-- `getEffectiveSkladowe()` - składowe z overrides
-- Formatowanie walut (PLN)
-
-**Źródło:** `wireframe/js/views/kosztorys.js` (73k linii - najsłożniejszy!)
-**Utils:** `wireframe/js/utils/kosztorys.js`, `wireframe/js/utils/kosztorys-overrides.js`
-
----
-
-## FAZA 8: Projekty i wersjonowanie
-
-**Cel:** Zarządzanie projektami i wersjami kosztorysów.
-
-### 8.1 Lista projektów
-- Karty projektów
-- Status (draft, active, completed)
-- Ostatnia aktywność
-
-### 8.2 Wersje kosztorysu
-- Historia wersji
-- Status (draft, locked, approved)
-- Porównanie wersji (diff)
-
-### 8.3 Blokowanie wersji
-- Locked version = read-only
-- Tworzenie nowej wersji z locked
-
-**Źródło:** `wireframe/js/views/projekty.js`, `wireframe/js/data/projekty.js`
+## Przegląd Faz
+
+| Faza | Nazwa | Stories | Status | Branch |
+|------|-------|---------|--------|--------|
+| 1 | Database Setup | 11 | **CURRENT** | `ralph/phase1-database-setup` |
+| 2 | UI Base + Layout | ~8 | Pending | `ralph/phase2-ui-base` |
+| 3 | Kategorie + Pozycje | ~12 | Pending | `ralph/phase3-kategorie-pozycje` |
+| 4 | Materiały + Dostawcy | ~10 | Pending | `ralph/phase4-materialy-dostawcy` |
+| 5 | Podwykonawcy | ~6 | Pending | `ralph/phase5-podwykonawcy` |
+| 6 | Projekty + Rewizje | ~10 | Pending | `ralph/phase6-projekty` |
+| 7 | Kosztorys (CORE) | ~20 | Pending | `ralph/phase7-kosztorys` |
+| 8 | Kalkulatory | ~8 | Pending | `ralph/phase8-kalkulatory` |
 
 ---
 
@@ -323,95 +24,249 @@ FAZA 2 (UI Base)
     ↓
 FAZA 3 (Kategorie + Pozycje)  ← fundamenty dla wszystkiego
     ↓
-┌───────────────┬───────────────┐
-↓               ↓               ↓
+┌───────────────┬───────────────┬───────────────┐
+↓               ↓               ↓               ↓
 FAZA 4        FAZA 5          FAZA 6
-(Materiały)   (Podwykonawcy)  (Kalkulatory)
-└───────────────┴───────────────┘
-                ↓
-           FAZA 7 (Kosztorys) ← wymaga 3,4,5
-                ↓
-           FAZA 8 (Projekty)
+(Materiały)   (Podwykonawcy)  (Projekty)
+└───────────────┴───────────────┴───────────────┘
+                        ↓
+                   FAZA 7 (Kosztorys) ← wymaga 3,4,5,6
+                        ↓
+                   FAZA 8 (Kalkulatory)
 ```
 
 ---
 
-## Priorytety
+## FAZA 1: Database Setup (CURRENT)
 
-| Faza | Priorytet | Złożoność | Czas* |
-|------|-----------|-----------|-------|
-| 1. Database | CRITICAL | Medium | - |
-| 2. UI Base | CRITICAL | Low | - |
-| 3. Kategorie | HIGH | Medium | - |
-| 4. Materiały | HIGH | Low | - |
-| 5. Podwykonawcy | MEDIUM | Low | - |
-| 6. Kalkulatory | LOW | Medium | - |
-| 7. Kosztorys | CRITICAL | HIGH | - |
-| 8. Projekty | HIGH | Medium | - |
+**PRD:** `scripts/ralph/prd.json`
+**Branch:** `ralph/phase1-database-setup`
 
-*Nie podaję czasu - to zależy od granulacji tasków.
+### Stories (11):
+| ID | Title | Status |
+|----|-------|--------|
+| DB-001 | Create supabase migrations directory | Pending |
+| DB-002 | SQL for kategorie table | Pending |
+| DB-003 | SQL for produkty and dostawcy tables | Pending |
+| DB-004 | SQL for ceny_dostawcow table | Pending |
+| DB-005 | SQL for podwykonawcy and stawki tables | Pending |
+| DB-006 | SQL for pozycje_biblioteka table | Pending |
+| DB-007 | SQL for projekty and rewizje tables | Pending |
+| DB-008 | SQL for kosztorys_pozycje table | Pending |
+| DB-009 | Combined SQL file (000_all_tables.sql) | Pending |
+| DB-010 | TypeScript types placeholder | Pending |
+| DB-011 | Update Supabase clients | Pending |
 
----
+### MANUAL STEP after DB-009:
+```bash
+# 1. Copy supabase/migrations/000_all_tables.sql to Supabase SQL Editor
+# 2. Run the SQL
+# 3. Generate types:
+supabase gen types typescript --project-id tormvuvlcujetkagmwtc > lib/supabase/database.types.ts
+```
 
-## Dokumentacja źródłowa
-
-| Dokument | Ścieżka | Zawartość |
-|----------|---------|-----------|
-| Architektura | `wireframe/docs/ARCHITECTURE.md` | Docelowy stack |
-| Logika biznesowa | `wireframe/docs/BUSINESS-LOGIC.md` | Reguły biznesowe |
-| Model danych | `wireframe/docs/DATA-MODEL.md` | Mapowanie mock → Supabase |
-| Moduły | `wireframe/docs/MODULES.md` | Dokumentacja każdego modułu |
-
----
-
-## Jak używać tego planu
-
-1. **Wybierz fazę** do implementacji
-2. **Przeczytaj źródła** (pliki z wireframe)
-3. **Rozbij na mniejsze taski** (user stories)
-4. **Zapisz w `scripts/ralph/prd.json`**
-5. **Uruchom Ralph** lub implementuj ręcznie
-
----
-
-## Przykład rozbicia FAZY 3 na taski
-
-```json
-{
-  "branchName": "feat/kategorie",
-  "description": "Implementacja hierarchii kategorii",
-  "userStories": [
-    {
-      "id": "KAT-001",
-      "title": "Create kategorie Server Actions",
-      "description": "Server Actions dla CRUD kategorii w Supabase",
-      "priority": 1,
-      "passes": false
-    },
-    {
-      "id": "KAT-002",
-      "title": "Create kategorie page with tabs",
-      "description": "Strona /kategorie z tabs dla 5 branż",
-      "priority": 2,
-      "passes": false
-    },
-    {
-      "id": "KAT-003",
-      "title": "Implement kategoria cards",
-      "description": "Karty kategorii z expand/collapse",
-      "priority": 3,
-      "passes": false
-    }
-  ]
-}
+### Tabele:
+```sql
+kategorie           -- Hierarchia: branża → kategoria → podkategoria
+produkty            -- Katalog materiałów (SKU jako klucz)
+dostawcy            -- Dostawcy materiałów
+ceny_dostawcow      -- Cenniki dostawców
+podwykonawcy        -- Ekipy robocze
+stawki_podwykonawcow -- Cenniki podwykonawców
+pozycje_biblioteka  -- Biblioteka pozycji z skladowe (JSONB)
+projekty            -- Projekty z slug
+rewizje             -- Rewizje kosztorysów (locked/unlocked)
+kosztorys_pozycje   -- Pozycje w kosztorysie z overrides (JSONB)
 ```
 
 ---
 
-## Notatki
+## FAZA 2: UI Base + Layout
 
-- **Dark theme** jest kluczowy dla UX (industrial style jak AutoCAD)
+**Branch:** `ralph/phase2-ui-base`
+
+### Planowane Stories (~8):
+- UI-001: Install shadcn components (button, card, dialog, table, tabs, toast, input, select, badge)
+- UI-002: Configure dark theme (Tailwind config, CSS variables)
+- UI-003: Add fonts (JetBrains Mono, Plus Jakarta Sans)
+- UI-004: Create root layout with ThemeProvider
+- UI-005: Create app shell with sidebar navigation
+- UI-006: Create sidebar component with 8 nav links
+- UI-007: Create header component
+- UI-008: Create placeholder pages for all routes
+
+### Routes:
+```
+/kategorie
+/pozycje
+/materialy
+/dostawcy
+/podwykonawcy
+/kalkulatory
+/projekty
+/kosztorys
+```
+
+---
+
+## FAZA 3: Kategorie + Pozycje
+
+**Branch:** `ralph/phase3-kategorie-pozycje`
+
+### Planowane Stories (~12):
+- KAT-001: Server Actions for kategorie CRUD
+- KAT-002: Kategorie page with tabs for 5 branż
+- KAT-003: Kategoria cards with expand/collapse
+- KAT-004: Podkategorie inside cards
+- KAT-005: Add/Edit/Delete kategoria modals
+- KAT-006: Seed kategorie data from wireframe
+- POZ-001: Server Actions for pozycje_biblioteka CRUD
+- POZ-002: Pozycje page with filters (branża, kategoria, search)
+- POZ-003: Pozycje table with TanStack Table
+- POZ-004: Position detail panel with skladowe
+- POZ-005: Seed pozycje data from wireframe
+- POZ-006: Link pozycje to kategorie
+
+**Źródło:** `wireframe/js/views/kategorie.js`, `wireframe/js/views/pozycje.js`
+
+---
+
+## FAZA 4: Materiały + Dostawcy
+
+**Branch:** `ralph/phase4-materialy-dostawcy`
+
+### Planowane Stories (~10):
+- MAT-001: Server Actions for produkty CRUD
+- MAT-002: Materialy page with filters
+- MAT-003: Materialy table with cheapest price aggregation
+- MAT-004: Material detail modal with all supplier prices
+- MAT-005: Seed produkty data from wireframe
+- DOST-001: Server Actions for dostawcy CRUD
+- DOST-002: Dostawcy page with filters
+- DOST-003: Dostawcy table
+- DOST-004: Dostawca detail with cennik
+- DOST-005: Seed dostawcy + ceny data from wireframe
+
+**Źródło:** `wireframe/js/views/materialy.js`, `wireframe/js/views/dostawcy.js`
+
+---
+
+## FAZA 5: Podwykonawcy
+
+**Branch:** `ralph/phase5-podwykonawcy`
+
+### Planowane Stories (~6):
+- PODW-001: Server Actions for podwykonawcy CRUD
+- PODW-002: Podwykonawcy page with filters
+- PODW-003: Podwykonawcy table
+- PODW-004: Podwykonawca detail with stawki
+- PODW-005: Server Actions for stawki CRUD
+- PODW-006: Seed podwykonawcy + stawki data from wireframe
+
+**Źródło:** `wireframe/js/views/podwykonawcy.js`
+
+---
+
+## FAZA 6: Projekty + Rewizje
+
+**Branch:** `ralph/phase6-projekty`
+
+### Planowane Stories (~10):
+- PROJ-001: Server Actions for projekty CRUD
+- PROJ-002: Projekty page with grid cards
+- PROJ-003: Project card component
+- PROJ-004: Create project modal
+- PROJ-005: Edit project modal
+- PROJ-006: Server Actions for rewizje CRUD
+- PROJ-007: Revision selector dropdown
+- PROJ-008: Create new revision
+- PROJ-009: Lock/unlock revision
+- PROJ-010: Seed projekty + rewizje data from wireframe
+
+**Źródło:** `wireframe/js/views/projekty.js`
+
+---
+
+## FAZA 7: Kosztorys (CORE)
+
+**Branch:** `ralph/phase7-kosztorys`
+
+### Planowane Stories (~20):
+- KSZ-001: Kosztorys page layout (3-column: sidebar, table, detail)
+- KSZ-002: Server Actions for kosztorys_pozycje CRUD
+- KSZ-003: Kosztorys table with TanStack Table
+- KSZ-004: Position grouping by branża/kategoria
+- KSZ-005: KPI summary bar (wartość, marża, zysk, cena/m²)
+- KSZ-006: Sidebar with branża tree and sums
+- KSZ-007: Position detail panel
+- KSZ-008: Skladowe display (robocizna + materialy)
+- KSZ-009: Implement calculatePosition() utility
+- KSZ-010: Implement getEffectiveSkladowe() with overrides
+- KSZ-011: Inline cell editing (double-click)
+- KSZ-012: Keyboard navigation (Tab, Arrows, Enter)
+- KSZ-013: Undo/Redo (Ctrl+Z/Y)
+- KSZ-014: Add new position
+- KSZ-015: Delete selected positions
+- KSZ-016: Override stawka/cena in detail panel
+- KSZ-017: Change podwykonawca/dostawca in detail panel
+- KSZ-018: Reset overrides
+- KSZ-019: Locked revision banner + disabled editing
+- KSZ-020: Client view toggle (hide R/M/Narzut)
+
+**Źródło:** `wireframe/js/views/kosztorys.js` (najsłożniejszy moduł!)
+**Utils:** `wireframe/docs/BUSINESS-LOGIC.md`
+
+---
+
+## FAZA 8: Kalkulatory
+
+**Branch:** `ralph/phase8-kalkulatory`
+
+### Planowane Stories (~8):
+- KALK-001: Kalkulatory page with cards
+- KALK-002: Calculator modal framework
+- KALK-003: Malowanie calculator
+- KALK-004: Płytki calculator
+- KALK-005: Sufit GK calculator
+- KALK-006: Ściany GK calculator
+- KALK-007: Calculator results display
+- KALK-008: Add calculator result to kosztorys
+
+**Źródło:** `wireframe/js/views/kalkulatory.js`
+
+---
+
+## Jak używać Ralph
+
+### Uruchomienie dla aktualnej fazy:
+```bash
+cd /home/artur/Projekty/plany-app
+./scripts/ralph/ralph.sh --tool claude 15
+```
+
+### Po zakończeniu fazy:
+1. Zarchiwizuj do `scripts/ralph/archive/YYYY-MM-DD-phase-name/`
+2. Zaktualizuj ten dokument (zmień status fazy)
+3. Stwórz nowy `prd.json` dla następnej fazy
+
+---
+
+## Źródła dokumentacji
+
+| Dokument | Ścieżka |
+|----------|---------|
+| Data Model | `/home/artur/Projekty/wireframe/docs/DATA-MODEL.md` |
+| Business Logic | `/home/artur/Projekty/wireframe/docs/BUSINESS-LOGIC.md` |
+| Modules | `/home/artur/Projekty/wireframe/docs/MODULES.md` |
+| Mock Data | `/home/artur/Projekty/wireframe/js/data/*.js` |
+| Views | `/home/artur/Projekty/wireframe/js/views/*.js` |
+
+---
+
+## Kluczowe zasady
+
+- **Wszystkie ceny są NETTO** - nie konwertuj na brutto
 - **Kod hierarchii** (BUD.03.01.001) jest fundamentem całej aplikacji
-- **Kosztorys (Faza 7)** to 73k linii w wireframe - wymaga starannego rozbicia
 - **Server Actions** zamiast API routes (Next.js 15 pattern)
 - **Zustand** tylko dla UI state (expanded cards, filters) - dane w Supabase
+- **Dark theme** - industrial AutoCAD style
