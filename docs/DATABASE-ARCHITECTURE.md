@@ -1,4 +1,4 @@
-# PLANY App - Architektura Bazy Danych Supabase (v3.3)
+# PLANY App - Architektura Bazy Danych Supabase (v3.4)
 
 ## Podsumowanie
 
@@ -428,6 +428,9 @@ CREATE INDEX idx_kosztorys_rewizja ON kosztorys_pozycje(rewizja_id);
 CREATE INDEX idx_ksz_skladowe_r_pozycja ON kosztorys_skladowe_robocizna(kosztorys_pozycja_id);
 CREATE INDEX idx_ksz_skladowe_m_pozycja ON kosztorys_skladowe_materialy(kosztorys_pozycja_id);
 
+-- Index for RLS performance (CRITICAL for kosztorys_pozycje RLS policy)
+CREATE INDEX idx_kosztorys_pozycje_org ON kosztorys_pozycje(organization_id);
+
 -- Indexes for reporting (opcjonalne - ile użyć produktu/podwykonawcy)
 CREATE INDEX idx_ksz_skladowe_r_podwykonawca ON kosztorys_skladowe_robocizna(podwykonawca_id);
 CREATE INDEX idx_ksz_skladowe_m_produkt ON kosztorys_skladowe_materialy(produkt_id);
@@ -440,7 +443,10 @@ CREATE INDEX idx_ksz_skladowe_m_dostawca ON kosztorys_skladowe_materialy(dostawc
 -- WAŻNE: Wzór kalkulacji z obsługą manual override:
 --   is_manual=false → koszt = norma × cena × kp.ilosc
 --   is_manual=true  → koszt = ilosc × cena (user override)
-CREATE OR REPLACE VIEW kosztorys_pozycje_view AS
+-- WAŻNE: security_invoker = true wymusza RLS na views
+CREATE OR REPLACE VIEW kosztorys_pozycje_view
+WITH (security_invoker = true)
+AS
 SELECT
     kp.id,
     kp.organization_id,
@@ -502,7 +508,10 @@ LEFT JOIN (
 ) m ON m.kosztorys_pozycja_id = kp.id;
 
 -- View: podsumowanie rewizji
-CREATE OR REPLACE VIEW rewizje_summary AS
+-- WAŻNE: security_invoker = true wymusza RLS na views
+CREATE OR REPLACE VIEW rewizje_summary
+WITH (security_invoker = true)
+AS
 SELECT
     rew.id,
     rew.projekt_id,
@@ -661,9 +670,12 @@ CREATE TRIGGER ksz_skladowe_m_check_locked
     BEFORE INSERT OR UPDATE OR DELETE ON kosztorys_skladowe_materialy
     FOR EACH ROW EXECUTE FUNCTION trigger_check_skladowe_locked();
 
--- Deep copy rewizji z pozycjami i składowymi
--- SECURITY DEFINER + wewnętrzna walidacja uprawnień
-CREATE OR REPLACE FUNCTION copy_revision(
+-- Private schema dla security definer functions
+CREATE SCHEMA IF NOT EXISTS private;
+
+-- Deep copy rewizji z pozycjami i składowymi (PRIVATE - nie dostępne przez API)
+-- SECURITY DEFINER - pomija RLS, dlatego w private schema
+CREATE OR REPLACE FUNCTION private.copy_revision(
     source_rewizja_id UUID,
     new_nazwa VARCHAR DEFAULT NULL
 ) RETURNS UUID AS $$
@@ -734,6 +746,15 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
+-- Public wrapper (SECURITY INVOKER - wymusza RLS)
+-- Dostępny przez API, deleguje do private.copy_revision
+CREATE OR REPLACE FUNCTION copy_revision(
+    source_rewizja_id UUID,
+    new_nazwa VARCHAR DEFAULT NULL
+) RETURNS UUID AS $$
+    SELECT private.copy_revision(source_rewizja_id, new_nazwa);
+$$ LANGUAGE SQL SECURITY INVOKER;
+
 -- Onboarding: auto-create organization for new user
 CREATE OR REPLACE FUNCTION handle_new_user()
 RETURNS TRIGGER AS $$
@@ -784,9 +805,11 @@ ALTER TABLE kosztorys_skladowe_materialy ENABLE ROW LEVEL SECURITY;
 -- ORGANIZATIONS & MEMBERS
 -- =====================================================
 CREATE POLICY "organizations_select" ON organizations FOR SELECT
+    TO authenticated
     USING (id IN (SELECT user_organizations()));
 
 CREATE POLICY "org_members_select" ON organization_members FOR SELECT
+    TO authenticated
     USING (organization_id IN (SELECT user_organizations()));
 
 -- =====================================================
@@ -795,42 +818,58 @@ CREATE POLICY "org_members_select" ON organization_members FOR SELECT
 
 -- Projekty
 CREATE POLICY "projekty_select" ON projekty FOR SELECT
+    TO authenticated
     USING (organization_id IN (SELECT user_organizations()));
 CREATE POLICY "projekty_insert" ON projekty FOR INSERT
+    TO authenticated
     WITH CHECK (organization_id IN (SELECT user_organizations()));
 CREATE POLICY "projekty_update" ON projekty FOR UPDATE
+    TO authenticated
     USING (organization_id IN (SELECT user_organizations()));
 CREATE POLICY "projekty_delete" ON projekty FOR DELETE
+    TO authenticated
     USING (organization_id IN (SELECT user_organizations()));
 
--- Produkty
+-- Produkty (SELECT dla authenticated + anon dla danych systemowych)
 CREATE POLICY "produkty_select" ON produkty FOR SELECT
+    TO authenticated, anon
     USING (organization_id IS NULL OR organization_id IN (SELECT user_organizations()));
 CREATE POLICY "produkty_insert" ON produkty FOR INSERT
+    TO authenticated
     WITH CHECK (organization_id IN (SELECT user_organizations()));
 CREATE POLICY "produkty_update" ON produkty FOR UPDATE
+    TO authenticated
     USING (organization_id IN (SELECT user_organizations()));
 CREATE POLICY "produkty_delete" ON produkty FOR DELETE
+    TO authenticated
     USING (organization_id IN (SELECT user_organizations()));
 
--- Dostawcy
+-- Dostawcy (SELECT dla authenticated + anon dla danych systemowych)
 CREATE POLICY "dostawcy_select" ON dostawcy FOR SELECT
+    TO authenticated, anon
     USING (organization_id IS NULL OR organization_id IN (SELECT user_organizations()));
 CREATE POLICY "dostawcy_insert" ON dostawcy FOR INSERT
+    TO authenticated
     WITH CHECK (organization_id IN (SELECT user_organizations()));
 CREATE POLICY "dostawcy_update" ON dostawcy FOR UPDATE
+    TO authenticated
     USING (organization_id IN (SELECT user_organizations()));
 CREATE POLICY "dostawcy_delete" ON dostawcy FOR DELETE
+    TO authenticated
     USING (organization_id IN (SELECT user_organizations()));
 
--- Podwykonawcy
+-- Podwykonawcy (SELECT dla authenticated + anon dla danych systemowych)
 CREATE POLICY "podwykonawcy_select" ON podwykonawcy FOR SELECT
+    TO authenticated, anon
     USING (organization_id IS NULL OR organization_id IN (SELECT user_organizations()));
 CREATE POLICY "podwykonawcy_insert" ON podwykonawcy FOR INSERT
+    TO authenticated
     WITH CHECK (organization_id IN (SELECT user_organizations()));
 CREATE POLICY "podwykonawcy_update" ON podwykonawcy FOR UPDATE
+    TO authenticated
     USING (organization_id IN (SELECT user_organizations()));
 CREATE POLICY "podwykonawcy_delete" ON podwykonawcy FOR DELETE
+    TO authenticated
     USING (organization_id IN (SELECT user_organizations()));
 
 -- =====================================================
@@ -839,24 +878,28 @@ CREATE POLICY "podwykonawcy_delete" ON podwykonawcy FOR DELETE
 
 -- Rewizje (przez projekty.organization_id)
 CREATE POLICY "rewizje_select" ON rewizje FOR SELECT
+    TO authenticated
     USING (EXISTS (
         SELECT 1 FROM projekty p
         WHERE p.id = projekt_id
         AND p.organization_id IN (SELECT user_organizations())
     ));
 CREATE POLICY "rewizje_insert" ON rewizje FOR INSERT
+    TO authenticated
     WITH CHECK (EXISTS (
         SELECT 1 FROM projekty p
         WHERE p.id = projekt_id
         AND p.organization_id IN (SELECT user_organizations())
     ));
 CREATE POLICY "rewizje_update" ON rewizje FOR UPDATE
+    TO authenticated
     USING (EXISTS (
         SELECT 1 FROM projekty p
         WHERE p.id = projekt_id
         AND p.organization_id IN (SELECT user_organizations())
     ));
 CREATE POLICY "rewizje_delete" ON rewizje FOR DELETE
+    TO authenticated
     USING (EXISTS (
         SELECT 1 FROM projekty p
         WHERE p.id = projekt_id
@@ -865,24 +908,28 @@ CREATE POLICY "rewizje_delete" ON rewizje FOR DELETE
 
 -- Ceny dostawców (przez dostawcy.organization_id)
 CREATE POLICY "ceny_dostawcow_select" ON ceny_dostawcow FOR SELECT
+    TO authenticated, anon
     USING (EXISTS (
         SELECT 1 FROM dostawcy d
         WHERE d.id = dostawca_id
         AND (d.organization_id IS NULL OR d.organization_id IN (SELECT user_organizations()))
     ));
 CREATE POLICY "ceny_dostawcow_insert" ON ceny_dostawcow FOR INSERT
+    TO authenticated
     WITH CHECK (EXISTS (
         SELECT 1 FROM dostawcy d
         WHERE d.id = dostawca_id
         AND d.organization_id IN (SELECT user_organizations())
     ));
 CREATE POLICY "ceny_dostawcow_update" ON ceny_dostawcow FOR UPDATE
+    TO authenticated
     USING (EXISTS (
         SELECT 1 FROM dostawcy d
         WHERE d.id = dostawca_id
         AND d.organization_id IN (SELECT user_organizations())
     ));
 CREATE POLICY "ceny_dostawcow_delete" ON ceny_dostawcow FOR DELETE
+    TO authenticated
     USING (EXISTS (
         SELECT 1 FROM dostawcy d
         WHERE d.id = dostawca_id
@@ -891,24 +938,28 @@ CREATE POLICY "ceny_dostawcow_delete" ON ceny_dostawcow FOR DELETE
 
 -- Stawki podwykonawców (przez podwykonawcy.organization_id)
 CREATE POLICY "stawki_select" ON stawki_podwykonawcow FOR SELECT
+    TO authenticated, anon
     USING (EXISTS (
         SELECT 1 FROM podwykonawcy p
         WHERE p.id = podwykonawca_id
         AND (p.organization_id IS NULL OR p.organization_id IN (SELECT user_organizations()))
     ));
 CREATE POLICY "stawki_insert" ON stawki_podwykonawcow FOR INSERT
+    TO authenticated
     WITH CHECK (EXISTS (
         SELECT 1 FROM podwykonawcy p
         WHERE p.id = podwykonawca_id
         AND p.organization_id IN (SELECT user_organizations())
     ));
 CREATE POLICY "stawki_update" ON stawki_podwykonawcow FOR UPDATE
+    TO authenticated
     USING (EXISTS (
         SELECT 1 FROM podwykonawcy p
         WHERE p.id = podwykonawca_id
         AND p.organization_id IN (SELECT user_organizations())
     ));
 CREATE POLICY "stawki_delete" ON stawki_podwykonawcow FOR DELETE
+    TO authenticated
     USING (EXISTS (
         SELECT 1 FROM podwykonawcy p
         WHERE p.id = podwykonawca_id
@@ -917,24 +968,28 @@ CREATE POLICY "stawki_delete" ON stawki_podwykonawcow FOR DELETE
 
 -- Biblioteka składowe robocizna (przez pozycje_biblioteka)
 CREATE POLICY "bib_skladowe_r_select" ON biblioteka_skladowe_robocizna FOR SELECT
+    TO authenticated, anon
     USING (EXISTS (
         SELECT 1 FROM pozycje_biblioteka pb
         WHERE pb.id = pozycja_biblioteka_id
         AND (pb.organization_id IS NULL OR pb.organization_id IN (SELECT user_organizations()))
     ));
 CREATE POLICY "bib_skladowe_r_insert" ON biblioteka_skladowe_robocizna FOR INSERT
+    TO authenticated
     WITH CHECK (EXISTS (
         SELECT 1 FROM pozycje_biblioteka pb
         WHERE pb.id = pozycja_biblioteka_id
         AND pb.organization_id IN (SELECT user_organizations())
     ));
 CREATE POLICY "bib_skladowe_r_update" ON biblioteka_skladowe_robocizna FOR UPDATE
+    TO authenticated
     USING (EXISTS (
         SELECT 1 FROM pozycje_biblioteka pb
         WHERE pb.id = pozycja_biblioteka_id
         AND pb.organization_id IN (SELECT user_organizations())
     ));
 CREATE POLICY "bib_skladowe_r_delete" ON biblioteka_skladowe_robocizna FOR DELETE
+    TO authenticated
     USING (EXISTS (
         SELECT 1 FROM pozycje_biblioteka pb
         WHERE pb.id = pozycja_biblioteka_id
@@ -943,24 +998,28 @@ CREATE POLICY "bib_skladowe_r_delete" ON biblioteka_skladowe_robocizna FOR DELET
 
 -- Biblioteka składowe materiały (przez pozycje_biblioteka)
 CREATE POLICY "bib_skladowe_m_select" ON biblioteka_skladowe_materialy FOR SELECT
+    TO authenticated, anon
     USING (EXISTS (
         SELECT 1 FROM pozycje_biblioteka pb
         WHERE pb.id = pozycja_biblioteka_id
         AND (pb.organization_id IS NULL OR pb.organization_id IN (SELECT user_organizations()))
     ));
 CREATE POLICY "bib_skladowe_m_insert" ON biblioteka_skladowe_materialy FOR INSERT
+    TO authenticated
     WITH CHECK (EXISTS (
         SELECT 1 FROM pozycje_biblioteka pb
         WHERE pb.id = pozycja_biblioteka_id
         AND pb.organization_id IN (SELECT user_organizations())
     ));
 CREATE POLICY "bib_skladowe_m_update" ON biblioteka_skladowe_materialy FOR UPDATE
+    TO authenticated
     USING (EXISTS (
         SELECT 1 FROM pozycje_biblioteka pb
         WHERE pb.id = pozycja_biblioteka_id
         AND pb.organization_id IN (SELECT user_organizations())
     ));
 CREATE POLICY "bib_skladowe_m_delete" ON biblioteka_skladowe_materialy FOR DELETE
+    TO authenticated
     USING (EXISTS (
         SELECT 1 FROM pozycje_biblioteka pb
         WHERE pb.id = pozycja_biblioteka_id
@@ -971,64 +1030,84 @@ CREATE POLICY "bib_skladowe_m_delete" ON biblioteka_skladowe_materialy FOR DELET
 -- HYBRID TABLES (org_id = NULL dla szablonów systemowych)
 -- =====================================================
 CREATE POLICY "kategorie_select" ON kategorie FOR SELECT
+    TO authenticated, anon
     USING (organization_id IS NULL OR organization_id IN (SELECT user_organizations()));
 CREATE POLICY "kategorie_insert" ON kategorie FOR INSERT
+    TO authenticated
     WITH CHECK (organization_id IN (SELECT user_organizations()));
 CREATE POLICY "kategorie_update" ON kategorie FOR UPDATE
+    TO authenticated
     USING (organization_id IN (SELECT user_organizations()));
 CREATE POLICY "kategorie_delete" ON kategorie FOR DELETE
+    TO authenticated
     USING (organization_id IN (SELECT user_organizations()));
 
 CREATE POLICY "pozycje_biblioteka_select" ON pozycje_biblioteka FOR SELECT
+    TO authenticated, anon
     USING (organization_id IS NULL OR organization_id IN (SELECT user_organizations()));
 CREATE POLICY "pozycje_biblioteka_insert" ON pozycje_biblioteka FOR INSERT
+    TO authenticated
     WITH CHECK (organization_id IN (SELECT user_organizations()));
 CREATE POLICY "pozycje_biblioteka_update" ON pozycje_biblioteka FOR UPDATE
+    TO authenticated
     USING (organization_id IN (SELECT user_organizations()));
 CREATE POLICY "pozycje_biblioteka_delete" ON pozycje_biblioteka FOR DELETE
+    TO authenticated
     USING (organization_id IN (SELECT user_organizations()));
 
 CREATE POLICY "narzuty_select" ON narzuty_domyslne FOR SELECT
+    TO authenticated, anon
     USING (organization_id IS NULL OR organization_id IN (SELECT user_organizations()));
 CREATE POLICY "narzuty_insert" ON narzuty_domyslne FOR INSERT
+    TO authenticated
     WITH CHECK (organization_id IN (SELECT user_organizations()));
 CREATE POLICY "narzuty_update" ON narzuty_domyslne FOR UPDATE
+    TO authenticated
     USING (organization_id IN (SELECT user_organizations()));
 CREATE POLICY "narzuty_delete" ON narzuty_domyslne FOR DELETE
+    TO authenticated
     USING (organization_id IN (SELECT user_organizations()));
 
 -- =====================================================
 -- KOSZTORYS TABLES
 -- =====================================================
 CREATE POLICY "kosztorys_pozycje_select" ON kosztorys_pozycje FOR SELECT
+    TO authenticated
     USING (organization_id IN (SELECT user_organizations()));
 CREATE POLICY "kosztorys_pozycje_insert" ON kosztorys_pozycje FOR INSERT
+    TO authenticated
     WITH CHECK (organization_id IN (SELECT user_organizations()));
 CREATE POLICY "kosztorys_pozycje_update" ON kosztorys_pozycje FOR UPDATE
+    TO authenticated
     USING (organization_id IN (SELECT user_organizations()));
 CREATE POLICY "kosztorys_pozycje_delete" ON kosztorys_pozycje FOR DELETE
+    TO authenticated
     USING (organization_id IN (SELECT user_organizations()));
 
 -- Pattern: skladowe (through kosztorys_pozycje.organization_id)
 CREATE POLICY "ksz_skladowe_r_select" ON kosztorys_skladowe_robocizna FOR SELECT
+    TO authenticated
     USING (EXISTS (
         SELECT 1 FROM kosztorys_pozycje kp
         WHERE kp.id = kosztorys_pozycja_id
         AND kp.organization_id IN (SELECT user_organizations())
     ));
 CREATE POLICY "ksz_skladowe_r_insert" ON kosztorys_skladowe_robocizna FOR INSERT
+    TO authenticated
     WITH CHECK (EXISTS (
         SELECT 1 FROM kosztorys_pozycje kp
         WHERE kp.id = kosztorys_pozycja_id
         AND kp.organization_id IN (SELECT user_organizations())
     ));
 CREATE POLICY "ksz_skladowe_r_update" ON kosztorys_skladowe_robocizna FOR UPDATE
+    TO authenticated
     USING (EXISTS (
         SELECT 1 FROM kosztorys_pozycje kp
         WHERE kp.id = kosztorys_pozycja_id
         AND kp.organization_id IN (SELECT user_organizations())
     ));
 CREATE POLICY "ksz_skladowe_r_delete" ON kosztorys_skladowe_robocizna FOR DELETE
+    TO authenticated
     USING (EXISTS (
         SELECT 1 FROM kosztorys_pozycje kp
         WHERE kp.id = kosztorys_pozycja_id
@@ -1037,24 +1116,28 @@ CREATE POLICY "ksz_skladowe_r_delete" ON kosztorys_skladowe_robocizna FOR DELETE
 
 -- Same for skladowe_materialy
 CREATE POLICY "ksz_skladowe_m_select" ON kosztorys_skladowe_materialy FOR SELECT
+    TO authenticated
     USING (EXISTS (
         SELECT 1 FROM kosztorys_pozycje kp
         WHERE kp.id = kosztorys_pozycja_id
         AND kp.organization_id IN (SELECT user_organizations())
     ));
 CREATE POLICY "ksz_skladowe_m_insert" ON kosztorys_skladowe_materialy FOR INSERT
+    TO authenticated
     WITH CHECK (EXISTS (
         SELECT 1 FROM kosztorys_pozycje kp
         WHERE kp.id = kosztorys_pozycja_id
         AND kp.organization_id IN (SELECT user_organizations())
     ));
 CREATE POLICY "ksz_skladowe_m_update" ON kosztorys_skladowe_materialy FOR UPDATE
+    TO authenticated
     USING (EXISTS (
         SELECT 1 FROM kosztorys_pozycje kp
         WHERE kp.id = kosztorys_pozycja_id
         AND kp.organization_id IN (SELECT user_organizations())
     ));
 CREATE POLICY "ksz_skladowe_m_delete" ON kosztorys_skladowe_materialy FOR DELETE
+    TO authenticated
     USING (EXISTS (
         SELECT 1 FROM kosztorys_pozycje kp
         WHERE kp.id = kosztorys_pozycja_id
@@ -1202,6 +1285,7 @@ SELECT copy_revision('uuid-rev-00', 'Po negocjacjach');
 | `projekty` | `idx_projekty_slug` | Lookup po slug |
 | `rewizje` | `idx_rewizje_projekt` | JOIN z projekty |
 | `kosztorys_pozycje` | `idx_kosztorys_rewizja` | JOIN z rewizje |
+| `kosztorys_pozycje` | `idx_kosztorys_pozycje_org` | RLS performance |
 | `kosztorys_skladowe_robocizna` | `idx_ksz_skladowe_r_pozycja` | JOIN z pozycje |
 | `kosztorys_skladowe_materialy` | `idx_ksz_skladowe_m_pozycja` | JOIN z pozycje |
 | `ceny_dostawcow` | `idx_ceny_produkt` | Lookup ceny produktu |
@@ -1216,7 +1300,26 @@ SELECT copy_revision('uuid-rev-00', 'Po negocjacjach');
 
 ---
 
-## 6. Weryfikacja
+## 6. Security Notes
+
+### Views z RLS
+Wszystkie views używają `security_invoker = true` aby wymuszać RLS policies:
+- `kosztorys_pozycje_view` - respektuje RLS na `kosztorys_pozycje`
+- `rewizje_summary` - respektuje RLS na `rewizje`
+
+### Security Definer Functions
+Funkcje SECURITY DEFINER są w `private` schema, niedostępne przez API:
+- `private.copy_revision()` - deep copy rewizji
+
+Public wrappers używają SECURITY INVOKER dla bezpieczeństwa.
+
+### RLS Policies - Role
+- `TO authenticated` - dla danych prywatnych (projekty, kosztorysy)
+- `TO authenticated, anon` - dla danych publicznych/systemowych (kategorie, produkty z `organization_id IS NULL`)
+
+---
+
+## 7. Weryfikacja
 
 Po implementacji:
 
@@ -1272,7 +1375,7 @@ Po implementacji:
 
 ---
 
-## 7. Pliki do utworzenia
+## 8. Pliki do utworzenia
 
 | Plik | Akcja |
 |------|-------|
@@ -1290,7 +1393,7 @@ Po implementacji:
 
 ---
 
-## 8. Referencje
+## 9. Referencje
 
 - **Wireframe data model**: `/home/artur/Projekty/wireframe/docs/DATA-MODEL.md`
 - **Business logic**: `/home/artur/Projekty/wireframe/docs/BUSINESS-LOGIC.md`
