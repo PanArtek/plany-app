@@ -18,8 +18,8 @@
         "Typecheck passes"
       ],
       "priority": 1,
-      "passes": false,
-      "notes": "",
+      "passes": true,
+      "notes": "Added KategoriaOption interface and getKategorieByPoziom function",
       "dependsOn": []
     },
     {
@@ -36,8 +36,8 @@
         "Typecheck passes"
       ],
       "priority": 2,
-      "passes": false,
-      "notes": "",
+      "passes": true,
+      "notes": "Uses LIKE query with prefix.% pattern to find existing codes",
       "dependsOn": []
     },
     {
@@ -55,8 +55,8 @@
         "Typecheck passes"
       ],
       "priority": 3,
-      "passes": false,
-      "notes": "",
+      "passes": true,
+      "notes": "Includes reset() method to clear form while keeping branze loaded",
       "dependsOn": ["POZ-KAT-001", "POZ-KAT-002"]
     },
     {
@@ -76,8 +76,8 @@
         "Typecheck passes"
       ],
       "priority": 4,
-      "passes": false,
-      "notes": "",
+      "passes": true,
+      "notes": "Verified with Playwright - cascading selects work, kod auto-generates to BUD.01.01.001",
       "dependsOn": ["POZ-KAT-003"]
     }
   ]
