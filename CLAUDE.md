@@ -1,76 +1,44 @@
-# PLANY App - Kosztorysowanie budowlane
+# PLANY App
 
-## Stack
-- Next.js 15 (App Router)
-- shadcn/ui + Tailwind CSS
-- Supabase (PostgreSQL + Auth)
-- TanStack Table (planowane)
-- Zustand (planowane)
+Aplikacja do kosztorysowania fit-out komercyjnego - wyceny prac wykończeniowych biur i lokali.
 
 ## Komendy
+
 ```bash
-npm run dev      # Development server
-npm run build    # Production build
+npm run dev      # Development server (localhost:3000)
+npm run build    # Production build - MUSI PRZEJŚĆ przed KAŻDYM COMMITEM
 npm run lint     # ESLint
 ```
 
 ## Struktura
+
 ```
-app/              # App Router
-components/ui/    # shadcn components
+app/              # App Router (Server Components domyślnie)
+components/ui/    # shadcn components (nie edytuj ręcznie)
 components/       # Custom components
-lib/supabase/     # Supabase clients
-lib/              # Utilities
-actions/          # Server Actions
-stores/           # Zustand stores
+lib/supabase/     # Supabase clients (client.ts, server.ts)
+actions/          # Server Actions ('use server')
+stores/           # Zustand (tylko UI state)
+docs/             # Dokumentacja projektu
 ```
 
-## Supabase
-- URL: https://tormvuvlcujetkagmwtc.supabase.co
-- Browser client: `lib/supabase/client.ts`
-- Server client: `lib/supabase/server.ts`
-- Middleware: `lib/supabase/middleware.ts` + `middleware.ts`
+## Konwencje
 
-## Ralph (autonomiczny agent)
-```bash
-cd /home/artur/Projekty/plany-app
-./scripts/ralph/ralph.sh --tool claude 15
-```
+- **Server Components** domyślnie, `'use client'` tylko gdy potrzebne (hooks, onClick)
+- **Server Actions** dla mutacji danych (`actions/*.ts` z `'use server'`)
+- **revalidatePath()** po każdej mutacji w Supabase
+- **Supabase client:** `createClient()` z `lib/supabase/client.ts` (browser) lub `server.ts` (server)
+- **Kod hierarchii:** `BRANZA.KAT.PODKAT.NR` (np. `BUD.03.01.001`) - fundament całej aplikacji
 
-Pliki Ralph:
-- `scripts/ralph/prd.json` - taski do wykonania
-- `scripts/ralph/progress.txt` - log postępów
-- `scripts/ralph/RALPH.md` - kontekst dla agenta
+## Gotchas
 
-## Git Workflow
-
-**Repo:** https://github.com/PanArtek/plany-app
-
-**Branches:**
-- `main` - production, auto-deploy do Vercel
-- `feat/*` - nowe funkcjonalności
-- `fix/*` - bugfixy
-- `ralph/*` - taski Ralph-a
-
-**Commit convention:**
-```
-feat: nowa funkcjonalność
-fix: naprawa błędu
-docs: dokumentacja
-refactor: refaktoryzacja
-chore: maintenance
-```
-
-**Workflow:**
-1. Utwórz branch (`git checkout -b feat/nazwa`)
-2. Implementuj + commituj
-3. Push (`git push -u origin feat/nazwa`)
-4. PR do main (opcjonalnie)
-5. Merge do main → auto-deploy Vercel
-
-**WAŻNE:** Każdy commit musi przejść `npm run build` przed pushem.
+- `middleware.ts` odświeża sesję Supabase - nie usuwaj
+- shadcn components w `components/ui/` - instaluj przez `npx shadcn@latest add`, nie edytuj ręcznie
+- `.env.local` NIE JEST w repo - klucze Supabase są tam lokalnie
+- `npm run build` MUSI przejść przed pushem - Vercel odrzuci broken build
 
 ## Reference
-- Wireframe: `/home/artur/Projekty/wireframe/`
-- Dokumentacja architektury: `/home/artur/Projekty/wireframe/docs/ARCHITECTURE.md`
+
+- Wireframe źródłowy: `/home/artur/Projekty/wireframe/`
 - Plan migracji: `docs/MIGRATION-PLAN.md`
+- Logika biznesowa: `/home/artur/Projekty/wireframe/docs/BUSINESS-LOGIC.md`
