@@ -57,7 +57,7 @@ export function getPozycjeColumns({ onEdit, onDelete }: PozycjeColumnsOptions): 
     accessorKey: 'kod',
     header: ({ column }) => (
       <button
-        className="flex items-center hover:text-foreground text-xs uppercase tracking-wider font-medium"
+        className="flex items-center hover:text-foreground text-sm font-medium text-muted-foreground"
         onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
       >
         Kod
@@ -73,7 +73,7 @@ export function getPozycjeColumns({ onEdit, onDelete }: PozycjeColumnsOptions): 
     accessorKey: 'nazwa',
     header: ({ column }) => (
       <button
-        className="flex items-center hover:text-foreground text-xs uppercase tracking-wider font-medium"
+        className="flex items-center hover:text-foreground text-sm font-medium text-muted-foreground"
         onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
       >
         Nazwa
@@ -81,7 +81,7 @@ export function getPozycjeColumns({ onEdit, onDelete }: PozycjeColumnsOptions): 
       </button>
     ),
     cell: ({ row }) => (
-      <span className="block truncate max-w-[150px] md:max-w-none font-medium text-foreground">
+      <span className="block truncate max-w-[150px] md:max-w-none text-sm font-normal text-foreground">
         {row.getValue('nazwa')}
       </span>
     ),
@@ -89,9 +89,9 @@ export function getPozycjeColumns({ onEdit, onDelete }: PozycjeColumnsOptions): 
   },
   {
     accessorKey: 'jednostka',
-    header: () => <span className="text-xs uppercase tracking-wider font-medium text-center block">Jedn.</span>,
+    header: () => <span className="text-sm font-medium text-muted-foreground text-center block">Jedn.</span>,
     cell: ({ row }) => (
-      <span className="text-sm text-muted-foreground text-center block font-mono">
+      <span className="text-sm text-white/50 text-center block font-mono">
         {row.getValue('jednostka')}
       </span>
     ),
@@ -100,7 +100,7 @@ export function getPozycjeColumns({ onEdit, onDelete }: PozycjeColumnsOptions): 
   },
   {
     accessorKey: 'typ',
-    header: () => <span className="text-xs uppercase tracking-wider font-medium">Typ</span>,
+    header: () => <span className="text-sm font-medium text-muted-foreground">Typ</span>,
     cell: ({ row }) => {
       const typ = row.getValue('typ') as string;
       return (
@@ -116,7 +116,7 @@ export function getPozycjeColumns({ onEdit, onDelete }: PozycjeColumnsOptions): 
     id: 'cenaJednostkowa',
     header: ({ column }) => (
       <button
-        className="flex items-center hover:text-foreground justify-end w-full text-xs uppercase tracking-wider font-medium"
+        className="flex items-center hover:text-foreground justify-end w-full text-sm font-medium text-muted-foreground"
         onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
       >
         Cena
@@ -127,7 +127,7 @@ export function getPozycjeColumns({ onEdit, onDelete }: PozycjeColumnsOptions): 
     cell: ({ row }) => {
       const { cena } = obliczCenePozycji(row.original);
       return (
-        <span className="font-mono text-sm text-right block tabular-nums">
+        <span className="font-mono text-sm font-medium text-right block tabular-nums">
           {formatCena(cena)}
         </span>
       );
