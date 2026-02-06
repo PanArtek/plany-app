@@ -1,4 +1,5 @@
 import { getPozycje } from '@/actions/pozycje';
+import { getKategorieForBranza, getKategorieByPoziom } from '@/actions/kategorie';
 import { PozycjeView } from './_components/pozycje-view';
 import { type PozycjeFilters } from '@/lib/validations/pozycje';
 
@@ -27,6 +28,26 @@ export default async function PozycjePage({ searchParams }: PageProps) {
 
   const result = params.branza ? await getPozycje(filters) : null;
 
+  // Resolve category names for breadcrumb
+  let kategoriaNazwa: string | undefined;
+  let podkategoriaNazwa: string | undefined;
+
+  if (params.branza && params.kategoria) {
+    const kategorie = await getKategorieForBranza(params.branza);
+    const kat = kategorie.find((k) => k.kod === params.kategoria);
+    if (kat) {
+      kategoriaNazwa = `${kat.kod} - ${kat.nazwa}`;
+
+      if (params.podkategoria) {
+        const podkategorie = await getKategorieByPoziom(3, kat.id);
+        const podkat = podkategorie.find((p) => p.kod === params.podkategoria);
+        if (podkat) {
+          podkategoriaNazwa = `${podkat.kod} - ${podkat.nazwa}`;
+        }
+      }
+    }
+  }
+
   return (
     <div className="p-6">
       <PozycjeView
@@ -36,6 +57,8 @@ export default async function PozycjePage({ searchParams }: PageProps) {
         totalCount={result?.totalCount ?? 0}
         page={result?.page ?? 1}
         pageSize={result?.pageSize ?? 15}
+        kategoriaNazwa={kategoriaNazwa}
+        podkategoriaNazwa={podkategoriaNazwa}
       />
     </div>
   );

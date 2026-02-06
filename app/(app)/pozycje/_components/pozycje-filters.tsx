@@ -1,7 +1,6 @@
 'use client';
 
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
   Select,
@@ -10,18 +9,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Plus, Search } from 'lucide-react';
+import { Search } from 'lucide-react';
 import { useState, useCallback, useEffect, useTransition } from 'react';
 import { cn } from '@/lib/utils';
 import { getKategorieForBranza, getKategorieByPoziom } from '@/actions/kategorie';
 
 const BRANZE = ['BUD', 'ELE', 'SAN', 'TEL', 'HVC'] as const;
 
-interface PozycjeFiltersProps {
-  onAddClick: () => void;
-}
-
-export function PozycjeFilters({ onAddClick }: PozycjeFiltersProps) {
+export function PozycjeFilters() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -168,11 +163,6 @@ export function PozycjeFilters({ onAddClick }: PozycjeFiltersProps) {
             />
           </div>
         </div>
-
-        <Button onClick={onAddClick}>
-          <Plus className="h-4 w-4 mr-2" />
-          Dodaj pozycję
-        </Button>
       </div>
 
       {currentBranza && (

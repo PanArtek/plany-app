@@ -3,6 +3,8 @@
 import { useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
+import { Plus } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { type Pozycja, deletePozycja } from '@/actions/pozycje';
 import { type PozycjeFilters } from '@/lib/validations/pozycje';
 import { PozycjeFilters as FiltersComponent } from './pozycje-filters';
@@ -18,6 +20,8 @@ interface PozycjeViewProps {
   totalCount: number;
   page: number;
   pageSize: number;
+  kategoriaNazwa?: string;
+  podkategoriaNazwa?: string;
 }
 
 interface FormPanelState {
@@ -25,7 +29,7 @@ interface FormPanelState {
   mode: 'add' | 'edit';
 }
 
-function PozycjeViewContent({ initialData, initialFilters, initialSelected, totalCount, page, pageSize }: PozycjeViewProps) {
+function PozycjeViewContent({ initialData, initialFilters, initialSelected, totalCount, page, pageSize, kategoriaNazwa, podkategoriaNazwa }: PozycjeViewProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -106,9 +110,41 @@ function PozycjeViewContent({ initialData, initialFilters, initialSelected, tota
     }
   };
 
+  // Build breadcrumb segments
+  const breadcrumbSegments: { label: string; isLast: boolean }[] = [{ label: 'Pozycje', isLast: false }];
+  if (initialFilters.branza) {
+    breadcrumbSegments.push({ label: initialFilters.branza, isLast: false });
+    if (kategoriaNazwa) {
+      breadcrumbSegments.push({ label: kategoriaNazwa, isLast: false });
+      if (podkategoriaNazwa) {
+        breadcrumbSegments.push({ label: podkategoriaNazwa, isLast: false });
+      }
+    }
+  }
+  // Mark last segment
+  breadcrumbSegments[breadcrumbSegments.length - 1].isLast = true;
+
   return (
     <div className="flex flex-col gap-4">
-      <FiltersComponent onAddClick={handleAddClick} />
+      {/* Breadcrumb row */}
+      <div className="flex items-center justify-between">
+        <nav className="text-sm flex items-center gap-1">
+          {breadcrumbSegments.map((seg, i) => (
+            <span key={i} className="flex items-center gap-1">
+              {i > 0 && <span className="text-white/30">/</span>}
+              <span className={seg.isLast ? 'text-foreground' : 'text-white/50'}>
+                {seg.label}
+              </span>
+            </span>
+          ))}
+        </nav>
+        <Button onClick={handleAddClick}>
+          <Plus className="h-4 w-4 mr-2" />
+          Dodaj pozycję
+        </Button>
+      </div>
+
+      <FiltersComponent />
 
       {/* Full-width table or empty state */}
       {initialData.length === 0 && !initialFilters.branza ? (
