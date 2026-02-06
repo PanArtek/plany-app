@@ -1,33 +1,50 @@
 # Ralph Progress Log
-Started: Fri Feb  6 07:38:32 CET 2026
+Started: Fri Feb  6 08:13:28 CET 2026
 ---
 
-## PF-001: Empty state when no branza selected ✅
-- page.tsx: skip getPozycje when no branza param, pass empty array
-- pozycje-view.tsx: show centered "Wybierz branżę" message when data empty & no branza
+## US-001 - Add page param to filters schema and paginated getPozycje ✅
+- Added `page` field to pozycjeFiltersSchema (z.coerce.number().optional().default(1))
+- Changed getPozycje return type to PozycjeResult { data, totalCount, page, pageSize }
+- PAGE_SIZE=15, offset=(page-1)*15, .range(), { count: 'exact' }
+- Updated page.tsx minimally to destructure result.data
+- Build passes
 
-## PF-002: Add cascading category dropdowns ✅
-- Added shadcn Select imports and two dropdown selects (Kategoria, Podkategoria)
-- Second row visible only when branza selected
-- Styled with dark theme (bg-[#1A1A24]/40, border-white/[0.08])
+## US-004 - Widen branza tabs to full-width ✅
+- Tabs container now w-full with flex gap-1
+- Each tab uses flex-1, padding px-6 py-2.5
+- Search moved from tabs row to separate filters row
 
-## PF-003: Fetch and populate kategoria dropdown ✅
-- Added getKategoriaIdByKod + getKategorieForBranza server actions
-- useEffect fetches kategorie when branza changes via startTransition
+## US-005 - Widen filter dropdowns in one row ✅
+- Search + kategoria + podkategoria in one flex row with gap-3
+- Dropdowns widened from 260px to 320px
+- Search takes flex-1
 
-## PF-004: Fetch and populate podkategoria dropdown ✅
-- useEffect fetches podkategorie when kategoria changes
-- Resolves kategoria ID from kategorieOptions array
-- Uses getKategorieByPoziom(3, kategoriaId)
+## US-006 - Add pagination component ✅
+- Created pozycje-pagination.tsx with page buttons, ellipsis, prev/next
+- Amber active page, white/50 inactive, opacity-50 disabled boundaries
+- Shows "Wyświetlanie X-Y z Z" on left, page buttons on right
+- Hidden when totalCount <= pageSize
 
-## PF-005: Wire dropdown selections to URL params ✅
-- Already wired from PF-002-004: handlers update URL params, page.tsx passes to getPozycje
+## US-007 - Wire pagination into pozycje-view ✅
+- PozycjePagination rendered below table, after overflow-auto div
+- Table height adjusted from calc(100vh - 220px) to calc(100vh - 330px)
+- Not shown in empty state
 
-## PF-006: Update typ badges to R+M / R / M ✅
-- Labels: komplet=R+M, robocizna=R, material=M
-- Colors: komplet=amber, robocizna=blue, material=green
-- Also updated detail panel typ display
-
-## PF-007: Final verification ✅
+## US-008 - Final verification ✅
 - npm run build passes
-- All stories complete
+- All 8 user stories complete
+
+## US-003 - Add non-clickable breadcrumb to pozycje-view ✅
+- Added breadcrumb row at top with segments: Pozycje / BUD / 01 - Roboty... / 01 - Podkategoria
+- Last segment in text-foreground, earlier in text-white/50, separators in text-white/30
+- Moved 'Dodaj pozycję' button to breadcrumb row right side
+- Removed onAddClick from PozycjeFilters component
+- Category names resolved server-side in page.tsx via getKategorieForBranza/getKategorieByPoziom
+- Build passes
+
+## US-002 - Update page.tsx to pass page param and new data shape ✅
+- Read 'page' from searchParams, pass to filters
+- Pass totalCount, page, pageSize to PozycjeView
+- Removed <h1>Pozycje</h1> title
+- PozycjeView props updated with totalCount/page/pageSize
+- Build passes
