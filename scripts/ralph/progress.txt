@@ -1,37 +1,49 @@
 # Ralph Progress Log
-Started: Fri Feb  6 15:36:03 CET 2026
+Started: Fri Feb  6 16:37:35 CET 2026
 ---
 
-## Phase 8b: Kosztorys Interactions
+## US-001: Create shared project layout with tab bar ✅
+- Created `app/(app)/projekty/[projektId]/layout.tsx` - Server Component with breadcrumb header + StatusBadge
+- Created `app/(app)/projekty/[projektId]/_components/project-tabs.tsx` - Client tabs with active/disabled states
 
-### Completed Stories
-- US-001: Extended getKosztorysPozycjaDetail with library reference values (already done)
-- US-002: Set is_manual flag on skladowe updates (already done)
-- US-003: Created OverrideIndicator component (already done)
-- US-004: Added override indicators to detail panel skladowe rows
-  - Added resetSkladowaR/M server actions for per-field reset
-  - Wired OverrideIndicator into SkladowaRRow and SkladowaMRow with lp matching
-- US-005: Added resetPozycjaToLibrary server action
-  - Resets all skladowe R/M by lp matching to library defaults
-  - Includes 3-tier price discovery for materials
-- US-006: Added 'Resetuj do biblioteki' button with AlertDialog confirmation
-  - Hidden when locked or no overrides exist
-- US-007: Added getKategorieForFilter server action (already done)
-- US-008: Extended getLibraryPositions with cascading filters (already done)
-- US-009: Created library-drawer component (bottom Sheet)
-  - Cascading branza > kategoria > podkategoria filters
-  - Search, pagination, multi-select, 'Dodano' badges
-- US-010: Wired library drawer with Ctrl+B shortcut
-  - Replaced AddFromLibraryPanel, deleted old file
-- US-011: Added checkbox column to kosztorys table
-  - Header select-all, row checkboxes with stopPropagation
-  - Selection state managed in kosztorys-view, resets on filter change
-- US-012: Added bulkUpdateNarzut server action (already done)
-- US-013: Created bulk-toolbar with delete and narzut actions
-  - Popover for narzut input, AlertDialog for delete confirmation
-  - Wired between summary and table in kosztorys-view
-- US-014: Final build verification passes
+## US-002: Remove project header duplication from kosztorys-view ✅
+- Removed breadcrumb header and StatusBadge from kosztorys-view.tsx (now in shared layout)
+- Kept RewizjaSelector and functional toolbar
 
-### Learnings
-- WSL2 can cause intermittent ENOENT build errors with .next cache - deleting node_modules/.cache alongside .next fixes it
-- shadcn Sheet component works well for bottom drawers with side="bottom"
+## US-003: Create status configs and validation schemas ✅
+- Created `lib/zamowienia/status-config.ts` with 5 status configs
+- Created `lib/umowy/status-config.ts` with 5 status configs
+- Created `lib/validations/zamowienia.ts` with zamowienieEditSchema + dostawaSchema
+- Created `lib/validations/umowy.ts` with umowaEditSchema + wykonanieSchema
+
+## US-004: Create zamówienia server actions ✅
+- Created `actions/zamowienia.ts` with 7 server actions (CRUD + status + dostawa)
+
+## US-005: Create umowy server actions ✅
+- Created `actions/umowy.ts` with 7 server actions (CRUD + status + wykonanie)
+
+## US-006: Auto-generate drafts on acceptance ✅
+- Modified `actions/acceptance.ts` to call generate_zamowienia_draft and generate_umowy_draft on transition to realizacja
+
+## US-007: Create zamówienia page, empty state, table ✅
+- Created zamowienia/page.tsx, zamowienia-empty.tsx, zamowienia-table.tsx
+
+## US-008: Create zamówienia view and detail panel ✅
+- Created zamowienia-view.tsx and zamowienie-detail-panel.tsx with all status-dependent sections
+
+## US-009: Add dostawa form to zamówienie detail panel ✅
+- Created dostawa-form.tsx with per-pozycja quantity inputs
+
+## US-010: Create umowy page, empty state, table ✅
+- Created umowy/page.tsx, umowy-empty.tsx, umowy-table.tsx with progress bars
+
+## US-011: Create umowy view and detail panel ✅
+- Created umowy-view.tsx and umowa-detail-panel.tsx with załącznik cennikowy table
+
+## US-012: Add wykonanie form to umowa detail panel ✅
+- Created wykonanie-form.tsx with inline form below clicked pozycja row
+
+## US-013: Final build verification ✅
+- `npm run build` passes without errors
+- All routes verified: /projekty/[projektId]/kosztorys, /zamowienia, /umowy
+- Fixed Supabase JOIN type casting (as unknown as Record pattern)
