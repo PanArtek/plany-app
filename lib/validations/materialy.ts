@@ -3,12 +3,20 @@ import { z } from 'zod';
 // Jednostki produktów
 const jednostkaValues = ['m²', 'm', 'mb', 'szt', 'kpl', 'h', 'kg', 'm³', 'l', 'opak'] as const;
 
-// Schema dla tworzenia produktu
+// Schema dla tworzenia produktu (server-side, with defaults for API calls)
 export const createProduktSchema = z.object({
   sku: z.string().min(1, "SKU jest wymagane"),
   nazwa: z.string().min(1, "Nazwa jest wymagana").max(255, "Max 255 znaków"),
   jednostka: z.enum(jednostkaValues).default('szt'),
   aktywny: z.boolean().default(true),
+});
+
+// Form schema (all fields required, for react-hook-form zodResolver compatibility)
+export const produktFormSchema = z.object({
+  sku: z.string().min(1, "SKU jest wymagane"),
+  nazwa: z.string().min(1, "Nazwa jest wymagana").max(255, "Max 255 znaków"),
+  jednostka: z.enum(jednostkaValues),
+  aktywny: z.boolean(),
 });
 
 // Schema dla edycji produktu (wszystkie pola opcjonalne)

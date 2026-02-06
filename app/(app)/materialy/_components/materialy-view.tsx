@@ -1,12 +1,16 @@
 'use client';
 
 import { useState, Suspense } from 'react';
+import { toast } from 'sonner';
 import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { type MaterialyResult, type ProduktWithAggregation } from '@/actions/materialy';
+import { type MaterialyResult, type ProduktWithAggregation, deleteProdukt } from '@/actions/materialy';
 import { MaterialyFilters } from './materialy-filters';
 import { MaterialyTable } from './materialy-table';
 import { MaterialyPagination } from './materialy-pagination';
+import { MaterialDetailPanel } from './panels/material-detail-panel';
+import { MaterialFormPanel } from './panels/material-form-panel';
+import { DeleteConfirmPanel } from '../../kategorie/_components/panels/delete-confirm-panel';
 
 interface MaterialyViewProps {
   initialData: MaterialyResult;
@@ -19,7 +23,7 @@ interface FormPanelState {
   mode: 'add' | 'edit';
 }
 
-function MaterialyViewContent({ initialData, initialBranza, branzaLabel }: MaterialyViewProps) {
+function MaterialyViewContent({ initialData, branzaLabel }: MaterialyViewProps) {
   const [detailPanel, setDetailPanel] = useState<{ open: boolean; produktId: string | null }>({
     open: false,
     produktId: null,
@@ -33,12 +37,42 @@ function MaterialyViewContent({ initialData, initialBranza, branzaLabel }: Mater
     produkt: null,
   });
 
+  // Find selected produkt for edit mode
+  const selectedProdukt = detailPanel.produktId
+    ? initialData.data.find((p) => p.id === detailPanel.produktId)
+    : null;
+
   const handleAddClick = () => {
     setFormPanel({ open: true, mode: 'add' });
   };
 
   const handleRowClick = (produkt: ProduktWithAggregation) => {
     setDetailPanel({ open: true, produktId: produkt.id });
+  };
+
+  const handleEdit = () => {
+    if (selectedProdukt) {
+      setFormPanel({ open: true, mode: 'edit' });
+    }
+  };
+
+  const handleDelete = () => {
+    if (selectedProdukt) {
+      setDeletePanel({ open: true, produkt: selectedProdukt });
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deletePanel.produkt) return;
+
+    const result = await deleteProdukt(deletePanel.produkt.id);
+    if (result.success) {
+      toast.success(`Usunięto "${deletePanel.produkt.nazwa}"`);
+      setDeletePanel({ open: false, produkt: null });
+      setDetailPanel({ open: false, produktId: null });
+    } else {
+      toast.error(result.error || 'Błąd usuwania');
+    }
   };
 
   // Build breadcrumb
@@ -89,7 +123,35 @@ function MaterialyViewContent({ initialData, initialBranza, branzaLabel }: Mater
         </>
       )}
 
-      {/* Panels will be wired in US-008 and US-009 */}
+      {/* Detail panel */}
+      <MaterialDetailPanel
+        produktId={detailPanel.produktId}
+        open={detailPanel.open}
+        onOpenChange={(open) => setDetailPanel((prev) => ({ ...prev, open }))}
+        onEdit={handleEdit}
+        onDelete={handleDelete}
+      />
+
+      {/* Form panel (add/edit) */}
+      <MaterialFormPanel
+        mode={formPanel.mode}
+        produkt={formPanel.mode === 'edit' && selectedProdukt ? selectedProdukt : undefined}
+        open={formPanel.open}
+        onOpenChange={(open) => setFormPanel((prev) => ({ ...prev, open }))}
+      />
+
+      {/* Delete confirm panel */}
+      {deletePanel.produkt && (
+        <DeleteConfirmPanel
+          itemName={deletePanel.produkt.nazwa}
+          itemKod={deletePanel.produkt.sku}
+          title="Usuń materiał"
+          warningMessage="Ta operacja jest nieodwracalna. Jeśli materiał jest używany w pozycjach lub cennikach, usunięcie zostanie zablokowane."
+          open={deletePanel.open}
+          onOpenChange={(open) => setDeletePanel((prev) => ({ ...prev, open }))}
+          onConfirm={handleConfirmDelete}
+        />
+      )}
     </div>
   );
 }
