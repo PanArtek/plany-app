@@ -173,9 +173,23 @@ export async function deletePozycja(id: string): Promise<ActionResult> {
   return { success: true };
 }
 
-// READ - lista z filtrami
-export async function getPozycje(filters: PozycjeFilters): Promise<Pozycja[]> {
+// Pagination config
+const PAGE_SIZE = 15;
+
+// Return type for paginated getPozycje
+export interface PozycjeResult {
+  data: Pozycja[];
+  totalCount: number;
+  page: number;
+  pageSize: number;
+}
+
+// READ - lista z filtrami (paginated)
+export async function getPozycje(filters: PozycjeFilters): Promise<PozycjeResult> {
   const supabase = await createClient();
+
+  const page = filters.page ?? 1;
+  const offset = (page - 1) * PAGE_SIZE;
 
   let query = supabase
     .from('pozycje_biblioteka')
@@ -190,9 +204,10 @@ export async function getPozycje(filters: PozycjeFilters): Promise<Pozycja[]> {
         poziom,
         parent:kategorie!parent_id(id, kod, nazwa)
       )
-    `)
+    `, { count: 'exact' })
     .eq('aktywny', true)
-    .order('kod');
+    .order('kod')
+    .range(offset, offset + PAGE_SIZE - 1);
 
   // Filter by kod prefix (branza.kategoria.podkategoria)
   if (filters.branza) {
@@ -211,10 +226,15 @@ export async function getPozycje(filters: PozycjeFilters): Promise<Pozycja[]> {
     query = query.or(`kod.ilike.%${filters.search}%,nazwa.ilike.%${filters.search}%`);
   }
 
-  const { data, error } = await query;
+  const { data, error, count } = await query;
 
   if (error) throw error;
-  return (data || []) as Pozycja[];
+  return {
+    data: (data || []) as Pozycja[],
+    totalCount: count ?? 0,
+    page,
+    pageSize: PAGE_SIZE,
+  };
 }
 
 // READ - pojedyncza pozycja

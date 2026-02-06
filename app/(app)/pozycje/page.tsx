@@ -9,6 +9,7 @@ interface PageProps {
     podkategoria?: string;
     search?: string;
     selected?: string;
+    page?: string;
   }>;
 }
 
@@ -21,9 +22,11 @@ export default async function PozycjePage({ searchParams }: PageProps) {
     podkategoria: params.podkategoria,
     search: params.search,
     selected: params.selected,
+    page: params.page ? Number(params.page) : 1,
   };
 
-  const pozycje = params.branza ? await getPozycje(filters) : [];
+  const result = params.branza ? await getPozycje(filters) : null;
+  const pozycje = result?.data ?? [];
 
   return (
     <div className="p-6">
