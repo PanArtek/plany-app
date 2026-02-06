@@ -301,6 +301,28 @@ export async function getKategorieCounts(): Promise<Record<BranzaKod, number>> {
   return counts;
 }
 
+// GET KATEGORIA ID BY KOD - helper for cascading selects
+export async function getKategoriaIdByKod(kod: string, poziom: number = 1): Promise<string | null> {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from('kategorie')
+    .select('id')
+    .eq('kod', kod)
+    .eq('poziom', poziom)
+    .single();
+
+  if (error || !data) return null;
+  return data.id;
+}
+
+// GET KATEGORIE FOR BRANZA - fetch kategorie at poziom=2 for a given branza kod
+export async function getKategorieForBranza(branzaKod: string): Promise<KategoriaOption[]> {
+  const branzaId = await getKategoriaIdByKod(branzaKod, 1);
+  if (!branzaId) return [];
+  return getKategorieByPoziom(2, branzaId);
+}
+
 // READ - kategorie tree
 export async function getKategorieTree(): Promise<KategoriaNode[]> {
   console.log('[getKategorieTree] Fetching...');

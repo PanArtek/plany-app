@@ -11,8 +11,9 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Plus, Search } from 'lucide-react';
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useTransition } from 'react';
 import { cn } from '@/lib/utils';
+import { getKategorieForBranza } from '@/actions/kategorie';
 
 const BRANZE = ['BUD', 'ELE', 'SAN', 'TEL', 'HVC'] as const;
 
@@ -31,6 +32,22 @@ export function PozycjeFilters({ onAddClick }: PozycjeFiltersProps) {
 
   const [kategorieOptions, setKategorieOptions] = useState<{ id: string; kod: string; nazwa: string }[]>([]);
   const [podkategorieOptions, setPodkategorieOptions] = useState<{ id: string; kod: string; nazwa: string }[]>([]);
+  const [, startTransition] = useTransition();
+
+  // Fetch kategorie when branza changes
+  useEffect(() => {
+    if (!currentBranza) {
+      setKategorieOptions([]);
+      setPodkategorieOptions([]);
+      return;
+    }
+
+    startTransition(async () => {
+      const kategorie = await getKategorieForBranza(currentBranza);
+      setKategorieOptions(kategorie);
+    });
+    setPodkategorieOptions([]);
+  }, [currentBranza]);
 
   // Debounce search
   useEffect(() => {
