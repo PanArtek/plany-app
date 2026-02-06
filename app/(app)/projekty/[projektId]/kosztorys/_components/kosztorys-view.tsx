@@ -9,6 +9,7 @@ import { RewizjaSelector } from './rewizja-selector';
 import { KosztorysSidebar } from './kosztorys-sidebar';
 import { KosztorysSummary } from './kosztorys-summary';
 import { KosztorysTable } from './kosztorys-table';
+import { BulkToolbar } from './bulk-toolbar';
 import { LibraryDrawer } from './library-drawer';
 import { PozycjaDetailPanel } from './panels/pozycja-detail-panel';
 import { LockedBanner } from './locked-banner';
@@ -159,6 +160,13 @@ export function KosztorysView({ data }: KosztorysViewProps) {
             pozycje={filteredPozycje}
             powierzchnia={projekt.powierzchnia}
           />
+          {!isLocked && (
+            <BulkToolbar
+              selectedIds={selectedIds}
+              onClearSelection={() => setSelectedIds(new Set())}
+              onDelete={() => router.refresh()}
+            />
+          )}
           <KosztorysTable
             pozycje={filteredPozycje}
             selectedId={detailPanelId}
