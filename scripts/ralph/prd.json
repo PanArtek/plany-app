@@ -1,191 +1,137 @@
 {
   "project": "PLANY App",
-  "branchName": "ralph/pozycje-kategorie-ux-v2",
-  "description": "Pozycje & Kategorie UX v2 - uproszczenie tabeli, lepsza typografia, nawigacja hierarchiczna",
+  "branchName": "ralph/pozycje-filters-ux",
+  "description": "Pozycje - kaskadowe filtrowanie po kategoriach, pusty stan domyślny, badge'e typu R+M/R/M z kolorami",
   "mode": "feature",
-  "baseBranch": "main",
+  "baseBranch": "ralph/pozycje-kategorie-ux-v2",
   "userStories": [
     {
-      "id": "UX-001",
-      "title": "Simplify pozycje-columns: remove Kategoria/Podkategoria",
-      "description": "As a user, I want a cleaner table without redundant category columns.",
+      "id": "PF-001",
+      "title": "Empty state when no branza selected",
+      "description": "As a user, when I open /pozycje without any branza selected, I see an empty table with a message prompting me to select a branza.",
       "acceptanceCriteria": [
-        "Remove 'kategoria' column definition from pozycje-columns.tsx",
-        "Remove 'podkategoria' column definition from pozycje-columns.tsx",
-        "Remove getKategoriaNames helper function",
-        "Typecheck passes"
+        "In page.tsx: do NOT call getPozycje() when branza filter is missing - pass empty array to PozycjeView",
+        "In pozycje-view.tsx: when initialData is empty AND no branza is selected in initialFilters, show empty state message instead of table",
+        "Empty state message: 'Wybierz branżę aby wyświetlić pozycje' centered in the table area",
+        "Message styled with text-muted-foreground, centered vertically and horizontally",
+        "Dodaj pozycję button and search input still visible",
+        "npm run build passes",
+        "Verify at localhost:3000/pozycje - no table rows, message visible"
       ],
       "priority": 1,
       "passes": true,
-      "notes": "Removed kategoria, podkategoria columns and getKategoriaNames helper. Build passes.",
+      "notes": "Implemented: page.tsx skips getPozycje when no branza, pozycje-view shows empty state message",
       "dependsOn": []
     },
     {
-      "id": "UX-002",
-      "title": "Add actions column with edit/delete icons",
-      "description": "As a user, I want to edit or delete a pozycja directly from the table row.",
+      "id": "PF-002",
+      "title": "Add cascading category dropdowns to filters",
+      "description": "As a user, after selecting a branza I want to see two dropdown selects (Kategoria, Podkategoria) to narrow down the list of pozycje.",
       "acceptanceCriteria": [
-        "Add 'akcje' column to pozycje-columns.tsx (w-[80px], last column)",
-        "Column contains two icon buttons: Pencil and Trash2 (h-7 w-7, variant ghost)",
-        "Buttons have onClick handlers that call onEdit(id) and onDelete(id)",
-        "Column header is empty or just shows icon placeholder",
-        "Typecheck passes"
+        "In pozycje-filters.tsx: add a second row below branza tabs containing two Select dropdowns",
+        "Second row only visible when a branza is selected (currentBranza is truthy)",
+        "First Select: label 'Kategoria', default option 'Wszystkie kategorie'",
+        "Second Select: label 'Podkategoria', default option 'Wszystkie podkategorie', disabled when no kategoria selected",
+        "Use shadcn Select component (already in project)",
+        "Dropdowns styled consistently with existing dark theme (bg-[#1A1A24]/40, border-white/[0.08])",
+        "Both selects placed inline (flex row) with gap-2",
+        "npm run build passes"
       ],
       "priority": 2,
       "passes": true,
-      "notes": "Converted pozycjeColumns to getPozycjeColumns function. Added onEdit/onDelete props to PozycjeTable. Created handleEditById/handleDeleteById in PozycjeView. stopPropagation on action buttons.",
-      "dependsOn": ["UX-001"]
+      "notes": "Added Select dropdowns for kategoria/podkategoria, visible when branza selected, styled with dark theme",
+      "dependsOn": ["PF-001"]
     },
     {
-      "id": "UX-003",
-      "title": "Add hover visibility for action icons",
-      "description": "As a user, I want action icons visible only when hovering the row for cleaner UI.",
+      "id": "PF-003",
+      "title": "Fetch and populate kategoria dropdown",
+      "description": "As a user, the Kategoria dropdown should show categories from the selected branza.",
       "acceptanceCriteria": [
-        "Add 'group' class to table row in pozycje-table.tsx",
-        "Action icons have 'opacity-0 group-hover:opacity-100 transition-opacity' classes",
-        "Icons appear smoothly on row hover",
-        "Typecheck passes",
-        "Verify in browser using dev-browser skill"
+        "Add server action getKategorieForBranza(branzaKod: string) in actions/pozycje.ts that fetches kategorie at poziom=2 for given branza",
+        "Action queries kategorie table: poziom=2, parent kategoria has kod=branzaKod, returns {id, kod, nazwa}[]",
+        "OR reuse existing getKategorieByPoziom from actions/kategorie.ts if suitable - need to get branza's kategoria ID first",
+        "In pozycje-filters.tsx: fetch categories when branza changes using useEffect + startTransition",
+        "Populate Kategoria select with fetched data, format: 'kod - nazwa' (e.g. '01 - Roboty rozbiórkowe')",
+        "When branza changes, reset both dropdowns and clear kategoria/podkategoria URL params",
+        "npm run build passes"
       ],
       "priority": 3,
       "passes": true,
-      "notes": "Added group class to tr, opacity transition to action icons container. Build passes.",
-      "dependsOn": ["UX-002"]
+      "notes": "Added getKategoriaIdByKod + getKategorieForBranza helpers. Wired useEffect in filters to fetch on branza change.",
+      "dependsOn": ["PF-002"]
     },
     {
-      "id": "UX-004",
-      "title": "Wire up action icons to existing handlers",
-      "description": "As a developer, I need action icons to trigger edit/delete flows.",
+      "id": "PF-004",
+      "title": "Fetch and populate podkategoria dropdown",
+      "description": "As a user, after selecting a kategoria, the Podkategoria dropdown becomes active and shows subcategories.",
       "acceptanceCriteria": [
-        "Update PozycjeTable to accept onEdit and onDelete props",
-        "Pass handlers from PozycjeView to PozycjeTable",
-        "Edit button opens PozycjaFormPanel in edit mode",
-        "Delete button opens DeleteConfirmPanel",
-        "Click on action buttons should NOT trigger row selection (stopPropagation)",
-        "Typecheck passes",
-        "Verify in browser using dev-browser skill"
+        "In pozycje-filters.tsx: when kategoria is selected, fetch podkategorie (poziom=3, parent_id=selected kategoria ID)",
+        "Use getKategorieByPoziom(3, kategoriaId) from actions/kategorie.ts",
+        "Populate Podkategoria select with fetched data, format: 'kod - nazwa'",
+        "Podkategoria select disabled (opacity-50, pointer-events-none) when no kategoria is selected",
+        "When kategoria changes, reset podkategoria and clear podkategoria URL param",
+        "npm run build passes"
       ],
       "priority": 4,
       "passes": true,
-      "notes": "Already implemented in UX-002. handleEditById/handleDeleteById in PozycjeView, stopPropagation on buttons.",
-      "dependsOn": ["UX-003"]
+      "notes": "Uses kategorieOptions to resolve ID, fetches podkategorie with getKategorieByPoziom(3, id)",
+      "dependsOn": ["PF-003"]
     },
     {
-      "id": "UX-005",
-      "title": "Update typography to minimalist style",
-      "description": "As a user, I want consistent typography with hierarchy through weight and color.",
+      "id": "PF-005",
+      "title": "Wire dropdown selections to URL params and filtering",
+      "description": "As a user, selecting a category in the dropdown should filter the pozycje table via URL params.",
       "acceptanceCriteria": [
-        "Table headers: change from 'text-xs uppercase tracking-wider' to 'text-sm font-medium text-muted-foreground'",
-        "Nazwa column: change to 'text-sm font-normal text-foreground'",
-        "Jednostka column: add 'text-white/50' for muted look",
-        "Cena column: add 'font-medium' for emphasis",
-        "All columns use 'text-sm' consistently",
-        "Typecheck passes",
-        "Verify in browser using dev-browser skill"
+        "Selecting a kategoria updates URL param ?kategoria=XX (where XX is the kod like '01')",
+        "Selecting a podkategoria updates URL param ?podkategoria=YY (where YY is the kod like '01')",
+        "Selecting 'Wszystkie kategorie' removes kategoria and podkategoria URL params",
+        "Selecting 'Wszystkie podkategorie' removes podkategoria URL param",
+        "page.tsx passes these filters to getPozycje() which already handles kod prefix filtering",
+        "Table updates correctly: branza only -> all positions, branza+kategoria -> narrowed, branza+kategoria+podkategoria -> most narrow",
+        "npm run build passes",
+        "Verify at localhost:3000/pozycje - select BUD, then kategoria, verify table filters correctly"
       ],
       "priority": 5,
       "passes": true,
-      "notes": "Updated all headers to text-sm font-medium text-muted-foreground. Updated Nazwa, Jednostka, Cena cells. Build passes.",
-      "dependsOn": ["UX-004"]
+      "notes": "Already wired - handleKategoriaChange/handlePodkategoriaChange update URL params, page.tsx passes to getPozycje which builds kod prefix filter",
+      "dependsOn": ["PF-004"]
     },
     {
-      "id": "UX-006",
-      "title": "Update branza-tabs to show full names",
-      "description": "As a user, I want to see full branża names instead of 3-letter codes.",
+      "id": "PF-006",
+      "title": "Update typ badges to R+M / R / M with colors",
+      "description": "As a user, I want to see short typ labels (R+M, R, M) with distinct colors instead of full words.",
       "acceptanceCriteria": [
-        "Update branza-tabs.tsx to display: Budowlana, Elektryczna, Sanitarna, Teletechnika, HVAC",
-        "Keep the same styling (glass container, amber glow on active)",
-        "Tab buttons wider to accommodate full names",
-        "Typecheck passes",
-        "Verify in browser using dev-browser skill"
+        "In pozycje-columns.tsx: update TYP_LABELS to: komplet='R+M', robocizna='R', material='M'",
+        "Update TYP_COLORS to: komplet='bg-amber-500/10 text-amber-400 border-amber-500/20', robocizna='bg-blue-500/10 text-blue-400 border-blue-500/20', material='bg-green-500/10 text-green-400 border-green-500/20'",
+        "Badge size reduced if needed (shorter labels need less space), column size can be reduced from 100 to 70",
+        "Also update typ display in pozycja-detail-panel.tsx if it uses the same labels",
+        "npm run build passes",
+        "Verify at localhost:3000/pozycje - badges show R+M (amber), R (blue), M (green)"
       ],
       "priority": 6,
       "passes": true,
-      "notes": "Changed {kod} to {nazwa} in tab display. Full names already existed in BRANZE constant.",
+      "notes": "Updated labels: R+M amber, R blue, M green. Also updated detail panel to show full label.",
       "dependsOn": []
     },
     {
-      "id": "UX-007",
-      "title": "Add kategoria dropdown filter to kategorie-view",
-      "description": "As a user, I want to filter by kategoria to see only its podkategorie.",
+      "id": "PF-007",
+      "title": "Final verification and build",
+      "description": "As a developer, verify all changes work together end-to-end.",
       "acceptanceCriteria": [
-        "Add Select dropdown after BranzaTabs in kategorie-view.tsx",
-        "Options: 'Wszystkie kategorie' + list of kategorias from current branża",
-        "Dropdown shows kategoria.nazwa for each option",
-        "Selected value stored in component state",
-        "Typecheck passes"
+        "npm run build passes without errors",
+        "Verify /pozycje: empty state shown when no branza selected",
+        "Verify /pozycje?branza=BUD: shows all BUD pozycje, kategoria dropdown populated",
+        "Verify selecting kategoria filters the table correctly",
+        "Verify selecting podkategoria narrows further",
+        "Verify changing branza resets both dropdowns",
+        "Verify typ badges: R+M amber, R blue, M green",
+        "Verify search still works alongside category filters",
+        "No console errors"
       ],
       "priority": 7,
       "passes": true,
-      "notes": "Added Select with 'all' default + kategorie from current branza. State stored in selectedKategoriaId.",
-      "dependsOn": ["UX-006"]
-    },
-    {
-      "id": "UX-008",
-      "title": "Filter kategorie-list based on dropdown selection",
-      "description": "As a user, I want the grid to show only selected kategoria's children.",
-      "acceptanceCriteria": [
-        "When 'Wszystkie kategorie' selected: show all kategorie (current behavior)",
-        "When specific kategoria selected: show only its podkategorie",
-        "Pass filtered data to KategorieList component",
-        "Typecheck passes",
-        "Verify in browser using dev-browser skill"
-      ],
-      "priority": 8,
-      "passes": true,
-      "notes": "Filtered kategorie array based on selectedKategoriaId before passing to KategorieList.",
-      "dependsOn": ["UX-007"]
-    },
-    {
-      "id": "UX-009",
-      "title": "Update kategorie-list to 3-column grid",
-      "description": "As a user, I want kategorie displayed in a 3-column grid layout.",
-      "acceptanceCriteria": [
-        "Update kategorie-list.tsx grid classes to 'grid grid-cols-3 gap-4'",
-        "Cards display in 3 columns on desktop",
-        "Typecheck passes",
-        "Verify in browser using dev-browser skill"
-      ],
-      "priority": 9,
-      "passes": true,
-      "notes": "Changed 'grid gap-3' to 'grid grid-cols-3 gap-4'. Build passes.",
-      "dependsOn": ["UX-008"]
-    },
-    {
-      "id": "UX-010",
-      "title": "Adjust kategoria-card for grid layout",
-      "description": "As a user, I want kompaktowe karty that fit well in 3-column grid.",
-      "acceptanceCriteria": [
-        "Update kategoria-card.tsx padding from p-4 to p-3",
-        "Reduce icon button sizes if needed",
-        "Card content remains readable and clickable",
-        "Typecheck passes",
-        "Verify in browser using dev-browser skill"
-      ],
-      "priority": 10,
-      "passes": true,
-      "notes": "Changed p-4 to p-3 in header, px-4 to px-3 in children. Build passes.",
-      "dependsOn": ["UX-009"]
-    },
-    {
-      "id": "UX-011",
-      "title": "Final verification and build",
-      "description": "As a developer, I want to verify all changes work together.",
-      "acceptanceCriteria": [
-        "npm run build passes without errors",
-        "Verify /pozycje: table has 6 columns (Kod, Nazwa, Jednostka, Typ, Cena, Akcje)",
-        "Verify row hover shows edit/delete icons",
-        "Verify edit icon opens form panel",
-        "Verify delete icon opens confirm panel",
-        "Verify /kategorie/BUD: tabs show full names",
-        "Verify dropdown filter works",
-        "Verify grid shows 3 columns",
-        "No console errors"
-      ],
-      "priority": 11,
-      "passes": true,
-      "notes": "Build passes. All file verifications pass. 6 columns in pozycje, action icons with hover opacity, tabs with full names, dropdown filter, 3-column grid, compact cards.",
-      "dependsOn": ["UX-005", "UX-010"]
+      "notes": "All stories complete. Build passes. All features verified.",
+      "dependsOn": ["PF-005", "PF-006"]
     }
   ]
 }
