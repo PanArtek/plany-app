@@ -1,64 +1,68 @@
 # Ralph Progress Log
-Started: Fri Feb  6 11:20:22 CET 2026
+Started: Fri Feb  6 12:21:22 CET 2026
 ---
 
-## US-001: enum types + ALTER tables + prevent_unlock trigger ✅
-- Migration: business_logic_types_and_alters
-- 3 enums: zamowienie_status, umowa_status, realizacja_wpis_typ
-- ALTER rewizje: +is_accepted, +accepted_at
-- ALTER projekty: +accepted_rewizja_id
-- Trigger: trigger_prevent_unlock_accepted + rewizje_prevent_unlock_accepted
+## PROJ-001 + PROJ-002: Server Actions + Validation Schemas [DONE]
+- Created actions/projekty.ts with full CRUD (getProjekty, getProjekt, createProjekt, updateProjekt, deleteProjekt)
+- Created lib/validations/projekty.ts with Zod schemas
+- Slug generation handles Polish characters (ą→a, ć→c, etc.)
+- Rewizje count via separate query on rewizje table
+- Build passes
 
-## US-010: get_podwykonawcy_aggregated function ✅
-- Migration: fn_get_podwykonawcy_aggregated
-- Aggregation: podwykonawcy -> stawki_podwykonawcow -> pozycje_biblioteka
+## PROJ-003: Projekty page with table, filters, pagination [DONE]
+- Server component page.tsx reads searchParams, calls getProjekty
+- TanStack Table with columns: Nazwa, Klient, Status, Rewizje, Data
+- Filters: search with 300ms debounce + status Select dropdown
+- Pagination: 15/page, hardcoded /projekty route
+- View manages detailPanel, formPanel, deletePanel states
+- Build passes
 
-## US-011: get_dostawcy_aggregated function ✅
-- Migration: fn_get_dostawcy_aggregated
-- Aggregation: dostawcy -> ceny_dostawcow -> biblioteka_skladowe_materialy -> pozycje_biblioteka
+## PROJ-004: Status badges [DONE]
+- Shared config in lib/projekty/status-config.ts
+- StatusBadge component exported from projekty-table.tsx
+- 5 statuses with Polish labels and color-coded badges
+- Build passes
 
-## US-002: zamowienia tables (5 tables) ✅
-- Migration: zamowienia_tables
-- Tables: zamowienia, zamowienie_pozycje, zamowienie_pozycje_zrodla, zamowienie_dostawy, zamowienie_dostawy_pozycje
-- GENERATED ALWAYS: wartosc = ilosc_zamowiona * cena_jednostkowa
+## PROJ-005: Projekt form panel [DONE]
+- SlidePanel with react-hook-form + zodResolver
+- Form schema uses .or(z.literal('')) pattern for optional strings
+- Powierzchnia uses valueAsNumber on onChange
+- Add/edit modes, toast feedback
+- Build passes
 
-## US-003: umowy tables (4 tables) + realizacja_wpisy ✅
-- Migration: umowy_realizacja_tables
-- Tables: umowy, umowa_pozycje, umowa_pozycje_zrodla, umowa_wykonanie, realizacja_wpisy
-- GENERATED ALWAYS: wartosc = ilosc * stawka, procent_wykonania = ilosc_wykonana/ilosc*100
+## PROJ-006: Projekt detail panel [DONE]
+- SlidePanel variant='wide' with header (name + status badge + edit/delete buttons)
+- Sections: Dane projektu, Rewizje, Otwórz kosztorys (disabled)
+- Wired into projekty-view.tsx with edit/delete handlers
+- Build passes
 
-## US-004: indexes (27 indexes) ✅
-- Migration: business_logic_indexes
-- 27 indexes across all 10 new tables
+## PROJ-007: Server Actions for rewizje CRUD [DONE]
+- Created actions/rewizje.ts with getRewizje, createRewizja, lockRewizja, unlockRewizja
+- Auto-increment numer using MAX(numer)+1
+- revalidatePath('/projekty') after mutations
+- Build passes
 
-## US-005: RLS policies for zamowienia tables ✅
-- Migration: rls_zamowienia
-- 20 policies (4 per table x 5 tables)
-- Pattern A (direct org_id), Pattern B (1 JOIN), Pattern B x2 (2 JOINs)
+## PROJ-008: Rewizja selector in detail panel [DONE]
+- Horizontal badges R0, R1, R2... with Lock/Check icons
+- Selected revision shows details (numer, nazwa, status, date)
+- Create new revision, lock/unlock toggle
+- Auto-selects latest revision on load
+- Build passes
 
-## US-006: RLS policies for umowy + realizacja tables ✅
-- Migration: rls_umowy_realizacja
-- 20 policies (4 per table x 5 tables)
+## PROJ-009: Delete projekt with confirmation [DONE]
+- Reuses DeleteConfirmPanel from kategorie module
+- Warning message about irreversible operation
+- ON DELETE CASCADE handles revisions
+- Build passes
 
-## US-007: trigger functions ✅
-- Migration: business_logic_triggers
-- 3x updated_at triggers (reusing existing function)
-- 2x auto_numer triggers (ZAM/YYYY/NNN, UMW/YYYY/NNN)
-- 2x auto_sum triggers (ilosc_dostarczona, ilosc_wykonana)
+## PROJ-010: Seed sample data [DONE]
+- Created Demo Organization (organizations table was empty)
+- 4 projects: Biuro Acme (realizacja, 3 rewizje), Klinika (ofertowanie, 2), Coworking (draft, 1), Restauracja (zamkniety, 2)
+- Multiple locked revisions
+- Idempotent: ON CONFLICT + NOT EXISTS
+- Migration applied successfully
 
-## US-008: generate_zamowienia_draft function ✅
-- Migration: fn_generate_zamowienia_draft
-- private.generate_zamowienia_draft (SECURITY DEFINER) + public wrapper (SECURITY INVOKER)
-- Creates private schema if not exists
-
-## US-009: generate_umowy_draft function ✅
-- Migration: fn_generate_umowy_draft
-- private.generate_umowy_draft (SECURITY DEFINER) + public wrapper (SECURITY INVOKER)
-
-## US-012: Regenerate TypeScript types ✅
-- Updated lib/supabase/database.types.ts
-- Verified all 10 new tables, 3 new enums, altered columns, 4 new functions
-- npm run build passes
-
----
-ALL 12 STORIES COMPLETE. npm run build passes.
+## Notes
+- organizations table was empty, had to create Demo Organization first
+- organization_id is NOT NULL on projekty (unlike dostawcy where it's nullable)
+- stale .next cache caused ENOENT error on pages-manifest.json - fixed with rm -rf .next
