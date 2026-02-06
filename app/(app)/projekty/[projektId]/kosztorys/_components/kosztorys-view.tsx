@@ -12,6 +12,7 @@ import { KosztorysTable } from './kosztorys-table';
 import { AddFromLibraryPanel } from './panels/add-from-library-panel';
 import { PozycjaDetailPanel } from './panels/pozycja-detail-panel';
 import { LockedBanner } from './locked-banner';
+import { StatusBadge } from '@/app/(app)/projekty/_components/status-badge';
 import { DeleteConfirmPanel } from '@/app/(app)/kategorie/_components/panels/delete-confirm-panel';
 import { deleteKosztorysPozycje } from '@/actions/kosztorys';
 import { toast } from 'sonner';
@@ -95,6 +96,7 @@ export function KosztorysView({ data }: KosztorysViewProps) {
           </Link>
           <ChevronRight className="h-3.5 w-3.5 text-white/30" />
           <span className="text-white/90 font-medium">Kosztorys</span>
+          <StatusBadge status={projekt.status} />
         </div>
         <div className="flex items-center gap-3">
           <RewizjaSelector
@@ -117,7 +119,7 @@ export function KosztorysView({ data }: KosztorysViewProps) {
 
       {/* Locked banner */}
       {isLocked && (
-        <LockedBanner rewizja={rewizja} />
+        <LockedBanner rewizja={rewizja} isAccepted={rewizja.is_accepted} />
       )}
 
       {/* Main content: sidebar + table + detail */}

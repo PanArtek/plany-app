@@ -26,6 +26,8 @@ export interface ProjektWithCount {
   status: string;
   notatki: string | null;
   created_at: string;
+  sent_at: string | null;
+  accepted_rewizja_id: string | null;
   rewizjeCount: number;
 }
 
@@ -47,6 +49,8 @@ export interface ProjektBase {
   notatki: string | null;
   created_at: string;
   updated_at: string;
+  sent_at: string | null;
+  accepted_rewizja_id: string | null;
 }
 
 // --- Pagination ---
@@ -83,7 +87,7 @@ export async function getProjekty(filters: ProjektyFilters): Promise<ProjektyRes
 
   let query = supabase
     .from('projekty')
-    .select('id, nazwa, slug, klient, adres, powierzchnia, status, notatki, created_at', { count: 'exact' })
+    .select('id, nazwa, slug, klient, adres, powierzchnia, status, notatki, created_at, sent_at, accepted_rewizja_id', { count: 'exact' })
     .order('created_at', { ascending: false })
     .range(offset, offset + PAGE_SIZE - 1);
 
@@ -128,6 +132,8 @@ export async function getProjekty(filters: ProjektyFilters): Promise<ProjektyRes
       status: d.status as string,
       notatki: d.notatki as string | null,
       created_at: d.created_at as string,
+      sent_at: (d.sent_at as string) || null,
+      accepted_rewizja_id: (d.accepted_rewizja_id as string) || null,
       rewizjeCount: countsMap[d.id as string] || 0,
     })),
     totalCount: count ?? 0,
@@ -143,7 +149,7 @@ export async function getProjekt(id: string): Promise<ProjektBase | null> {
 
   const { data, error } = await supabase
     .from('projekty')
-    .select('id, nazwa, slug, klient, adres, powierzchnia, status, notatki, created_at, updated_at')
+    .select('id, nazwa, slug, klient, adres, powierzchnia, status, notatki, created_at, updated_at, sent_at, accepted_rewizja_id')
     .eq('id', id)
     .single();
 

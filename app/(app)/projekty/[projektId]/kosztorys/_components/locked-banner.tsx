@@ -9,9 +9,10 @@ import { toast } from 'sonner';
 
 interface LockedBannerProps {
   rewizja: RewizjaInfo;
+  isAccepted?: boolean;
 }
 
-export function LockedBanner({ rewizja }: LockedBannerProps) {
+export function LockedBanner({ rewizja, isAccepted = false }: LockedBannerProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
 
@@ -38,18 +39,23 @@ export function LockedBanner({ rewizja }: LockedBannerProps) {
       <div className="flex items-center gap-2 text-sm text-amber-500">
         <Lock className="h-4 w-4 shrink-0" />
         <span>
-          Rewizja R{rewizja.numer} jest zamknięta. Edycja zablokowana.
+          {isAccepted
+            ? `Rewizja R${rewizja.numer} została zaakceptowana. Edycja zablokowana na stałe.`
+            : `Rewizja R${rewizja.numer} jest zamknięta. Edycja zablokowana.`
+          }
         </span>
       </div>
-      <Button
-        onClick={handleCopy}
-        disabled={loading}
-        size="sm"
-        variant="outline"
-        className="text-amber-500 border-amber-500/30 hover:bg-amber-500/10 shrink-0"
-      >
-        {loading ? 'Kopiowanie...' : 'Utwórz nową rewizję'}
-      </Button>
+      {!isAccepted && (
+        <Button
+          onClick={handleCopy}
+          disabled={loading}
+          size="sm"
+          variant="outline"
+          className="text-amber-500 border-amber-500/30 hover:bg-amber-500/10 shrink-0"
+        >
+          {loading ? 'Kopiowanie...' : 'Utwórz nową rewizję'}
+        </Button>
+      )}
     </div>
   );
 }

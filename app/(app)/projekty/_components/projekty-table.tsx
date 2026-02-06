@@ -7,7 +7,7 @@ import {
   flexRender,
 } from '@tanstack/react-table';
 import { type ProjektWithCount } from '@/actions/projekty';
-import { getStatusConfig } from '@/lib/projekty/status-config';
+import { StatusBadge } from './status-badge';
 import { cn } from '@/lib/utils';
 
 interface ProjektyTableProps {
@@ -35,6 +35,17 @@ const columns = [
       return <StatusBadge status={status} />;
     },
   }),
+  columnHelper.accessor('sent_at', {
+    header: 'Wysłano',
+    cell: (info) => {
+      const val = info.getValue();
+      return (
+        <span className="text-white/50 text-sm">
+          {val ? new Date(val).toLocaleDateString('pl-PL') : '—'}
+        </span>
+      );
+    },
+  }),
   columnHelper.accessor('rewizjeCount', {
     header: 'Rewizje',
     cell: (info) => (
@@ -51,15 +62,7 @@ const columns = [
   }),
 ];
 
-export function StatusBadge({ status }: { status: string }) {
-  const c = getStatusConfig(status);
-
-  return (
-    <span className={cn('inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full border', c.className)}>
-      {c.label}
-    </span>
-  );
-}
+export { StatusBadge } from './status-badge';
 
 export function ProjektyTable({ data, onRowClick }: ProjektyTableProps) {
   const table = useReactTable({

@@ -1,77 +1,34 @@
 # Ralph Progress Log
-Started: Fri Feb  6 13:43:42 CET 2026
+Started: Fri Feb  6 14:31:55 CET 2026
 ---
 
-## KSZ-001: Validation schemas for kosztorys ✅
-- Created lib/validations/kosztorys.ts
-- 4 schemas: updateKosztorysPozycjaSchema, updateSkladowaRSchema, updateSkladowaMSchema, libraryFiltersSchema
-- All types exported
-- Build passes
+## AKC-001: DB migration - acceptance state machine ✅
+- Added sent_at column to projekty
+- Recreated rewizje_summary view to include is_accepted/accepted_at (DROP + CREATE needed due to column order change)
+- Created change_project_status() RPC with full state machine validation
+- Tested: invalid transitions properly raise exceptions, draft→ofertowanie requires locked rewizja
 
-## KSZ-002: Server Actions for kosztorys reads ✅
-- Created actions/kosztorys.ts with read functions
-- getKosztorysData: joins kosztorys_pozycje_view with pozycje_biblioteka and kategorie hierarchy for kod/branza/kategoria names
-- getKosztorysPozycjaDetail: fetches pozycja + skladoweR/M + podwykonawcy/dostawcy dropdowns
-- getLibraryPositions: paginated with search/branza filters and skladowe counts
+## AKC-002: Server action wrapper ✅
+- Created actions/acceptance.ts with changeProjectStatus() calling supabase.rpc()
 
-## KSZ-003: Server Actions for kosztorys writes ✅
-- addPositionFromLibrary: COPY pattern with 3-tier price discovery (cheapest supplier -> library default -> 0)
-- updateKosztorysPozycja, updateKosztorysSkladowaR, updateKosztorysSkladowaM
-- deleteKosztorysPozycje (cascade), copyRevision (via RPC)
-- All writes call revalidatePath('/projekty')
+## AKC-003: Status config + interfaces + StatusBadge extraction ✅
+- Updated labels: ofertowanie→'Wysłano do klienta' (blue), realizacja→green, zamkniety→gray
+- Added sent_at and accepted_rewizja_id to ProjektBase and ProjektWithCount
+- Extracted StatusBadge to separate status-badge.tsx, re-exported from projekty-table.tsx for compatibility
 
-## KSZ-004: Kosztorys page route and 3-column layout ✅
-- Page at app/(app)/projekty/[projektId]/kosztorys/page.tsx (async server component)
-- Deleted old app/(app)/kosztorys/ placeholder
-- KosztorysView: 3-column layout (sidebar 260px, main flex-1, detail SlidePanel)
-- Header with breadcrumb, rewizja selector, + Dodaj pozycję button
-- Enabled 'Otwórz kosztorys' link in projekt detail panel
+## AKC-004: Projects table Wysłano column ✅
+- Added sent_at column accessor between Status and Rewizje columns
 
-## KSZ-005: Rewizja selector dropdown ✅
-- Select component with R0, R1, R2 options
-- Lock/Check icons for locked/accepted rewizje
-- Navigates via router.push with ?rewizja= param
+## AKC-005 + AKC-006: Action buttons + accept dialog ✅
+- Contextual action buttons based on projekt.status (DRAFT/OFERTOWANIE/REALIZACJA/ODRZUCONY/ZAMKNIETY)
+- Inline accept revision dialog with locked rewizja selector
+- sent_at shown in project data when not null
+- All transitions call handleStatusChange with refreshAll after success
 
-## KSZ-006: Sidebar branża tree with filtering ✅
-- Groups pozycje by branża (3 chars) then kategoria (6 chars)
-- "Wszystkie" at top, expandable branże with counts
-- Search input filters tree + table
-- Amber highlight for active filter
+## AKC-007: Kosztorys header badge + accepted banner ✅
+- Added StatusBadge to kosztorys breadcrumb header
+- Added isAccepted prop to LockedBanner: permanent lock message, hides copy button
+- Added status to ProjektInfo interface and select query
 
-## KSZ-007: KPI summary bar ✅
-- 5 KPIs: Wartość netto, Marża %, Zysk, Cena/m², Pozycje
-- Recalculates from filtered pozycje
-- pl-PL currency formatting
-
-## KSZ-008: Kosztorys table with grouping ✅
-- Custom grouping (not TanStack) with branża/kategoria collapsible headers
-- 10 columns: Lp, Kod, Zadanie, Ilość, Jedn, R, M, Narzut%, Cena/j, Wartość
-- Group headers show name + Σ sum
-- Selected row highlighted with amber border-l-2
-- Empty state with prompt to add from library
-
-## KSZ-009: Add position from library panel ✅
-- SlidePanel with search input and branża dropdown filter
-- Checkbox multi-select with 'Wybrano: N' counter
-- Sequential addPositionFromLibrary calls with useTransition
-- 'Dodano' label for already-added positions
-
-## KSZ-010: Position detail panel with składowe ✅
-- Loads detail via getKosztorysPozycjaDetail on pozycjaId change
-- Editable fields: Nazwa, Ilość, Jedn., Narzut %
-- Inline editable składowe R (stawka + podwykonawca) and M (cena + dostawca)
-- Totals: R+M, Narzut, Cena/j, WARTOŚĆ
-- isLocked disables all inputs
-
-## KSZ-011: Delete positions and locked banner ✅
-- Reuses DeleteConfirmPanel from kategorie
-- LockedBanner with copyRevision + redirect to new rewizja
-- isLocked hides '+ Dodaj pozycję' button
-
-## KSZ-012: Seed kosztorys test data ✅
-- 12 positions for Biuro Acme R2 (unlocked rewizja)
-- Linked to pozycje_biblioteka by kod
-- BUD(4), ELE(3), SAN(2), TEL(1), HVC(2)
-- Each with 1-3 robocizna + 1-3 materiały składowe
-- Total ~210K zł
-- Applied via Supabase MCP apply_migration
+## AKC-008: Seed data ✅
+- Reset Biuro Acme to draft with R0/R1 locked for manual flow testing
