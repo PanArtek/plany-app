@@ -1,7 +1,29 @@
-import { PageHeader } from "@/components/layout/page-header";
+import { getProjekty } from '@/actions/projekty';
+import { ProjektyView } from './_components/projekty-view';
+import { type ProjektyFilters } from '@/lib/validations/projekty';
 
-export default function ProjektyPage() {
+interface PageProps {
+  searchParams: Promise<{
+    search?: string;
+    status?: string;
+    page?: string;
+  }>;
+}
+
+export default async function ProjektyPage({ searchParams }: PageProps) {
+  const params = await searchParams;
+
+  const filters: ProjektyFilters = {
+    search: params.search,
+    status: params.status,
+    page: params.page ? Number(params.page) : 1,
+  };
+
+  const result = await getProjekty(filters);
+
   return (
-    <PageHeader title="Projekty" badge="Coming soon" />
+    <div className="p-6">
+      <ProjektyView initialData={result} />
+    </div>
   );
 }
