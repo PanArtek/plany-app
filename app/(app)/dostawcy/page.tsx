@@ -1,7 +1,29 @@
-import { PageHeader } from "@/components/layout/page-header";
+import { getDostawcy } from '@/actions/dostawcy';
+import { DostawcyView } from './_components/dostawcy-view';
+import { type DostawcyFilters } from '@/lib/validations/dostawcy';
 
-export default function DostawcyPage() {
+interface PageProps {
+  searchParams: Promise<{
+    search?: string;
+    showInactive?: string;
+    page?: string;
+  }>;
+}
+
+export default async function DostawcyPage({ searchParams }: PageProps) {
+  const params = await searchParams;
+
+  const filters: DostawcyFilters = {
+    search: params.search,
+    showInactive: params.showInactive === 'true',
+    page: params.page ? Number(params.page) : 1,
+  };
+
+  const result = await getDostawcy(filters);
+
   return (
-    <PageHeader title="Dostawcy" badge="Coming soon" />
+    <div className="p-6">
+      <DostawcyView initialData={result} />
+    </div>
   );
 }

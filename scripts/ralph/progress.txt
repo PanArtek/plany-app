@@ -1,33 +1,54 @@
 # Ralph Progress Log
-Started: Fri Feb  6 08:47:54 CET 2026
+Started: Fri Feb  6 09:21:15 CET 2026
 ---
-[US-001] DONE - Created kategorie-table.tsx tree-table component with:
-  - Div-based table (not TanStack), grid columns layout
-  - Kategoria rows (level 2) with amber kod, children count badge, Plus/Pencil/Trash2 actions
-  - Podkategoria rows (level 3) with pl-6 indentation, ↳ prefix, dimmer text, Pencil/Trash2 actions
-  - Client-side search filtering (case-insensitive on kod/nazwa)
-  - Empty state when no kategorie
-  - Build passes ✓
-[US-003] DONE - Removed old unused components and cleaned up store:
-  - Deleted: branze-grid.tsx, branza-tile.tsx, kategoria-card.tsx, kategorie-list.tsx, branza-tabs.tsx
-  - Simplified kategorie-ui-store.ts to just BranzaKod type export
-  - No broken imports, build passes ✓
-[US-004] DONE - Final verification complete:
-  - npm run build passes ✓
-  - /kategorie: breadcrumb 'Kategorie', empty state shown, no branza tiles grid ✓
-  - Clicking BUD tab: breadcrumb 'Kategorie / Budowlana', tree-table with indented podkategorie ✓
-  - Podkategorie rows indented with ↳ prefix and dimmer text ✓
-  - 'Dodaj kategorię' button appears when branza selected ✓
-  - '+' on kategoria row opens form panel for adding podkategoria ✓
-  - Delete on row with children shows blocked delete panel ✓
-  - Search filters kategorie/podkategorie by name/kod in real-time ✓
-  - Clicking active branza tab deselects it (returns to empty state) ✓
-  - 0 console errors ✓
----
-ALL 4 STORIES COMPLETE. Feature branch ralph/kategorie-ux-redesign ready for PR.
----
-[US-002] DONE - Rewrote page.tsx and kategorie-view.tsx for single-page layout:
-  - page.tsx: server component reading branza/search from searchParams, calls getKategorieTree()
-  - Deleted app/(app)/kategorie/[branza]/ directory
-  - kategorie-view.tsx: 'use client' with Suspense wrapper, URL-based branza tabs (identical to pozycje-filters), breadcrumb, search input, KategorieTable integration, delete confirm panel
-  - Build passes ✓
+## US-001: Zod schemas for produkty, dostawcy, and ceny_dostawcow ✅
+- Created lib/validations/materialy.ts: createProduktSchema, updateProduktSchema, materialyFiltersSchema, types, jednostkaOptions
+- Created lib/validations/dostawcy.ts: createDostawcaSchema, updateDostawcaSchema, createCenaSchema, updateCenaSchema, dostawcyFiltersSchema, types
+- Build passes ✅
+
+## US-002: Server Actions - getMaterialy with aggregation ✅
+- Created Postgres function `get_materialy_aggregated` via Supabase migration
+- Implemented getMaterialy() using supabase.rpc() in actions/materialy.ts
+- Handles branza/kategoria/podkategoria filtering via kod prefix matching through JOINs
+
+## US-003: Server Actions - CRUD produkty and detail queries ✅
+- createProdukt, updateProdukt, deleteProdukt with proper validation and error handling
+- getProdukt, getProduktDostawcy, getProduktPozycje for detail panel
+- getAllProdukty (no pagination) for select dropdowns
+- Delete checks usage in ceny_dostawcow and biblioteka_skladowe_materialy
+
+## US-004: Server Actions - CRUD dostawcy and ceny_dostawcow ✅
+- Full CRUD for dostawcy in actions/dostawcy.ts
+- getDostawcy with produktyCount via two-query approach (list + count)
+- getDostawcaCennik, getDostawcaPozycje for detail panel
+- createCena/updateCena/deleteCena with dual revalidatePath
+- Build passes ✅
+
+## US-005/006/007: Materialy page, filters, table ✅
+- Server Component page reads searchParams, calls getMaterialy, passes to client view
+- Filters: branza tabs + cascading kategoria/podkategoria dropdowns + debounced search
+- TanStack Table with 5 columns (nazwa+sku, jednostka, pozycje, dostawcy, najlepsza cena)
+- Pagination component, empty state
+
+## US-008/009: Material detail panel + form panel + delete ✅
+- Detail panel fetches product data lazily via useEffect
+- Sections: dostawcy z cenami (sorted by price, NAJLEPSZA badge), pozycje (links to /pozycje)
+- Form panel with produktFormSchema (separate from server-side schema for zodResolver compat)
+- Installed shadcn Checkbox component
+- DeleteConfirmPanel reused from kategorie
+
+## US-010/011/012: Dostawcy page + detail panel + forms ✅
+- Simpler layout than materialy (no branza tabs, just search)
+- Detail panel with kontakt, cennik CRUD (add/edit/delete prices), pozycje links
+- Dostawca form with Textarea for kontakt
+- Cennik form fetches all products via getAllProdukty for dropdown
+- z.number() instead of z.coerce.number() for zodResolver compatibility
+
+## US-013: Seed data ✅
+- 17 produkty, 5 dostawcy, 21 ceny_dostawcow via Supabase migration
+- ON CONFLICT DO NOTHING for idempotency
+- Uses JOIN on sku/kod to link by name (no hardcoded UUIDs)
+
+### Learnings:
+- zodResolver with z.default() creates input/output type mismatch - use separate form schema without defaults
+- z.coerce.number() also incompatible with zodResolver - use z.number() + valueAsNumber in input
