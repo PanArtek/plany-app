@@ -95,6 +95,24 @@ export interface NameIdPair {
   nazwa: string;
 }
 
+export interface BibliotekaSkladowaR {
+  id: string;
+  lp: number;
+  opis: string;
+  stawka_domyslna: number;
+  norma_domyslna: number;
+  jednostka: string;
+}
+
+export interface BibliotekaSkladowaM {
+  id: string;
+  lp: number;
+  nazwa: string;
+  cena_domyslna: number;
+  norma_domyslna: number;
+  jednostka: string | null;
+}
+
 export interface KosztorysPozycjaDetail {
   pozycja: {
     id: string;
@@ -109,6 +127,8 @@ export interface KosztorysPozycjaDetail {
   };
   skladoweR: SkladowaR[];
   skladoweM: SkladowaM[];
+  bibliotekaSkladoweR: BibliotekaSkladowaR[];
+  bibliotekaSkladoweM: BibliotekaSkladowaM[];
   podwykonawcy: NameIdPair[];
   dostawcy: NameIdPair[];
 }
@@ -305,8 +325,10 @@ export async function getKosztorysPozycjaDetail(
     return { success: false, error: mError.message };
   }
 
-  // 4. Fetch dropdown lists
-  const [podwykonawcyResult, dostawcyResult] = await Promise.all([
+  // 4. Fetch dropdown lists + library skladowe in parallel
+  const pozycjaBibliotekaId = pozycja.pozycja_biblioteka_id as string | null;
+
+  const [podwykonawcyResult, dostawcyResult, libRResult, libMResult] = await Promise.all([
     supabase
       .from('podwykonawcy')
       .select('id, nazwa')
@@ -317,6 +339,22 @@ export async function getKosztorysPozycjaDetail(
       .select('id, nazwa')
       .eq('aktywny', true)
       .order('nazwa'),
+    // 5. Fetch library skladowe robocizna (for override indicators)
+    pozycjaBibliotekaId
+      ? supabase
+          .from('biblioteka_skladowe_robocizna')
+          .select('id, lp, opis, stawka_domyslna, norma_domyslna, jednostka')
+          .eq('pozycja_biblioteka_id', pozycjaBibliotekaId)
+          .order('lp', { ascending: true })
+      : Promise.resolve({ data: null, error: null }),
+    // 6. Fetch library skladowe materialy (for override indicators)
+    pozycjaBibliotekaId
+      ? supabase
+          .from('biblioteka_skladowe_materialy')
+          .select('id, lp, nazwa, cena_domyslna, norma_domyslna, jednostka')
+          .eq('pozycja_biblioteka_id', pozycjaBibliotekaId)
+          .order('lp', { ascending: true })
+      : Promise.resolve({ data: null, error: null }),
   ]);
 
   return {
@@ -355,6 +393,22 @@ export async function getKosztorysPozycjaDetail(
         ilosc: m.ilosc != null ? Number(m.ilosc) : null,
         jednostka: m.jednostka as string | null,
         is_manual: m.is_manual as boolean,
+      })),
+      bibliotekaSkladoweR: (libRResult.data || []).map((r: Record<string, unknown>) => ({
+        id: r.id as string,
+        lp: Number(r.lp),
+        opis: r.opis as string,
+        stawka_domyslna: Number(r.stawka_domyslna ?? 0),
+        norma_domyslna: Number(r.norma_domyslna ?? 1),
+        jednostka: (r.jednostka as string) || 'h',
+      })),
+      bibliotekaSkladoweM: (libMResult.data || []).map((m: Record<string, unknown>) => ({
+        id: m.id as string,
+        lp: Number(m.lp),
+        nazwa: m.nazwa as string,
+        cena_domyslna: Number(m.cena_domyslna ?? 0),
+        norma_domyslna: Number(m.norma_domyslna ?? 1),
+        jednostka: m.jednostka as string | null,
       })),
       podwykonawcy: (podwykonawcyResult.data || []) as NameIdPair[],
       dostawcy: (dostawcyResult.data || []) as NameIdPair[],
