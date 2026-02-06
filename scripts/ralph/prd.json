@@ -158,8 +158,8 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 9,
-      "passes": false,
-      "notes": "",
+      "passes": true,
+      "notes": "Bottom Sheet drawer with cascading branza>kategoria>podkategoria filters, search, pagination, multi-select",
       "dependsOn": ["US-007", "US-008"]
     },
     {
