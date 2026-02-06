@@ -799,6 +799,115 @@ export async function resetSkladowaM(
   return { success: true };
 }
 
+// --- WRITE: Reset all skladowe of a position to library defaults ---
+
+export async function resetPozycjaToLibrary(
+  pozycjaId: string
+): Promise<ActionResult> {
+  const supabase = await createClient();
+
+  // 1. Fetch pozycja to get pozycja_biblioteka_id
+  const { data: pozycja, error: pozycjaError } = await supabase
+    .from('kosztorys_pozycje')
+    .select('id, pozycja_biblioteka_id')
+    .eq('id', pozycjaId)
+    .single();
+
+  if (pozycjaError || !pozycja) {
+    return { success: false, error: 'Pozycja nie znaleziona' };
+  }
+
+  const bibId = pozycja.pozycja_biblioteka_id as string | null;
+  if (!bibId) {
+    return { success: false, error: 'Pozycja nie ma powiązania z biblioteką' };
+  }
+
+  // 2. Fetch library and kosztorys skladowe in parallel
+  const [libRResult, libMResult, koszRResult, koszMResult] = await Promise.all([
+    supabase
+      .from('biblioteka_skladowe_robocizna')
+      .select('lp, stawka_domyslna, norma_domyslna')
+      .eq('pozycja_biblioteka_id', bibId)
+      .order('lp', { ascending: true }),
+    supabase
+      .from('biblioteka_skladowe_materialy')
+      .select('lp, cena_domyslna, norma_domyslna, produkt_id')
+      .eq('pozycja_biblioteka_id', bibId)
+      .order('lp', { ascending: true }),
+    supabase
+      .from('kosztorys_skladowe_robocizna')
+      .select('id, lp')
+      .eq('kosztorys_pozycja_id', pozycjaId)
+      .order('lp', { ascending: true }),
+    supabase
+      .from('kosztorys_skladowe_materialy')
+      .select('id, lp')
+      .eq('kosztorys_pozycja_id', pozycjaId)
+      .order('lp', { ascending: true }),
+  ]);
+
+  const libR = (libRResult.data || []) as { lp: number; stawka_domyslna: number; norma_domyslna: number }[];
+  const libM = (libMResult.data || []) as { lp: number; cena_domyslna: number; norma_domyslna: number; produkt_id: string | null }[];
+  const koszR = (koszRResult.data || []) as { id: string; lp: number }[];
+  const koszM = (koszMResult.data || []) as { id: string; lp: number }[];
+
+  // 3. Reset robocizna by lp matching
+  const rUpdates = koszR
+    .map((kr) => {
+      const lib = libR.find((l) => l.lp === kr.lp);
+      if (!lib) return null;
+      return supabase
+        .from('kosztorys_skladowe_robocizna')
+        .update({
+          stawka: lib.stawka_domyslna,
+          norma: lib.norma_domyslna,
+          is_manual: false,
+        })
+        .eq('id', kr.id);
+    })
+    .filter(Boolean);
+
+  // 4. Reset materialy by lp matching (with price discovery)
+  const mUpdates = await Promise.all(
+    koszM.map(async (km) => {
+      const lib = libM.find((l) => l.lp === km.lp);
+      if (!lib) return null;
+
+      let cena = lib.cena_domyslna;
+
+      // 3-tier price discovery for materials
+      if (lib.produkt_id) {
+        const { data: ceny } = await supabase
+          .from('ceny_dostawcow')
+          .select('cena_netto')
+          .eq('produkt_id', lib.produkt_id)
+          .eq('aktywny', true)
+          .order('cena_netto', { ascending: true })
+          .limit(1);
+
+        if (ceny && ceny.length > 0) {
+          cena = Number((ceny[0] as Record<string, unknown>).cena_netto);
+        }
+      }
+
+      return supabase
+        .from('kosztorys_skladowe_materialy')
+        .update({
+          cena,
+          norma: lib.norma_domyslna,
+          is_manual: false,
+        })
+        .eq('id', km.id);
+    })
+  );
+
+  // Execute all updates
+  await Promise.all([...rUpdates, ...mUpdates.filter(Boolean)]);
+
+  revalidatePath('/projekty');
+  return { success: true };
+}
+
 // --- WRITE: Delete positions ---
 
 export async function deleteKosztorysPozycje(
