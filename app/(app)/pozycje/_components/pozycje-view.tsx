@@ -107,16 +107,22 @@ function PozycjeViewContent({ initialData, initialFilters, initialSelected }: Po
     <div className="flex flex-col gap-4">
       <FiltersComponent onAddClick={handleAddClick} />
 
-      {/* Full-width table */}
-      <div className="overflow-auto" style={{ height: 'calc(100vh - 220px)' }}>
-        <PozycjeTable
-          data={initialData}
-          selectedId={selectedId}
-          onSelect={handleSelect}
-          onEdit={handleEditById}
-          onDelete={handleDeleteById}
-        />
-      </div>
+      {/* Full-width table or empty state */}
+      {initialData.length === 0 && !initialFilters.branza ? (
+        <div className="flex items-center justify-center" style={{ height: 'calc(100vh - 220px)' }}>
+          <p className="text-muted-foreground text-sm">Wybierz branżę aby wyświetlić pozycje</p>
+        </div>
+      ) : (
+        <div className="overflow-auto" style={{ height: 'calc(100vh - 220px)' }}>
+          <PozycjeTable
+            data={initialData}
+            selectedId={selectedId}
+            onSelect={handleSelect}
+            onEdit={handleEditById}
+            onDelete={handleDeleteById}
+          />
+        </div>
+      )}
 
       {/* Detail panel as SlidePanel */}
       {selectedPozycja && (

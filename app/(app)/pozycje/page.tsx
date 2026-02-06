@@ -23,7 +23,7 @@ export default async function PozycjePage({ searchParams }: PageProps) {
     selected: params.selected,
   };
 
-  const pozycje = await getPozycje(filters);
+  const pozycje = params.branza ? await getPozycje(filters) : [];
 
   return (
     <div className="p-6">
