@@ -9,6 +9,7 @@ import { type Pozycja, deletePozycja } from '@/actions/pozycje';
 import { type PozycjeFilters } from '@/lib/validations/pozycje';
 import { PozycjeFilters as FiltersComponent } from './pozycje-filters';
 import { PozycjeTable } from './pozycje-table';
+import { PozycjePagination } from './pozycje-pagination';
 import { PozycjaDetailPanel } from './pozycja-detail-panel';
 import { PozycjaFormPanel } from './panels/pozycja-form-panel';
 import { DeleteConfirmPanel } from '../../kategorie/_components/panels/delete-confirm-panel';
@@ -148,19 +149,22 @@ function PozycjeViewContent({ initialData, initialFilters, initialSelected, tota
 
       {/* Full-width table or empty state */}
       {initialData.length === 0 && !initialFilters.branza ? (
-        <div className="flex items-center justify-center" style={{ height: 'calc(100vh - 220px)' }}>
+        <div className="flex items-center justify-center" style={{ height: 'calc(100vh - 280px)' }}>
           <p className="text-muted-foreground text-sm">Wybierz branżę aby wyświetlić pozycje</p>
         </div>
       ) : (
-        <div className="overflow-auto" style={{ height: 'calc(100vh - 220px)' }}>
-          <PozycjeTable
-            data={initialData}
-            selectedId={selectedId}
-            onSelect={handleSelect}
-            onEdit={handleEditById}
-            onDelete={handleDeleteById}
-          />
-        </div>
+        <>
+          <div className="overflow-auto" style={{ height: 'calc(100vh - 330px)' }}>
+            <PozycjeTable
+              data={initialData}
+              selectedId={selectedId}
+              onSelect={handleSelect}
+              onEdit={handleEditById}
+              onDelete={handleDeleteById}
+            />
+          </div>
+          <PozycjePagination totalCount={totalCount} page={page} pageSize={pageSize} />
+        </>
       )}
 
       {/* Detail panel as SlidePanel */}
