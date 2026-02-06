@@ -138,7 +138,9 @@ export function PozycjaDetailPanel({ pozycja, open, onOpenChange, onEdit, onDele
           {pozycja.typ && (
             <div className="space-y-2">
               <h4 className="font-medium text-sm text-white/50">Typ</h4>
-              <p className="text-sm text-white">{pozycja.typ}</p>
+              <p className="text-sm text-white">
+                {{ komplet: 'R+M (Komplet)', robocizna: 'R (Robocizna)', material: 'M (Materiał)' }[pozycja.typ] || pozycja.typ}
+              </p>
             </div>
           )}
 

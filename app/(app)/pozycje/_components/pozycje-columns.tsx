@@ -17,15 +17,15 @@ declare module '@tanstack/react-table' {
 }
 
 const TYP_COLORS: Record<string, string> = {
-  robocizna: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
-  material: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+  robocizna: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
+  material: 'bg-green-500/10 text-green-400 border-green-500/20',
   komplet: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
 };
 
 const TYP_LABELS: Record<string, string> = {
-  robocizna: 'Robocizna',
-  material: 'Materiał',
-  komplet: 'Komplet',
+  robocizna: 'R',
+  material: 'M',
+  komplet: 'R+M',
 };
 
 function formatCena(value: number): string {
@@ -109,7 +109,7 @@ export function getPozycjeColumns({ onEdit, onDelete }: PozycjeColumnsOptions): 
         </Badge>
       );
     },
-    size: 100,
+    size: 70,
     meta: { hideOnTablet: true },
   },
   {
