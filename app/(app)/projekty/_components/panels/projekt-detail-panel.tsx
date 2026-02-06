@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/slide-panel';
 import { getProjekt, type ProjektBase } from '@/actions/projekty';
 import { getRewizje, createRewizja, lockRewizja, unlockRewizja, type RewizjaBase } from '@/actions/rewizje';
-import { StatusBadge } from '../projekty-table';
+import { StatusBadge } from '../status-badge';
 import { cn } from '@/lib/utils';
 
 interface ProjektDetailPanelProps {
