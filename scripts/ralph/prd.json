@@ -49,8 +49,8 @@
         "Typecheck passes"
       ],
       "priority": 3,
-      "passes": false,
-      "notes": "",
+      "passes": true,
+      "notes": "Created with shadcn Tooltip, amber dot indicator with reset callback",
       "dependsOn": []
     },
     {
