@@ -55,6 +55,7 @@ export interface ProjektInfo {
   nazwa: string;
   slug: string;
   powierzchnia: number | null;
+  status: string;
 }
 
 export interface KosztorysData {
@@ -141,7 +142,7 @@ export async function getKosztorysData(
   // 1. Fetch projekt
   const { data: projekt, error: projektError } = await supabase
     .from('projekty')
-    .select('id, nazwa, slug, powierzchnia')
+    .select('id, nazwa, slug, powierzchnia, status')
     .eq('id', projektId)
     .single();
 
