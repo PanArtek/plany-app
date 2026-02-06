@@ -104,8 +104,8 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 6,
-      "passes": false,
-      "notes": "",
+      "passes": true,
+      "notes": "AlertDialog confirmation, button hidden when locked or no overrides",
       "dependsOn": ["US-004", "US-005"]
     },
     {
