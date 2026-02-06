@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Plus, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -9,7 +9,7 @@ import { RewizjaSelector } from './rewizja-selector';
 import { KosztorysSidebar } from './kosztorys-sidebar';
 import { KosztorysSummary } from './kosztorys-summary';
 import { KosztorysTable } from './kosztorys-table';
-import { AddFromLibraryPanel } from './panels/add-from-library-panel';
+import { LibraryDrawer } from './library-drawer';
 import { PozycjaDetailPanel } from './panels/pozycja-detail-panel';
 import { LockedBanner } from './locked-banner';
 import { StatusBadge } from '@/app/(app)/projekty/_components/status-badge';
@@ -39,6 +39,20 @@ export function KosztorysView({ data }: KosztorysViewProps) {
   const [searchQuery, setSearchQuery] = useState('');
 
   const isLocked = rewizja.is_locked;
+
+  // Ctrl+B / Cmd+B shortcut to toggle library drawer
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'b') {
+        e.preventDefault();
+        if (!isLocked) {
+          setAddFromLibraryOpen((prev) => !prev);
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isLocked]);
 
   // Filter pozycje based on sidebar filter and search
   const filteredPozycje = pozycje.filter((p: KosztorysPozycjaView) => {
@@ -149,7 +163,7 @@ export function KosztorysView({ data }: KosztorysViewProps) {
       </div>
 
       {/* Panels */}
-      <AddFromLibraryPanel
+      <LibraryDrawer
         open={addFromLibraryOpen}
         onOpenChange={setAddFromLibraryOpen}
         rewizjaId={rewizja.id}
