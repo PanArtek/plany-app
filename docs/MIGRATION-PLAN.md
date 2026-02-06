@@ -4,170 +4,112 @@
 
 | Faza | Nazwa | Stories | Status | Branch |
 |------|-------|---------|--------|--------|
-| 1 | Database Setup | 11 | **CURRENT** | `ralph/phase1-database-setup` |
-| 2 | UI Base + Layout | ~8 | Pending | `ralph/phase2-ui-base` |
-| 3 | Kategorie + Pozycje | ~12 | Pending | `ralph/phase3-kategorie-pozycje` |
-| 4 | Materiały + Dostawcy | ~10 | Pending | `ralph/phase4-materialy-dostawcy` |
-| 5 | Podwykonawcy | ~6 | Pending | `ralph/phase5-podwykonawcy` |
-| 6 | Projekty + Rewizje | ~10 | Pending | `ralph/phase6-projekty` |
-| 7 | Kosztorys (CORE) | ~20 | Pending | `ralph/phase7-kosztorys` |
-| 8 | Kalkulatory | ~8 | Pending | `ralph/phase8-kalkulatory` |
+| 1 | Database Setup | 11 | **COMPLETE** | `ralph/phase1-database-setup` |
+| 2 | UI Base + Layout | 13 | **COMPLETE** | `ralph/phase2-ui-base` |
+| 3 | Kategorie + Pozycje | 13 | **COMPLETE** | `ralph/phase3-kategorie-pozycje` |
+| 3b | Składowe (Materiały) | 4 | **COMPLETE** | `ralph/phase3b-skladowe` |
+| 4 | Materiały + Dostawcy | 13 | **COMPLETE** | `ralph/phase4-materialy-dostawcy` |
+| 5 | Podwykonawcy | 10 | **COMPLETE** | `ralph/phase5-podwykonawcy` |
+| 6 | Business Logic DB | 12 | **COMPLETE** | `ralph/business-logic-db-migration` |
+| 7 | Projekty + Rewizje | ~10 | Pending | `ralph/phase6-projekty` |
+| 8 | Kosztorys (CORE) | ~20 | Pending | `ralph/phase7-kosztorys` |
+| 9 | Kalkulatory | ~8 | Pending | `ralph/phase8-kalkulatory` |
 
 ---
 
 ## Zależności między fazami
 
 ```
-FAZA 1 (Database)
+FAZA 1 (Database)              ✅ COMPLETE
     ↓
-FAZA 2 (UI Base)
+FAZA 2 (UI Base)               ✅ COMPLETE
     ↓
-FAZA 3 (Kategorie + Pozycje)  ← fundamenty dla wszystkiego
+FAZA 3 (Kategorie + Pozycje)   ✅ COMPLETE ← fundamenty dla wszystkiego
     ↓
-┌───────────────┬───────────────┬───────────────┐
-↓               ↓               ↓               ↓
-FAZA 4        FAZA 5          FAZA 6
-(Materiały)   (Podwykonawcy)  (Projekty)
-└───────────────┴───────────────┴───────────────┘
-                        ↓
-                   FAZA 7 (Kosztorys) ← wymaga 3,4,5,6
-                        ↓
-                   FAZA 8 (Kalkulatory)
+FAZA 3b (Składowe)             ✅ COMPLETE
+    ↓
+┌───────────────┬───────────────┐
+↓               ↓               ↓
+FAZA 4        FAZA 5          ← oba ✅ COMPLETE
+(Materiały)   (Podwykonawcy)
+└───────────────┴───────────────┘
+                ↓
+FAZA 6 (Business Logic DB)     ✅ COMPLETE ← enumy, zamówienia, umowy, realizacja
+                ↓
+FAZA 7 (Projekty + Rewizje)    ⏳ Pending
+                ↓
+FAZA 8 (Kosztorys CORE)        ⏳ Pending ← wymaga 3,4,5,6,7
+                ↓
+FAZA 9 (Kalkulatory)           ⏳ Pending
 ```
 
 ---
 
-## FAZA 1: Database Setup (CURRENT)
+## FAZA 1: Database Setup (COMPLETE)
 
-**PRD:** `scripts/ralph/prd.json`
-**Branch:** `ralph/phase1-database-setup`
+**Branch:** `ralph/phase1-database-setup` → merged to main
+**Stories:** 11/11 COMPLETE
 
-### Stories (11):
-| ID | Title | Status |
-|----|-------|--------|
-| DB-001 | Create supabase migrations directory | Pending |
-| DB-002 | SQL for kategorie table | Pending |
-| DB-003 | SQL for produkty and dostawcy tables | Pending |
-| DB-004 | SQL for ceny_dostawcow table | Pending |
-| DB-005 | SQL for podwykonawcy and stawki tables | Pending |
-| DB-006 | SQL for pozycje_biblioteka table | Pending |
-| DB-007 | SQL for projekty and rewizje tables | Pending |
-| DB-008 | SQL for kosztorys_pozycje table | Pending |
-| DB-009 | Combined SQL file (000_all_tables.sql) | Pending |
-| DB-010 | TypeScript types placeholder | Pending |
-| DB-011 | Update Supabase clients | Pending |
-
-### MANUAL STEP after DB-009:
-```bash
-# 1. Copy supabase/migrations/000_all_tables.sql to Supabase SQL Editor
-# 2. Run the SQL
-# 3. Generate types:
-supabase gen types typescript --project-id tormvuvlcujetkagmwtc > lib/supabase/database.types.ts
-```
-
-### Tabele:
-```sql
-kategorie           -- Hierarchia: branża → kategoria → podkategoria
-produkty            -- Katalog materiałów (SKU jako klucz)
-dostawcy            -- Dostawcy materiałów
-ceny_dostawcow      -- Cenniki dostawców
-podwykonawcy        -- Ekipy robocze
-stawki_podwykonawcow -- Cenniki podwykonawców
-pozycje_biblioteka  -- Biblioteka pozycji z skladowe (JSONB)
-projekty            -- Projekty z slug
-rewizje             -- Rewizje kosztorysów (locked/unlocked)
-kosztorys_pozycje   -- Pozycje w kosztorysie z overrides (JSONB)
-```
+17 tabel fundamentu: organizations, organization_members, kategorie, narzuty_domyslne, produkty, dostawcy, ceny_dostawcow, podwykonawcy, stawki_podwykonawcow, pozycje_biblioteka, biblioteka_skladowe_robocizna, biblioteka_skladowe_materialy, projekty, rewizje, kosztorys_pozycje, kosztorys_skladowe_robocizna, kosztorys_skladowe_materialy
 
 ---
 
-## FAZA 2: UI Base + Layout
+## FAZA 2: UI Base + Layout (COMPLETE)
 
-**Branch:** `ralph/phase2-ui-base`
+**Branch:** `ralph/phase2-ui-base` → merged to main
+**Stories:** 13/13 COMPLETE
 
-### Planowane Stories (~8):
-- UI-001: Install shadcn components (button, card, dialog, table, tabs, toast, input, select, badge)
-- UI-002: Configure dark theme (Tailwind config, CSS variables)
-- UI-003: Add fonts (JetBrains Mono, Plus Jakarta Sans)
-- UI-004: Create root layout with ThemeProvider
-- UI-005: Create app shell with sidebar navigation
-- UI-006: Create sidebar component with 8 nav links
-- UI-007: Create header component
-- UI-008: Create placeholder pages for all routes
-
-### Routes:
-```
-/kategorie
-/pozycje
-/materialy
-/dostawcy
-/podwykonawcy
-/kalkulatory
-/projekty
-/kosztorys
-```
+App shell, sidebar, dark theme, placeholder pages for all routes.
 
 ---
 
-## FAZA 3: Kategorie + Pozycje
+## FAZA 3: Kategorie + Pozycje (COMPLETE)
 
-**Branch:** `ralph/phase3-kategorie-pozycje`
+**Branch:** `ralph/phase3-kategorie-pozycje` → merged to main
+**Stories:** 13/13 COMPLETE
 
-### Planowane Stories (~12):
-- KAT-001: Server Actions for kategorie CRUD
-- KAT-002: Kategorie page with tabs for 5 branż
-- KAT-003: Kategoria cards with expand/collapse
-- KAT-004: Podkategorie inside cards
-- KAT-005: Add/Edit/Delete kategoria modals
-- KAT-006: Seed kategorie data from wireframe
-- POZ-001: Server Actions for pozycje_biblioteka CRUD
-- POZ-002: Pozycje page with filters (branża, kategoria, search)
-- POZ-003: Pozycje table with TanStack Table
-- POZ-004: Position detail panel with skladowe
-- POZ-005: Seed pozycje data from wireframe
-- POZ-006: Link pozycje to kategorie
-
-**Źródło:** `wireframe/js/views/kategorie.js`, `wireframe/js/views/pozycje.js`
+Kategorie CRUD (tabs, cards, expand/collapse), Pozycje CRUD (filters, table, detail panel, składowe).
 
 ---
 
-## FAZA 4: Materiały + Dostawcy
+## FAZA 4: Materiały + Dostawcy (COMPLETE)
 
-**Branch:** `ralph/phase4-materialy-dostawcy`
+**Branch:** `ralph/phase4-materialy-dostawcy` → merged to main
+**Stories:** 13/13 COMPLETE
 
-### Planowane Stories (~10):
-- MAT-001: Server Actions for produkty CRUD
-- MAT-002: Materialy page with filters
-- MAT-003: Materialy table with cheapest price aggregation
-- MAT-004: Material detail modal with all supplier prices
-- MAT-005: Seed produkty data from wireframe
-- DOST-001: Server Actions for dostawcy CRUD
-- DOST-002: Dostawcy page with filters
-- DOST-003: Dostawcy table
-- DOST-004: Dostawca detail with cennik
-- DOST-005: Seed dostawcy + ceny data from wireframe
-
-**Źródło:** `wireframe/js/views/materialy.js`, `wireframe/js/views/dostawcy.js`
+Materiały CRUD, Dostawcy CRUD z cennikiem, detail panels, seed data.
 
 ---
 
-## FAZA 5: Podwykonawcy
+## FAZA 5: Podwykonawcy (COMPLETE)
 
-**Branch:** `ralph/phase5-podwykonawcy`
+**Branch:** `ralph/phase5-podwykonawcy` → merged to main
+**Stories:** 10/10 COMPLETE
 
-### Planowane Stories (~6):
-- PODW-001: Server Actions for podwykonawcy CRUD
-- PODW-002: Podwykonawcy page with filters
-- PODW-003: Podwykonawcy table
-- PODW-004: Podwykonawca detail with stawki
-- PODW-005: Server Actions for stawki CRUD
-- PODW-006: Seed podwykonawcy + stawki data from wireframe
-
-**Źródło:** `wireframe/js/views/podwykonawcy.js`
+Podwykonawcy CRUD z stawkami powiązanymi z pozycje_biblioteka, detail panel.
 
 ---
 
-## FAZA 6: Projekty + Rewizje
+## FAZA 6: Business Logic DB Migration (COMPLETE)
+
+**Branch:** `ralph/business-logic-db-migration` → merged to main (PR #7)
+**Stories:** 12/12 COMPLETE
+**Design doc:** `docs/plans/2026-02-06-business-logic-db-migration.md`
+
+### Co zrobiono:
+- 3 nowe enumy (zamowienie_status, umowa_status, realizacja_wpis_typ)
+- ALTER rewizje (+is_accepted, +accepted_at), projekty (+accepted_rewizja_id)
+- 10 nowych tabel (zamówienia 5 + umowy 4 + realizacja 1)
+- 27 indeksów
+- 40 RLS policies (4 per tabela × 10 tabel)
+- Triggery: prevent_unlock, updated_at, auto_numer (ZAM/UMW), auto_sum
+- Funkcje: generate_zamowienia_draft, generate_umowy_draft
+- Funkcje UX: get_podwykonawcy_aggregated, get_dostawcy_aggregated
+- TypeScript types regenerated
+
+---
+
+## FAZA 7: Projekty + Rewizje (Pending)
 
 **Branch:** `ralph/phase6-projekty`
 
@@ -180,14 +122,14 @@ kosztorys_pozycje   -- Pozycje w kosztorysie z overrides (JSONB)
 - PROJ-006: Server Actions for rewizje CRUD
 - PROJ-007: Revision selector dropdown
 - PROJ-008: Create new revision
-- PROJ-009: Lock/unlock revision
+- PROJ-009: Lock/unlock revision + akceptacja
 - PROJ-010: Seed projekty + rewizje data from wireframe
 
 **Źródło:** `wireframe/js/views/projekty.js`
 
 ---
 
-## FAZA 7: Kosztorys (CORE)
+## FAZA 8: Kosztorys (CORE) (Pending)
 
 **Branch:** `ralph/phase7-kosztorys`
 
@@ -218,7 +160,7 @@ kosztorys_pozycje   -- Pozycje w kosztorysie z overrides (JSONB)
 
 ---
 
-## FAZA 8: Kalkulatory
+## FAZA 9: Kalkulatory (Pending)
 
 **Branch:** `ralph/phase8-kalkulatory`
 
