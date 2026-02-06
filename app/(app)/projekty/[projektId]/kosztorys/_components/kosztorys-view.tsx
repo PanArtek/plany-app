@@ -1,8 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import Link from 'next/link';
-import { Plus, ChevronRight } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { type KosztorysData, type KosztorysPozycjaView } from '@/actions/kosztorys';
 import { RewizjaSelector } from './rewizja-selector';
@@ -13,7 +12,6 @@ import { BulkToolbar } from './bulk-toolbar';
 import { LibraryDrawer } from './library-drawer';
 import { PozycjaDetailPanel } from './panels/pozycja-detail-panel';
 import { LockedBanner } from './locked-banner';
-import { StatusBadge } from '@/app/(app)/projekty/_components/status-badge';
 import { DeleteConfirmPanel } from '@/app/(app)/kategorie/_components/panels/delete-confirm-panel';
 import { deleteKosztorysPozycje } from '@/actions/kosztorys';
 import { toast } from 'sonner';
@@ -105,20 +103,8 @@ export function KosztorysView({ data }: KosztorysViewProps) {
 
   return (
     <div className="flex flex-col h-full">
-      {/* Header */}
-      <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.08]">
-        <div className="flex items-center gap-2 text-sm">
-          <Link href="/projekty" className="text-white/50 hover:text-white/80 transition-colors">
-            Projekty
-          </Link>
-          <ChevronRight className="h-3.5 w-3.5 text-white/30" />
-          <Link href="/projekty" className="text-white/50 hover:text-white/80 transition-colors">
-            {projekt.nazwa}
-          </Link>
-          <ChevronRight className="h-3.5 w-3.5 text-white/30" />
-          <span className="text-white/90 font-medium">Kosztorys</span>
-          <StatusBadge status={projekt.status} />
-        </div>
+      {/* Toolbar: rewizja selector + add button */}
+      <div className="flex items-center justify-end px-6 py-3 border-b border-white/[0.08]">
         <div className="flex items-center gap-3">
           <RewizjaSelector
             rewizje={rewizje}
