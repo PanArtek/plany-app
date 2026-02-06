@@ -95,6 +95,24 @@ export interface NameIdPair {
   nazwa: string;
 }
 
+export interface BibliotekaSkladowaR {
+  id: string;
+  lp: number;
+  opis: string;
+  stawka_domyslna: number;
+  norma_domyslna: number;
+  jednostka: string;
+}
+
+export interface BibliotekaSkladowaM {
+  id: string;
+  lp: number;
+  nazwa: string;
+  cena_domyslna: number;
+  norma_domyslna: number;
+  jednostka: string | null;
+}
+
 export interface KosztorysPozycjaDetail {
   pozycja: {
     id: string;
@@ -109,6 +127,8 @@ export interface KosztorysPozycjaDetail {
   };
   skladoweR: SkladowaR[];
   skladoweM: SkladowaM[];
+  bibliotekaSkladoweR: BibliotekaSkladowaR[];
+  bibliotekaSkladoweM: BibliotekaSkladowaM[];
   podwykonawcy: NameIdPair[];
   dostawcy: NameIdPair[];
 }
@@ -305,8 +325,10 @@ export async function getKosztorysPozycjaDetail(
     return { success: false, error: mError.message };
   }
 
-  // 4. Fetch dropdown lists
-  const [podwykonawcyResult, dostawcyResult] = await Promise.all([
+  // 4. Fetch dropdown lists + library skladowe in parallel
+  const pozycjaBibliotekaId = pozycja.pozycja_biblioteka_id as string | null;
+
+  const [podwykonawcyResult, dostawcyResult, libRResult, libMResult] = await Promise.all([
     supabase
       .from('podwykonawcy')
       .select('id, nazwa')
@@ -317,6 +339,22 @@ export async function getKosztorysPozycjaDetail(
       .select('id, nazwa')
       .eq('aktywny', true)
       .order('nazwa'),
+    // 5. Fetch library skladowe robocizna (for override indicators)
+    pozycjaBibliotekaId
+      ? supabase
+          .from('biblioteka_skladowe_robocizna')
+          .select('id, lp, opis, stawka_domyslna, norma_domyslna, jednostka')
+          .eq('pozycja_biblioteka_id', pozycjaBibliotekaId)
+          .order('lp', { ascending: true })
+      : Promise.resolve({ data: null, error: null }),
+    // 6. Fetch library skladowe materialy (for override indicators)
+    pozycjaBibliotekaId
+      ? supabase
+          .from('biblioteka_skladowe_materialy')
+          .select('id, lp, nazwa, cena_domyslna, norma_domyslna, jednostka')
+          .eq('pozycja_biblioteka_id', pozycjaBibliotekaId)
+          .order('lp', { ascending: true })
+      : Promise.resolve({ data: null, error: null }),
   ]);
 
   return {
@@ -356,6 +394,22 @@ export async function getKosztorysPozycjaDetail(
         jednostka: m.jednostka as string | null,
         is_manual: m.is_manual as boolean,
       })),
+      bibliotekaSkladoweR: (libRResult.data || []).map((r: Record<string, unknown>) => ({
+        id: r.id as string,
+        lp: Number(r.lp),
+        opis: r.opis as string,
+        stawka_domyslna: Number(r.stawka_domyslna ?? 0),
+        norma_domyslna: Number(r.norma_domyslna ?? 1),
+        jednostka: (r.jednostka as string) || 'h',
+      })),
+      bibliotekaSkladoweM: (libMResult.data || []).map((m: Record<string, unknown>) => ({
+        id: m.id as string,
+        lp: Number(m.lp),
+        nazwa: m.nazwa as string,
+        cena_domyslna: Number(m.cena_domyslna ?? 0),
+        norma_domyslna: Number(m.norma_domyslna ?? 1),
+        jednostka: m.jednostka as string | null,
+      })),
       podwykonawcy: (podwykonawcyResult.data || []) as NameIdPair[],
       dostawcy: (dostawcyResult.data || []) as NameIdPair[],
     },
@@ -380,10 +434,23 @@ export async function getLibraryPositions(
     .range(offset, offset + LIBRARY_PAGE_SIZE - 1);
 
   if (filters.search) {
-    query = query.ilike('nazwa', `%${filters.search}%`);
+    query = query.or(`nazwa.ilike.%${filters.search}%,kod.ilike.%${filters.search}%`);
   }
 
-  if (filters.branza) {
+  // Cascading filters: podkategoriaId > kategoriaId > branza
+  if (filters.podkategoriaId) {
+    query = query.eq('kategoria_id', filters.podkategoriaId);
+  } else if (filters.kategoriaId) {
+    // Positions in kategoria OR any of its podkategorie
+    // Fetch child kategoria IDs first
+    const { data: children } = await supabase
+      .from('kategorie')
+      .select('id')
+      .eq('parent_id', filters.kategoriaId);
+    const childIds = (children || []).map((c: { id: string }) => c.id);
+    const allIds = [filters.kategoriaId, ...childIds];
+    query = query.in('kategoria_id', allIds);
+  } else if (filters.branza) {
     query = query.like('kod', `${filters.branza}%`);
   }
 
@@ -650,6 +717,7 @@ export async function updateKosztorysSkladowaR(
 
   const updateData: Record<string, unknown> = {
     stawka: parsed.data.stawka,
+    is_manual: true,
   };
   if (parsed.data.podwykonawca_id !== undefined) {
     updateData.podwykonawca_id = parsed.data.podwykonawca_id;
@@ -683,6 +751,7 @@ export async function updateKosztorysSkladowaM(
 
   const updateData: Record<string, unknown> = {
     cena: parsed.data.cena,
+    is_manual: true,
   };
   if (parsed.data.dostawca_id !== undefined) {
     updateData.dostawca_id = parsed.data.dostawca_id;
@@ -696,6 +765,157 @@ export async function updateKosztorysSkladowaM(
   if (error) {
     return { success: false, error: error.message };
   }
+
+  revalidatePath('/projekty');
+  return { success: true };
+}
+
+// --- WRITE: Reset składowa R to library value ---
+
+export async function resetSkladowaR(
+  id: string,
+  libraryStawka: number
+): Promise<ActionResult> {
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from('kosztorys_skladowe_robocizna')
+    .update({ stawka: libraryStawka, is_manual: false })
+    .eq('id', id);
+
+  if (error) {
+    return { success: false, error: error.message };
+  }
+
+  revalidatePath('/projekty');
+  return { success: true };
+}
+
+// --- WRITE: Reset składowa M to library value ---
+
+export async function resetSkladowaM(
+  id: string,
+  libraryCena: number
+): Promise<ActionResult> {
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from('kosztorys_skladowe_materialy')
+    .update({ cena: libraryCena, is_manual: false })
+    .eq('id', id);
+
+  if (error) {
+    return { success: false, error: error.message };
+  }
+
+  revalidatePath('/projekty');
+  return { success: true };
+}
+
+// --- WRITE: Reset all skladowe of a position to library defaults ---
+
+export async function resetPozycjaToLibrary(
+  pozycjaId: string
+): Promise<ActionResult> {
+  const supabase = await createClient();
+
+  // 1. Fetch pozycja to get pozycja_biblioteka_id
+  const { data: pozycja, error: pozycjaError } = await supabase
+    .from('kosztorys_pozycje')
+    .select('id, pozycja_biblioteka_id')
+    .eq('id', pozycjaId)
+    .single();
+
+  if (pozycjaError || !pozycja) {
+    return { success: false, error: 'Pozycja nie znaleziona' };
+  }
+
+  const bibId = pozycja.pozycja_biblioteka_id as string | null;
+  if (!bibId) {
+    return { success: false, error: 'Pozycja nie ma powiązania z biblioteką' };
+  }
+
+  // 2. Fetch library and kosztorys skladowe in parallel
+  const [libRResult, libMResult, koszRResult, koszMResult] = await Promise.all([
+    supabase
+      .from('biblioteka_skladowe_robocizna')
+      .select('lp, stawka_domyslna, norma_domyslna')
+      .eq('pozycja_biblioteka_id', bibId)
+      .order('lp', { ascending: true }),
+    supabase
+      .from('biblioteka_skladowe_materialy')
+      .select('lp, cena_domyslna, norma_domyslna, produkt_id')
+      .eq('pozycja_biblioteka_id', bibId)
+      .order('lp', { ascending: true }),
+    supabase
+      .from('kosztorys_skladowe_robocizna')
+      .select('id, lp')
+      .eq('kosztorys_pozycja_id', pozycjaId)
+      .order('lp', { ascending: true }),
+    supabase
+      .from('kosztorys_skladowe_materialy')
+      .select('id, lp')
+      .eq('kosztorys_pozycja_id', pozycjaId)
+      .order('lp', { ascending: true }),
+  ]);
+
+  const libR = (libRResult.data || []) as { lp: number; stawka_domyslna: number; norma_domyslna: number }[];
+  const libM = (libMResult.data || []) as { lp: number; cena_domyslna: number; norma_domyslna: number; produkt_id: string | null }[];
+  const koszR = (koszRResult.data || []) as { id: string; lp: number }[];
+  const koszM = (koszMResult.data || []) as { id: string; lp: number }[];
+
+  // 3. Reset robocizna by lp matching
+  const rUpdates = koszR
+    .map((kr) => {
+      const lib = libR.find((l) => l.lp === kr.lp);
+      if (!lib) return null;
+      return supabase
+        .from('kosztorys_skladowe_robocizna')
+        .update({
+          stawka: lib.stawka_domyslna,
+          norma: lib.norma_domyslna,
+          is_manual: false,
+        })
+        .eq('id', kr.id);
+    })
+    .filter(Boolean);
+
+  // 4. Reset materialy by lp matching (with price discovery)
+  const mUpdates = await Promise.all(
+    koszM.map(async (km) => {
+      const lib = libM.find((l) => l.lp === km.lp);
+      if (!lib) return null;
+
+      let cena = lib.cena_domyslna;
+
+      // 3-tier price discovery for materials
+      if (lib.produkt_id) {
+        const { data: ceny } = await supabase
+          .from('ceny_dostawcow')
+          .select('cena_netto')
+          .eq('produkt_id', lib.produkt_id)
+          .eq('aktywny', true)
+          .order('cena_netto', { ascending: true })
+          .limit(1);
+
+        if (ceny && ceny.length > 0) {
+          cena = Number((ceny[0] as Record<string, unknown>).cena_netto);
+        }
+      }
+
+      return supabase
+        .from('kosztorys_skladowe_materialy')
+        .update({
+          cena,
+          norma: lib.norma_domyslna,
+          is_manual: false,
+        })
+        .eq('id', km.id);
+    })
+  );
+
+  // Execute all updates
+  await Promise.all([...rUpdates, ...mUpdates.filter(Boolean)]);
 
   revalidatePath('/projekty');
   return { success: true };
@@ -752,4 +972,84 @@ export async function copyRevision(
     success: true,
     data: newRewizja as { id: string; numer: number },
   };
+}
+
+// --- READ: Kategorie for cascading filter dropdowns ---
+
+export interface KategoriaFilter {
+  id: string;
+  kod: string;
+  nazwa: string;
+  pelny_kod: string;
+}
+
+export async function getKategorieForFilter(
+  parentId?: string
+): Promise<ActionResult<KategoriaFilter[]>> {
+  const supabase = await createClient();
+
+  let query = supabase
+    .from('kategorie')
+    .select('id, kod, nazwa, pelny_kod')
+    .order('kod', { ascending: true });
+
+  if (parentId) {
+    query = query.eq('parent_id', parentId);
+  } else {
+    query = query.eq('poziom', 0);
+  }
+
+  const { data, error } = await query;
+
+  if (error) {
+    return { success: false, error: error.message };
+  }
+
+  return {
+    success: true,
+    data: (data || []) as KategoriaFilter[],
+  };
+}
+
+// --- WRITE: Bulk update narzut on multiple positions ---
+
+export async function bulkUpdateNarzut(
+  pozycjaIds: string[],
+  narzutPercent: number
+): Promise<ActionResult<{ count: number }>> {
+  if (narzutPercent < 0) {
+    return { success: false, error: 'Narzut nie może być ujemny' };
+  }
+
+  const supabase = await createClient();
+
+  const { data: userData } = await supabase.auth.getUser();
+  if (!userData?.user) {
+    return { success: false, error: 'Brak autoryzacji' };
+  }
+
+  // Get organization_id for security filtering
+  const { data: orgData } = await supabase
+    .from('organization_members')
+    .select('organization_id')
+    .eq('user_id', userData.user.id)
+    .limit(1)
+    .single();
+
+  if (!orgData) {
+    return { success: false, error: 'Brak organizacji' };
+  }
+
+  const { error, count } = await supabase
+    .from('kosztorys_pozycje')
+    .update({ narzut_percent: narzutPercent })
+    .in('id', pozycjaIds)
+    .eq('organization_id', orgData.organization_id);
+
+  if (error) {
+    return { success: false, error: error.message };
+  }
+
+  revalidatePath('/projekty');
+  return { success: true, data: { count: count ?? pozycjaIds.length } };
 }

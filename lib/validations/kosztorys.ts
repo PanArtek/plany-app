@@ -26,6 +26,8 @@ export const libraryFiltersSchema = z.object({
   search: z.string().optional(),
   branza: z.string().optional(),
   kategoria: z.string().optional(),
+  kategoriaId: z.string().uuid().optional(),
+  podkategoriaId: z.string().uuid().optional(),
   page: z.coerce.number().optional().default(1),
 });
 

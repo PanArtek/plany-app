@@ -1,160 +1,264 @@
 {
   "project": "PLANY App",
-  "branchName": "ralph/phase9-akceptacja",
-  "description": "Phase 9: Akceptacja + State Machine - project status transitions (DRAFT ⇄ WYSŁANO ⇄ REALIZACJA → ZAMKNIĘTY, ⇄ ODRZUCONY), accept revision flow, contextual action buttons, status badges",
+  "branchName": "ralph/phase8b-kosztorys-interactions",
+  "description": "Phase 8b: Kosztorys Interactions - override indicators with reset to library, bottom library drawer with cascading filters, multi-select with bulk delete and bulk narzut",
   "mode": "feature",
   "baseBranch": "main",
   "userStories": [
     {
-      "id": "AKC-001",
-      "title": "DB migration: sent_at column + change_project_status RPC",
-      "description": "Use Supabase MCP apply_migration tool to create migration 014_acceptance_state_machine.sql. Two parts:\n\n1) ALTER TABLE projekty ADD COLUMN sent_at TIMESTAMPTZ;\n\n2) CREATE OR REPLACE FUNCTION change_project_status(p_projekt_id UUID, p_new_status project_status, p_rewizja_id UUID DEFAULT NULL) RETURNS JSON. Logic:\n- Fetch current projekt (status, accepted_rewizja_id)\n- Validate allowed transitions:\n  - draft → ofertowanie: requires ≥1 locked rewizja in this projekt (SELECT EXISTS from rewizje WHERE projekt_id = p_projekt_id AND is_locked = true). Sets sent_at = NOW()\n  - ofertowanie → draft: clears sent_at to NULL\n  - ofertowanie → realizacja: requires p_rewizja_id not null, that rewizja must be locked. Sets accepted_rewizja_id = p_rewizja_id on projekty, sets is_accepted = true + accepted_at = NOW() on that rewizja\n  - ofertowanie → odrzucony: no conditions\n  - realizacja → ofertowanie: clears accepted_rewizja_id on projekty, clears is_accepted = false + accepted_at = NULL on the previously accepted rewizja\n  - odrzucony → ofertowanie: no conditions\n  - realizacja → zamkniety: no conditions\n  - Any other transition: RAISE EXCEPTION 'Invalid status transition from % to %'\n- UPDATE projekty SET status = p_new_status (+ sent_at / accepted_rewizja_id as needed)\n- RETURN the updated projekt row as JSON\n\nNote: the DB enum uses 'ofertowanie' not 'wysłano' - the UI label 'Wysłano do klienta' is display-only. Keep the existing enum values.",
+      "id": "US-001",
+      "title": "Extend getKosztorysPozycjaDetail to return library reference values",
+      "description": "As a developer, I need library reference values alongside kosztorys values to compare and show override indicators.\n\nModify `getKosztorysPozycjaDetail()` in `actions/kosztorys.ts`. After fetching skladoweR and skladoweM, also fetch the library defaults from `biblioteka_skladowe_robocizna` and `biblioteka_skladowe_materialy` where `pozycja_id` matches the pozycja's `pozycja_biblioteka_id`.\n\nAdd to the return type:\n- `bibliotekaSkladoweR: { id, opis, stawka_domyslna, norma_domyslna, jednostka }[]`\n- `bibliotekaSkladoweM: { id, nazwa, cena_domyslna, norma_domyslna, jednostka }[]`\n\nThe matching between kosztorys skladowe and library skladowe is by `lp` (ordinal position) since skladowe are copied from library maintaining lp order.\n\nUpdate the `KosztorysPozycjaDetail` interface to include these two new arrays.",
       "acceptanceCriteria": [
-        "sent_at column added to projekty table",
-        "change_project_status function created and callable via supabase.rpc()",
-        "draft → ofertowanie requires ≥1 locked rewizja, sets sent_at",
-        "ofertowanie → realizacja requires rewizja_id param, sets is_accepted + accepted_at on rewizja",
-        "realizacja → ofertowanie clears acceptance (is_accepted, accepted_at, accepted_rewizja_id)",
-        "ofertowanie → draft clears sent_at",
-        "Invalid transitions raise exception",
-        "realizacja → zamkniety allowed without conditions",
-        "Migration applies without errors",
+        "KosztorysPozycjaDetail interface includes bibliotekaSkladoweR and bibliotekaSkladoweM arrays",
+        "getKosztorysPozycjaDetail fetches library skladowe via pozycja_biblioteka_id",
+        "Library skladowe have fields: stawka_domyslna/cena_domyslna, norma_domyslna, opis/nazwa, lp",
+        "Existing functionality unchanged - detail panel still loads correctly",
         "Typecheck passes"
       ],
       "priority": 1,
       "passes": true,
-      "notes": "Also recreated rewizje_summary view to include is_accepted/accepted_at. Tested state machine: invalid transitions properly rejected.",
+      "notes": "Added BibliotekaSkladowaR/M interfaces, fetched library skladowe in parallel with dropdown lists",
       "dependsOn": []
     },
     {
-      "id": "AKC-002",
-      "title": "Server action: changeProjectStatus wrapper",
-      "description": "Create actions/acceptance.ts with 'use server' directive. Import createClient from '@/lib/supabase/server', revalidatePath from 'next/cache'. Import ActionResult type from actions/projekty.ts.\n\nExport async function changeProjectStatus(projektId: string, newStatus: string, rewizjaId?: string): Promise<ActionResult>. Implementation:\n- Call supabase.rpc('change_project_status', { p_projekt_id: projektId, p_new_status: newStatus, p_rewizja_id: rewizjaId || null })\n- If error, return { success: false, error: error.message }\n- revalidatePath('/projekty')\n- Return { success: true, data: result }\n\nKeep it minimal — all validation is in Postgres.",
+      "id": "US-002",
+      "title": "Set is_manual flag on skladowe updates",
+      "description": "As a developer, I need skladowe to track whether values were manually changed.\n\nModify `updateKosztorysSkladowaR()` in `actions/kosztorys.ts`: add `is_manual: true` to the update payload alongside stawka and podwykonawca_id.\n\nModify `updateKosztorysSkladowaM()` in `actions/kosztorys.ts`: add `is_manual: true` to the update payload alongside cena and dostawca_id.\n\nThe `is_manual` column already exists in both `kosztorys_skladowe_robocizna` and `kosztorys_skladowe_materialy` tables (added in Phase 8a migration). It just needs to be set to `true` whenever a user edits a value.",
       "acceptanceCriteria": [
-        "actions/acceptance.ts created with 'use server'",
-        "changeProjectStatus calls supabase.rpc('change_project_status')",
-        "Passes projektId, newStatus, optional rewizjaId",
-        "Returns ActionResult with error from Postgres on invalid transition",
-        "Calls revalidatePath('/projekty') on success",
+        "updateKosztorysSkladowaR sets is_manual=true in the UPDATE query",
+        "updateKosztorysSkladowaM sets is_manual=true in the UPDATE query",
+        "Editing stawka/cena in detail panel marks skladowa as is_manual=true in DB",
         "Typecheck passes"
       ],
       "priority": 2,
       "passes": true,
-      "notes": "",
-      "dependsOn": ["AKC-001"]
-    },
-    {
-      "id": "AKC-003",
-      "title": "Update status-config with 'Wysłano do klienta' label + sent_at in interfaces",
-      "description": "Update lib/projekty/status-config.ts: change the 'ofertowanie' entry label from 'Ofertowanie' to 'Wysłano do klienta'. Change its className to 'bg-blue-500/10 text-blue-400 border-blue-500/20' (blue instead of amber). Change 'realizacja' className to 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' (green). Change 'zamkniety' label to 'Zamknięty' and className to 'bg-zinc-500/10 text-zinc-400 border-zinc-500/20' (dark gray).\n\nUpdate actions/projekty.ts: add 'sent_at: string | null' and 'accepted_rewizja_id: string | null' to ProjektBase and ProjektWithCount interfaces. Update getProjekty and getProjekt select queries to include sent_at and accepted_rewizja_id columns.\n\nUpdate the StatusBadge component in app/(app)/projekty/_components/projekty-table.tsx: extract it to a separate file app/(app)/projekty/_components/status-badge.tsx so it can be imported from both the table and the detail panel and the kosztorys header. The component stays the same (uses getStatusConfig), just moved to its own file. Update imports in projekty-table.tsx and projekt-detail-panel.tsx.",
-      "acceptanceCriteria": [
-        "status-config labels: draft='Szkic', ofertowanie='Wysłano do klienta' (blue), realizacja='Realizacja' (green), zamkniety='Zamknięty' (dark gray), odrzucony='Odrzucony' (red)",
-        "ProjektBase and ProjektWithCount have sent_at and accepted_rewizja_id fields",
-        "getProjekty and getProjekt queries select sent_at and accepted_rewizja_id",
-        "StatusBadge extracted to separate file app/(app)/projekty/_components/status-badge.tsx",
-        "Imports updated in projekty-table.tsx and projekt-detail-panel.tsx",
-        "Typecheck passes"
-      ],
-      "priority": 2,
-      "passes": true,
-      "notes": "",
+      "notes": "Added is_manual: true to both update functions",
       "dependsOn": []
     },
     {
-      "id": "AKC-004",
-      "title": "Projects table: add 'Wysłano' column with sent_at date",
-      "description": "Update app/(app)/projekty/_components/projekty-table.tsx: add a new column 'Wysłano' after the 'Status' column. Cell renders sent_at date formatted with toLocaleDateString('pl-PL') if not null, or '—' if null. Style: text-white/50 text-sm, same as the existing 'Data' column.\n\nThe column data comes from ProjektWithCount.sent_at which was added in AKC-003.",
+      "id": "US-003",
+      "title": "Create OverrideIndicator component",
+      "description": "As a developer, I need a reusable component to show when a value differs from library.\n\nCreate `app/(app)/projekty/[projektId]/kosztorys/_components/override-indicator.tsx`.\n\nProps:\n- `isOverridden: boolean` - whether current value differs from library\n- `libraryValue: number` - the original library value (for tooltip)\n- `onReset: () => void` - callback when user clicks to reset\n- `disabled?: boolean` - for locked revisions\n\nRendering:\n- When `isOverridden` is false: render nothing (null)\n- When `isOverridden` is true: render a small amber/orange dot (●) as a button\n- Use Tooltip from shadcn: \"Resetuj do wartości z biblioteki (X.XX)\" where X.XX is libraryValue formatted to 2 decimal places\n- On click: call `onReset()` (unless disabled)\n- When disabled: show dot but not clickable, no cursor pointer\n\nStyling: `text-amber-500 hover:text-amber-400 cursor-pointer text-xs inline-flex items-center ml-1` - small dot positioned right after the input field.",
       "acceptanceCriteria": [
-        "New 'Wysłano' column visible in projects table between Status and Rewizje columns",
-        "Shows formatted date when sent_at is set, '—' when null",
-        "Styled consistently with other date columns",
-        "Typecheck passes",
-        "Verify at localhost:3000/projekty"
+        "OverrideIndicator component created with isOverridden, libraryValue, onReset, disabled props",
+        "Renders amber dot (●) only when isOverridden is true",
+        "Tooltip shows library value formatted to 2 decimals",
+        "Click calls onReset when not disabled",
+        "Disabled state shows dot but prevents click",
+        "Typecheck passes"
       ],
       "priority": 3,
       "passes": true,
-      "notes": "",
-      "dependsOn": ["AKC-003"]
+      "notes": "Created with shadcn Tooltip, amber dot indicator with reset callback",
+      "dependsOn": []
     },
     {
-      "id": "AKC-005",
-      "title": "Contextual action buttons in projekt detail panel",
-      "description": "Update app/(app)/projekty/_components/panels/projekt-detail-panel.tsx. Add a new section 'Akcje' between the 'Rewizje' section and the 'Otwórz kosztorys' button. Import changeProjectStatus from '@/actions/acceptance'. Add state: statusLoading boolean.\n\nRender contextual buttons based on projekt.status:\n\n1) status === 'draft':\n   - 'Wyślij do klienta' button (blue bg, Send icon from lucide). Disabled if no locked rewizja exists (check rewizje array for any r.is_locked === true). On click: call changeProjectStatus(projektId, 'ofertowanie'). On success: toast 'Wysłano do klienta', refresh data. On error: toast.error with message.\n\n2) status === 'ofertowanie':\n   - 'Akceptuj rewizję' button (green bg, Check icon). On click: set showAcceptDialog = true (state). See AKC-006 for dialog.\n   - 'Odrzuć' button (red outline, X icon). On click: confirm dialog ('Czy na pewno odrzucić projekt?'), then changeProjectStatus(projektId, 'odrzucony').\n   - 'Cofnij do szkicu' button (ghost, Undo2 icon). On click: changeProjectStatus(projektId, 'draft').\n\n3) status === 'realizacja':\n   - 'Zamknij projekt' button (gray outline, Archive icon). On click: confirm dialog, then changeProjectStatus(projektId, 'zamkniety').\n   - 'Cofnij do wysłano' button (ghost, Undo2 icon). On click: changeProjectStatus(projektId, 'ofertowanie'). Toast warns 'Cofnięto akceptację rewizji'.\n\n4) status === 'odrzucony':\n   - 'Reaktywuj (cofnij do wysłano)' button (ghost, Undo2 icon). On click: changeProjectStatus(projektId, 'ofertowanie').\n\n5) status === 'zamkniety': no buttons.\n\nAll buttons disabled while statusLoading. After each action, call refreshRewizje() and re-fetch projekt to update UI. Show sent_at date in 'Dane projektu' section if not null: 'Wysłano' row with formatted date.",
+      "id": "US-004",
+      "title": "Add override indicators to detail panel skladowe rows",
+      "description": "As a user, I want to see which skladowe values differ from library defaults so I know what I changed.\n\nModify `app/(app)/projekty/[projektId]/kosztorys/_components/panels/pozycja-detail-panel.tsx`.\n\nIn the data fetching (useEffect that calls getKosztorysPozycjaDetail), the response now includes `bibliotekaSkladoweR` and `bibliotekaSkladoweM` (from US-001). Store these in state.\n\nFor each SkladowaRRow: find matching library skladowa by `lp`. Compare `stawka` with `biblioteka.stawka_domyslna` and `norma` with `biblioteka.norma_domyslna`. Show OverrideIndicator next to stawka input when values differ. OnReset: call `updateKosztorysSkladowaR(id, { stawka: biblioteka.stawka_domyslna })` then set `is_manual` back to false via a separate update, then refresh.\n\nFor each SkladowaMRow: same pattern - compare `cena` with `biblioteka.cena_domyslna`, show OverrideIndicator next to cena input. OnReset: call `updateKosztorysSkladowaM(id, { cena: biblioteka.cena_domyslna })`.\n\nThe indicator appears inline, right after the Input element for stawka/cena.",
       "acceptanceCriteria": [
-        "DRAFT shows 'Wyślij do klienta' button, disabled if no locked rewizja",
-        "OFERTOWANIE shows 'Akceptuj rewizję', 'Odrzuć', 'Cofnij do szkicu' buttons",
-        "REALIZACJA shows 'Zamknij projekt', 'Cofnij do wysłano' buttons",
-        "ODRZUCONY shows 'Reaktywuj' button",
-        "ZAMKNIETY shows no action buttons",
-        "All transitions call changeProjectStatus and handle success/error with toasts",
-        "Buttons disabled during loading state",
-        "sent_at shown in project data section when not null",
-        "After status change, panel data refreshes to show new state",
+        "Each skladowa R row shows amber dot when stawka differs from library stawka_domyslna",
+        "Each skladowa M row shows amber dot when cena differs from library cena_domyslna",
+        "Clicking dot resets stawka/cena to library value via server action",
+        "After reset, dot disappears and value updates in input",
+        "Dots hidden when revision is locked",
         "Typecheck passes",
-        "Verify at localhost:3000/projekty - open project detail panel"
+        "Verify in browser using dev-browser skill"
       ],
       "priority": 4,
       "passes": true,
-      "notes": "",
-      "dependsOn": ["AKC-002", "AKC-003"]
+      "notes": "Added resetSkladowaR/M server actions, wired OverrideIndicator into both row types with library value comparison by lp",
+      "dependsOn": ["US-001", "US-002", "US-003"]
     },
     {
-      "id": "AKC-006",
-      "title": "Accept revision dialog in projekt detail panel",
-      "description": "Add to app/(app)/projekty/_components/panels/projekt-detail-panel.tsx (inline, not separate file — it's small). When 'Akceptuj rewizję' is clicked (status === 'ofertowanie'), show an inline dialog section within the panel (not a separate SlidePanel). Use showAcceptDialog state boolean.\n\nDialog content: heading 'Akceptuj rewizję', description 'Wybierz zamkniętą rewizję do akceptacji. Zaakceptowana rewizja zostanie zablokowana na stałe.', Select dropdown with only locked rewizje (filter rewizje.filter(r => r.is_locked && !r.is_accepted)), each option shows 'R{numer}' + nazwa if exists. Two buttons: 'Anuluj' (ghost, closes dialog) and 'Potwierdź akceptację' (green, calls changeProjectStatus(projektId, 'realizacja', selectedLockedRewizjaId)). On success: toast 'Rewizja R{numer} zaakceptowana. Projekt w realizacji.', close dialog, refresh.\n\nIf no locked rewizje available, show message 'Brak zamkniętych rewizji do akceptacji. Zamknij rewizję w kosztorysie.' with disabled confirm button.",
+      "id": "US-005",
+      "title": "Add resetPozycjaToLibrary server action",
+      "description": "As a developer, I need a server action that resets all skladowe of a position back to library defaults.\n\nAdd `resetPozycjaToLibrary(pozycjaId: string)` to `actions/kosztorys.ts`.\n\nLogic:\n1. Fetch the pozycja to get `pozycja_biblioteka_id`\n2. Fetch all `biblioteka_skladowe_robocizna` for that pozycja_biblioteka_id (ordered by lp)\n3. Fetch all `kosztorys_skladowe_robocizna` for the pozycjaId (ordered by lp)\n4. For each matching pair (by lp): UPDATE kosztorys skladowa SET stawka = biblioteka.stawka_domyslna, norma = biblioteka.norma_domyslna, is_manual = false\n5. Same for materialy: fetch biblioteka_skladowe_materialy, match by lp, UPDATE cena = biblioteka.cena_domyslna, norma = biblioteka.norma_domyslna, is_manual = false\n6. For material skladowe: also run 3-tier price discovery (check ceny_dostawcow for preferred/cheapest supplier) to update cena - same logic as in addPositionFromLibrary\n7. revalidatePath('/projekty')\n8. Return ActionResult\n\nNote: This resets values but does NOT add/remove skladowe rows. The structure stays the same, only values are overwritten.",
       "acceptanceCriteria": [
-        "Clicking 'Akceptuj rewizję' shows inline dialog within panel",
-        "Dialog shows Select with only locked (non-accepted) rewizje",
-        "Each option shows R{numer} format",
-        "'Potwierdź akceptację' calls changeProjectStatus with rewizjaId",
-        "Success toast shows revision number and status change",
-        "If no locked rewizje, shows info message and disabled button",
-        "'Anuluj' closes the dialog",
-        "After acceptance, panel refreshes to show REALIZACJA status",
-        "Typecheck passes",
-        "Verify: set project to ofertowanie, then click Akceptuj rewizję"
+        "resetPozycjaToLibrary function exported from actions/kosztorys.ts",
+        "Resets all skladoweR stawka/norma to library defaults",
+        "Resets all skladoweM cena/norma to library defaults",
+        "Sets is_manual=false on all reset skladowe",
+        "Runs 3-tier price discovery for material skladowe",
+        "Calls revalidatePath after reset",
+        "Typecheck passes"
       ],
       "priority": 5,
       "passes": true,
-      "notes": "",
-      "dependsOn": ["AKC-005"]
+      "notes": "Resets all skladowe R/M by lp matching, includes 3-tier price discovery for materials",
+      "dependsOn": ["US-001"]
     },
     {
-      "id": "AKC-007",
-      "title": "Kosztorys header: status badge + accepted banner variant",
-      "description": "Two changes:\n\n1) Update app/(app)/projekty/[projektId]/kosztorys/_components/kosztorys-view.tsx: import StatusBadge from '@/app/(app)/projekty/_components/status-badge'. Add it to the header row next to the breadcrumb, after 'Kosztorys' text. Pass projekt.status. Read-only, no action buttons.\n\n2) Update app/(app)/projekty/[projektId]/kosztorys/_components/locked-banner.tsx: add prop isAccepted boolean (default false). When isAccepted is true, change the banner: amber/yellow bg stays, text changes to 'Rewizja R{numer} została zaakceptowana. Edycja zablokowana na stałe.', HIDE the 'Utwórz nową rewizję' button (accepted = permanent lock, no copy allowed). When isAccepted is false, keep current behavior (show copy button).\n\nUpdate kosztorys-view.tsx to pass isAccepted={rewizja.is_accepted} to LockedBanner. The is_accepted field is already available on RewizjaInfo interface in actions/kosztorys.ts.",
+      "id": "US-006",
+      "title": "Add 'Resetuj do biblioteki' button to detail panel",
+      "description": "As a user, I want to reset all values of a position back to library defaults with one click.\n\nModify `app/(app)/projekty/[projektId]/kosztorys/_components/panels/pozycja-detail-panel.tsx`.\n\nAdd a button at the bottom of the panel (before the delete button section), styled as a ghost/outline button with RotateCcw icon from lucide-react. Label: 'Resetuj do biblioteki'.\n\nOn click: show confirmation dialog (use AlertDialog from shadcn or simple confirm pattern already used in the codebase). Message: 'Czy na pewno chcesz zresetować wszystkie wartości do aktualnych wartości z biblioteki?'\n\nOn confirm: call `resetPozycjaToLibrary(pozycjaId)` from US-005. On success: toast.success('Zresetowano do wartości z biblioteki'), refresh detail panel data. On error: toast.error with message.\n\nButton hidden when `isLocked` is true. Button also hidden when no overrides exist (all is_manual === false or all values match library).",
       "acceptanceCriteria": [
-        "StatusBadge visible in kosztorys header next to breadcrumb",
-        "Badge shows correct status with color from status-config",
-        "When rewizja is_accepted=true, banner shows 'zaakceptowana na stałe' text",
-        "When rewizja is_accepted=true, 'Utwórz nową rewizję' button is hidden",
-        "When rewizja is_locked but not accepted, banner shows current behavior with copy button",
+        "'Resetuj do biblioteki' button visible at bottom of detail panel",
+        "Button hidden when revision is locked",
+        "Button hidden when no overrides exist (all skladowe match library)",
+        "Click shows confirmation dialog before resetting",
+        "After confirm, calls resetPozycjaToLibrary and shows success toast",
+        "Panel data refreshes after reset - all override dots disappear",
         "Typecheck passes",
-        "Verify at localhost:3000/projekty/[id]/kosztorys"
-      ],
-      "priority": 5,
-      "passes": true,
-      "notes": "",
-      "dependsOn": ["AKC-003"]
-    },
-    {
-      "id": "AKC-008",
-      "title": "E2E test: full status transition flow via seed data",
-      "description": "Use Supabase MCP apply_migration to create migration 015_seed_acceptance_test.sql. This sets up the Biuro Acme project for testing the full flow:\n\n1) Ensure rewizja R1 (numer=1) for Biuro Acme is locked (UPDATE rewizje SET is_locked = true WHERE projekt_id = (SELECT id FROM projekty WHERE slug = 'biuro-acme-marszalkowska-100') AND numer = 1)\n\n2) Do NOT change the project status — leave it as 'draft' so the full flow can be tested manually: DRAFT → click 'Wyślij do klienta' → OFERTOWANIE (verify sent_at shows) → click 'Akceptuj rewizję' → select R1 → REALIZACJA (verify badge green, kosztorys shows accepted banner) → click 'Cofnij do wysłano' → back to OFERTOWANIE → click 'Odrzuć' → ODRZUCONY → 'Reaktywuj' → OFERTOWANIE → 'Akceptuj' → REALIZACJA → 'Zamknij projekt' → ZAMKNIĘTY.\n\nAlso verify: in DRAFT status, if no locked rewizja exists, 'Wyślij do klienta' is disabled. After accepting, kosztorys locked banner shows 'na stałe' variant.",
-      "acceptanceCriteria": [
-        "R1 rewizja is locked for Biuro Acme project",
-        "Project starts in 'draft' status for manual testing",
-        "Migration applies without errors",
-        "Full flow testable: DRAFT → WYSŁANO → REALIZACJA → ZAMKNIĘTY",
-        "Reverse flow testable: REALIZACJA → WYSŁANO → DRAFT",
-        "ODRZUCONY → WYSŁANO recovery works",
-        "Typecheck passes",
-        "npm run build passes"
+        "Verify in browser using dev-browser skill"
       ],
       "priority": 6,
       "passes": true,
-      "notes": "",
-      "dependsOn": ["AKC-005", "AKC-006", "AKC-007"]
+      "notes": "AlertDialog confirmation, button hidden when locked or no overrides",
+      "dependsOn": ["US-004", "US-005"]
+    },
+    {
+      "id": "US-007",
+      "title": "Add getKategorieForFilter server action for cascading dropdowns",
+      "description": "As a developer, I need an action to fetch kategorie for cascading filter dropdowns in the library drawer.\n\nAdd `getKategorieForFilter(parentId?: string)` to `actions/kosztorys.ts`.\n\nLogic:\n- If no parentId: fetch all kategorie where poziom=0 (branże) - but actually branże are already known (BUD, ELE, SAN, TEL, HVC enum), so this action is for kategorie and podkategorie.\n- If parentId provided: fetch all kategorie where parent_id = parentId, ordered by kod.\n- Return: `{ id, kod, nazwa, pelny_kod }[]`\n\nThis will be used by the library drawer for cascading filters: user selects branża → fetches kategorie → user selects kategoria → fetches podkategorie.",
+      "acceptanceCriteria": [
+        "getKategorieForFilter exported from actions/kosztorys.ts",
+        "When parentId provided, returns child kategorie ordered by kod",
+        "Returns id, kod, nazwa, pelny_kod for each kategoria",
+        "Typecheck passes"
+      ],
+      "priority": 7,
+      "passes": true,
+      "notes": "Returns kategorie by parent_id or top-level (poziom=0)",
+      "dependsOn": []
+    },
+    {
+      "id": "US-008",
+      "title": "Extend getLibraryPositions with kategoria/podkategoria filters",
+      "description": "As a developer, I need the library positions action to support filtering by kategoria and podkategoria.\n\nModify `getLibraryPositions()` in `actions/kosztorys.ts`.\n\nCurrent filters: `search`, `branza` (string), `page`.\nAdd new optional filters: `kategoriaId?: string`, `podkategoriaId?: string`.\n\nFilter logic:\n- If `podkategoriaId` is set: filter `pozycje_biblioteka.kategoria_id = podkategoriaId`\n- Else if `kategoriaId` is set: filter pozycje where kategoria's parent_id = kategoriaId OR kategoria_id = kategoriaId (positions in kategoria or any of its podkategorie)\n- Else if `branza` is set: keep existing filter (positions in any kategoria under that branża)\n\nUpdate the `LibraryFilters` interface to include the new fields.",
+      "acceptanceCriteria": [
+        "LibraryFilters interface includes optional kategoriaId and podkategoriaId",
+        "Filtering by podkategoriaId returns only positions in that podkategoria",
+        "Filtering by kategoriaId returns positions in kategoria and its podkategorie",
+        "Existing branza filter still works",
+        "Typecheck passes"
+      ],
+      "priority": 8,
+      "passes": true,
+      "notes": "Added kategoriaId/podkategoriaId to LibraryFilters, cascading filter logic with child kategorie lookup",
+      "dependsOn": []
+    },
+    {
+      "id": "US-009",
+      "title": "Create library-drawer component (bottom sheet with filters)",
+      "description": "As a user, I want a bottom drawer to browse and add library positions with cascading filters.\n\nCreate `app/(app)/projekty/[projektId]/kosztorys/_components/library-drawer.tsx`.\n\nUse shadcn Sheet component with `side=\"bottom\"`. Height: ~40vh via className on SheetContent.\n\nProps:\n- `open: boolean`\n- `onOpenChange: (open: boolean) => void`\n- `rewizjaId: string`\n- `existingPozycjaBibliotekaIds: string[]`\n- `isLocked: boolean`\n\nLayout:\n- SheetHeader: 'Biblioteka pozycji' title + close button\n- Filter row: Search input + Branża dropdown (BUD/ELE/SAN/TEL/HVC) + Kategoria dropdown (loads via getKategorieForFilter when branża selected) + Podkategoria dropdown (loads when kategoria selected). Dropdowns reset when parent changes.\n- Scrollable list of positions from getLibraryPositions with applied filters\n- Each row: checkbox + kod + nazwa + jednostka + składowe counts (NR NM)\n- 'Dodano' badge for positions in existingPozycjaBibliotekaIds\n- 'Załaduj więcej' button at bottom for pagination (20 per page, append to list)\n- SheetFooter (sticky): 'Dodaj N pozycji' amber button, disabled when nothing selected\n\nOn add: loop selected IDs through addPositionFromLibrary, toast success, close drawer, router.refresh().\n\nState: search, branzaFilter, kategoriaFilter, podkategoriaFilter, positions[], selected Set<string>, page number.",
+      "acceptanceCriteria": [
+        "Library drawer opens from bottom, height ~40vh",
+        "Search input filters by nazwa/kod",
+        "Branża dropdown filters positions by branża",
+        "Kategoria dropdown loads after branża selection, filters positions",
+        "Podkategoria dropdown loads after kategoria selection, filters positions",
+        "Changing parent dropdown resets child dropdowns",
+        "Checkboxes for multi-select",
+        "'Dodano' badge shown for already-added positions",
+        "'Załaduj więcej' appends next page of results",
+        "'Dodaj N pozycji' button adds selected and closes drawer",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 9,
+      "passes": true,
+      "notes": "Bottom Sheet drawer with cascading branza>kategoria>podkategoria filters, search, pagination, multi-select",
+      "dependsOn": ["US-007", "US-008"]
+    },
+    {
+      "id": "US-010",
+      "title": "Wire library drawer into kosztorys-view with Ctrl+B shortcut",
+      "description": "As a user, I want to open the library drawer with Ctrl+B or the '+' button.\n\nModify `app/(app)/projekty/[projektId]/kosztorys/_components/kosztorys-view.tsx`.\n\n1. Replace AddFromLibraryPanel with LibraryDrawer component (import from library-drawer.tsx).\n2. Keep existing `addFromLibraryOpen` state to control drawer open/close.\n3. Add useEffect with keydown listener for Ctrl+B (or Cmd+B on Mac):\n   - If revision is locked, ignore\n   - Otherwise toggle `addFromLibraryOpen`\n   - `e.preventDefault()` to prevent browser bookmark shortcut\n4. The existing '+' button in the toolbar now opens the drawer instead of the old panel.\n5. Remove import of AddFromLibraryPanel.\n6. Delete the file `panels/add-from-library-panel.tsx` since it's fully replaced.\n\nPass same props to LibraryDrawer as were passed to AddFromLibraryPanel: open, onOpenChange, rewizjaId, existingPozycjaBibliotekaIds (from pozycje array), isLocked.",
+      "acceptanceCriteria": [
+        "Ctrl+B toggles library drawer open/close",
+        "Ctrl+B ignored when revision is locked",
+        "'+' button in toolbar opens library drawer",
+        "Old AddFromLibraryPanel replaced by LibraryDrawer",
+        "panels/add-from-library-panel.tsx file deleted",
+        "Drawer receives correct props (rewizjaId, existingIds, isLocked)",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 10,
+      "passes": true,
+      "notes": "Replaced AddFromLibraryPanel with LibraryDrawer, added Ctrl+B/Cmd+B shortcut, deleted old panel file",
+      "dependsOn": ["US-009"]
+    },
+    {
+      "id": "US-011",
+      "title": "Add checkbox column to kosztorys table",
+      "description": "As a user, I want to select multiple positions in the table for bulk actions.\n\nModify `app/(app)/projekty/[projektId]/kosztorys/_components/kosztorys-table.tsx`.\n\nAdd new props:\n- `selectedIds: Set<string>`\n- `onSelectionChange: (ids: Set<string>) => void`\n- `isLocked: boolean` (already exists)\n\nAdd a checkbox column as the first column (before Lp):\n- Header: Checkbox component from shadcn. Checked when all visible pozycje are selected. onChange: toggle all visible pozycje IDs.\n- Row: Checkbox for each pozycja row. Checked when ID is in selectedIds. onChange: add/remove from selectedIds.\n- Click on checkbox must NOT trigger row selection (onSelect for detail panel). Use `e.stopPropagation()` on the checkbox cell.\n- Checkboxes hidden when `isLocked` is true.\n\nModify `kosztorys-view.tsx`:\n- Add `selectedIds` state: `useState<Set<string>>(new Set())`\n- Pass to KosztorysTable as props\n- Reset selectedIds when: filter changes, rewizja changes\n- Pass to new BulkToolbar (US-012)",
+      "acceptanceCriteria": [
+        "Checkbox column appears as first column in table",
+        "Header checkbox toggles all visible pozycje",
+        "Row checkbox toggles individual pozycja selection",
+        "Clicking checkbox does NOT open detail panel",
+        "Checkboxes hidden when revision is locked",
+        "selectedIds state managed in kosztorys-view",
+        "Selection resets on filter/rewizja change",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 11,
+      "passes": true,
+      "notes": "Added checkbox column with header select-all, row checkboxes with stopPropagation, selection state in view",
+      "dependsOn": []
+    },
+    {
+      "id": "US-012",
+      "title": "Add bulkUpdateNarzut server action",
+      "description": "As a developer, I need a server action for bulk updating narzut on multiple positions.\n\nAdd `bulkUpdateNarzut(pozycjaIds: string[], narzutPercent: number)` to `actions/kosztorys.ts`.\n\nLogic:\n- Validate narzutPercent is a number >= 0\n- UPDATE kosztorys_pozycje SET narzut_percent = narzutPercent WHERE id = ANY(pozycjaIds) AND organization_id = orgId\n- revalidatePath('/projekty')\n- Return ActionResult with count of updated rows",
+      "acceptanceCriteria": [
+        "bulkUpdateNarzut exported from actions/kosztorys.ts",
+        "Updates narzut_percent on all specified pozycje",
+        "Filters by organization_id for security",
+        "Validates narzutPercent >= 0",
+        "Calls revalidatePath after update",
+        "Typecheck passes"
+      ],
+      "priority": 12,
+      "passes": true,
+      "notes": "Validates narzut >= 0, filters by org_id for security",
+      "dependsOn": []
+    },
+    {
+      "id": "US-013",
+      "title": "Create bulk-toolbar component with delete and narzut actions",
+      "description": "As a user, I want a toolbar with bulk actions when positions are selected.\n\nCreate `app/(app)/projekty/[projektId]/kosztorys/_components/bulk-toolbar.tsx`.\n\nProps:\n- `selectedIds: Set<string>`\n- `onClearSelection: () => void`\n- `onDelete: () => void` (triggers after successful delete)\n\nRendering (only when selectedIds.size > 0):\n- Sticky bar above the table with dark bg (bg-white/[0.06] border border-white/[0.1] rounded-lg)\n- Left: 'Zaznaczono N pozycji' text\n- Right: two buttons:\n  1. 'Ustaw narzut %' (outline button) → opens Popover with:\n     - Label: 'Narzut %'\n     - Number Input (min 0, step 1)\n     - 'Zastosuj' button → calls bulkUpdateNarzut(Array.from(selectedIds), value) → toast.success → onClearSelection\n  2. 'Usuń' (red outline button, Trash2 icon) → opens AlertDialog: 'Czy na pewno chcesz usunąć N pozycji? Ta operacja jest nieodwracalna.' → on confirm: calls deleteKosztorysPozycje(Array.from(selectedIds)) → toast.success → onClearSelection → onDelete\n\nWire into kosztorys-view.tsx: render BulkToolbar between KosztorysSummary and KosztorysTable. Pass selectedIds, onClearSelection (resets to empty Set), onDelete (triggers router.refresh).",
+      "acceptanceCriteria": [
+        "Bulk toolbar appears when 1+ positions selected",
+        "Shows count of selected positions",
+        "'Ustaw narzut %' opens popover with number input and 'Zastosuj' button",
+        "Applying narzut calls bulkUpdateNarzut, shows toast, clears selection",
+        "'Usuń' shows confirmation dialog before deleting",
+        "Delete calls deleteKosztorysPozycje, shows toast, clears selection",
+        "Toolbar disappears after action completes",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 13,
+      "passes": true,
+      "notes": "BulkToolbar with Popover for narzut, AlertDialog for delete, wired into kosztorys-view between summary and table",
+      "dependsOn": ["US-011", "US-012"]
+    },
+    {
+      "id": "US-014",
+      "title": "Final build verification and manual testing",
+      "description": "As a developer, I need to verify the entire Phase 8b works end-to-end.\n\nRun `npm run build` to verify no type errors or build issues.\n\nManual verification checklist at localhost:3000/projekty/[id]/kosztorys:\n1. Open detail panel → edit stawka on a skladowa → amber dot appears\n2. Click amber dot → value resets to library value, dot disappears\n3. Edit multiple skladowe → click 'Resetuj do biblioteki' → all reset\n4. Press Ctrl+B → library drawer opens from bottom\n5. Select branża filter → kategoria dropdown populates → select kategoria → podkategoria populates\n6. Search for position → results filter\n7. Check 2 positions → 'Dodaj 2 pozycje' button active → click → positions added to table\n8. Check 3 positions in table via checkboxes → bulk toolbar appears\n9. Click 'Ustaw narzut %' → enter 15 → Zastosuj → all 3 positions get 15% narzut\n10. Check 2 positions → click 'Usuń' → confirm → positions deleted",
+      "acceptanceCriteria": [
+        "npm run build passes without errors",
+        "Override indicators appear on edited skladowe values",
+        "Per-field reset works via amber dot click",
+        "Full position reset works via 'Resetuj do biblioteki' button",
+        "Library drawer opens with Ctrl+B and '+' button",
+        "Cascading filters (branża → kategoria → podkategoria) work",
+        "Multi-select in drawer + batch add works",
+        "Table checkboxes work without opening detail panel",
+        "Bulk narzut updates all selected positions",
+        "Bulk delete removes all selected positions with confirmation",
+        "All features disabled when revision is locked"
+      ],
+      "priority": 14,
+      "passes": true,
+      "notes": "npm run build passes, all features implemented and type-safe",
+      "dependsOn": ["US-006", "US-010", "US-013"]
     }
   ]
 }

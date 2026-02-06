@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import { ChevronRight, FileText } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
 import { type KosztorysPozycjaView } from '@/actions/kosztorys';
 import { cn } from '@/lib/utils';
 
@@ -18,6 +19,8 @@ interface KosztorysTableProps {
   selectedId: string | null;
   onSelect: (id: string) => void;
   isLocked: boolean;
+  selectedIds: Set<string>;
+  onSelectionChange: (ids: Set<string>) => void;
 }
 
 function formatCurrency(value: number): string {
@@ -48,7 +51,7 @@ interface KategoriaGroup {
   pozycje: KosztorysPozycjaView[];
 }
 
-export function KosztorysTable({ pozycje, selectedId, onSelect }: KosztorysTableProps) {
+export function KosztorysTable({ pozycje, selectedId, onSelect, isLocked, selectedIds, onSelectionChange }: KosztorysTableProps) {
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
 
   const groups = useMemo(() => {
@@ -96,6 +99,29 @@ export function KosztorysTable({ pozycje, selectedId, onSelect }: KosztorysTable
     });
   };
 
+  const allVisibleIds = useMemo(
+    () => pozycje.map((p) => p.id),
+    [pozycje]
+  );
+
+  const allSelected = allVisibleIds.length > 0 && allVisibleIds.every((id) => selectedIds.has(id));
+  const someSelected = allVisibleIds.some((id) => selectedIds.has(id));
+
+  const toggleAll = () => {
+    if (allSelected) {
+      onSelectionChange(new Set());
+    } else {
+      onSelectionChange(new Set(allVisibleIds));
+    }
+  };
+
+  const toggleOne = (id: string) => {
+    const next = new Set(selectedIds);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    onSelectionChange(next);
+  };
+
   if (pozycje.length === 0) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center gap-3 text-white/40">
@@ -113,6 +139,14 @@ export function KosztorysTable({ pozycje, selectedId, onSelect }: KosztorysTable
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b border-white/[0.08] text-white/50 text-xs">
+            {!isLocked && (
+              <th className="px-2 py-2.5 w-[40px]" onClick={(e) => e.stopPropagation()}>
+                <Checkbox
+                  checked={allSelected ? true : someSelected ? 'indeterminate' : false}
+                  onCheckedChange={toggleAll}
+                />
+              </th>
+            )}
             <th className="px-3 py-2.5 text-right w-[60px]">Lp</th>
             <th className="px-3 py-2.5 text-left w-[120px]">Kod</th>
             <th className="px-3 py-2.5 text-left">Zadanie</th>
@@ -138,6 +172,9 @@ export function KosztorysTable({ pozycje, selectedId, onSelect }: KosztorysTable
                 onToggleKategoria={(katKod) => toggleCollapse(katKod)}
                 selectedId={selectedId}
                 onSelect={onSelect}
+                isLocked={isLocked}
+                selectedIds={selectedIds}
+                onToggleOne={toggleOne}
               />
             );
           })}
@@ -155,6 +192,9 @@ function GroupRows({
   onToggleKategoria,
   selectedId,
   onSelect,
+  isLocked,
+  selectedIds,
+  onToggleOne,
 }: {
   branza: BranzaGroup;
   branzaCollapsed: boolean;
@@ -163,7 +203,11 @@ function GroupRows({
   onToggleKategoria: (katKod: string) => void;
   selectedId: string | null;
   onSelect: (id: string) => void;
+  isLocked: boolean;
+  selectedIds: Set<string>;
+  onToggleOne: (id: string) => void;
 }) {
+  const colSpanHeader = isLocked ? 9 : 10;
   return (
     <>
       {/* Branża header */}
@@ -171,7 +215,7 @@ function GroupRows({
         onClick={onToggleBranza}
         className="cursor-pointer bg-white/[0.02] hover:bg-white/[0.04] border-b border-white/[0.06]"
       >
-        <td colSpan={9} className="px-3 py-2">
+        <td colSpan={colSpanHeader} className="px-3 py-2">
           <div className="flex items-center gap-2 font-medium text-white/70">
             <ChevronRight className={cn("h-4 w-4 transition-transform", !branzaCollapsed && "rotate-90")} />
             <span className="font-mono text-xs text-amber-500/70">{branza.kod}</span>
@@ -194,6 +238,9 @@ function GroupRows({
             onToggle={() => onToggleKategoria(kat.kod)}
             selectedId={selectedId}
             onSelect={onSelect}
+            isLocked={isLocked}
+            selectedIds={selectedIds}
+            onToggleOne={onToggleOne}
           />
         );
       })}
@@ -207,13 +254,20 @@ function KategoriaRows({
   onToggle,
   selectedId,
   onSelect,
+  isLocked,
+  selectedIds,
+  onToggleOne,
 }: {
   kategoria: KategoriaGroup;
   katCollapsed: boolean;
   onToggle: () => void;
   selectedId: string | null;
   onSelect: (id: string) => void;
+  isLocked: boolean;
+  selectedIds: Set<string>;
+  onToggleOne: (id: string) => void;
 }) {
+  const colSpanHeader = isLocked ? 9 : 10;
   return (
     <>
       {/* Kategoria header */}
@@ -221,7 +275,7 @@ function KategoriaRows({
         onClick={onToggle}
         className="cursor-pointer hover:bg-white/[0.03] border-b border-white/[0.04]"
       >
-        <td colSpan={9} className="px-3 py-1.5 pl-8">
+        <td colSpan={colSpanHeader} className="px-3 py-1.5 pl-8">
           <div className="flex items-center gap-2 text-white/50 text-xs">
             <ChevronRight className={cn("h-3.5 w-3.5 transition-transform", !katCollapsed && "rotate-90")} />
             <span className="font-mono text-white/30">{kategoria.kod}</span>
@@ -243,6 +297,17 @@ function KategoriaRows({
             selectedId === p.id && "border-l-2 border-l-amber-500 bg-amber-500/[0.05]"
           )}
         >
+          {!isLocked && (
+            <td
+              className="px-2 py-2"
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleOne(p.id);
+              }}
+            >
+              <Checkbox checked={selectedIds.has(p.id)} />
+            </td>
+          )}
           <td className="px-3 py-2 text-right text-white/40 font-mono text-xs">{p.lp}</td>
           <td className="px-3 py-2 font-mono text-xs text-white/40">{p.kod || '—'}</td>
           <td className="px-3 py-2 font-medium text-white/80">{p.nazwa}</td>
