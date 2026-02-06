@@ -710,6 +710,7 @@ export type Database = {
       }
       projekty: {
         Row: {
+          accepted_rewizja_id: string | null
           adres: string | null
           created_at: string | null
           id: string
@@ -723,6 +724,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          accepted_rewizja_id?: string | null
           adres?: string | null
           created_at?: string | null
           id?: string
@@ -736,6 +738,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          accepted_rewizja_id?: string | null
           adres?: string | null
           created_at?: string | null
           id?: string
@@ -750,6 +753,20 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "projekty_accepted_rewizja_id_fkey"
+            columns: ["accepted_rewizja_id"]
+            isOneToOne: false
+            referencedRelation: "rewizje"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "projekty_accepted_rewizja_id_fkey"
+            columns: ["accepted_rewizja_id"]
+            isOneToOne: false
+            referencedRelation: "rewizje_summary"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "projekty_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
@@ -758,10 +775,89 @@ export type Database = {
           },
         ]
       }
-      rewizje: {
+      realizacja_wpisy: {
         Row: {
           created_at: string | null
+          data_faktury: string | null
           id: string
+          kwota_netto: number
+          numer_faktury: string | null
+          opis: string | null
+          oplacone: boolean | null
+          organization_id: string
+          projekt_id: string
+          typ: Database["public"]["Enums"]["realizacja_wpis_typ"]
+          umowa_id: string | null
+          updated_at: string | null
+          zamowienie_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          data_faktury?: string | null
+          id?: string
+          kwota_netto: number
+          numer_faktury?: string | null
+          opis?: string | null
+          oplacone?: boolean | null
+          organization_id: string
+          projekt_id: string
+          typ: Database["public"]["Enums"]["realizacja_wpis_typ"]
+          umowa_id?: string | null
+          updated_at?: string | null
+          zamowienie_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          data_faktury?: string | null
+          id?: string
+          kwota_netto?: number
+          numer_faktury?: string | null
+          opis?: string | null
+          oplacone?: boolean | null
+          organization_id?: string
+          projekt_id?: string
+          typ?: Database["public"]["Enums"]["realizacja_wpis_typ"]
+          umowa_id?: string | null
+          updated_at?: string | null
+          zamowienie_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "realizacja_wpisy_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "realizacja_wpisy_projekt_id_fkey"
+            columns: ["projekt_id"]
+            isOneToOne: false
+            referencedRelation: "projekty"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "realizacja_wpisy_umowa_id_fkey"
+            columns: ["umowa_id"]
+            isOneToOne: false
+            referencedRelation: "umowy"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "realizacja_wpisy_zamowienie_id_fkey"
+            columns: ["zamowienie_id"]
+            isOneToOne: false
+            referencedRelation: "zamowienia"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rewizje: {
+        Row: {
+          accepted_at: string | null
+          created_at: string | null
+          id: string
+          is_accepted: boolean | null
           is_locked: boolean | null
           locked_at: string | null
           nazwa: string | null
@@ -770,8 +866,10 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          accepted_at?: string | null
           created_at?: string | null
           id?: string
+          is_accepted?: boolean | null
           is_locked?: boolean | null
           locked_at?: string | null
           nazwa?: string | null
@@ -780,8 +878,10 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          accepted_at?: string | null
           created_at?: string | null
           id?: string
+          is_accepted?: boolean | null
           is_locked?: boolean | null
           locked_at?: string | null
           nazwa?: string | null
@@ -837,6 +937,457 @@ export type Database = {
             columns: ["pozycja_biblioteka_id"]
             isOneToOne: false
             referencedRelation: "pozycje_biblioteka"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      umowa_pozycje: {
+        Row: {
+          created_at: string | null
+          id: string
+          ilosc: number
+          ilosc_wykonana: number | null
+          jednostka: string | null
+          nazwa: string
+          pozycja_biblioteka_id: string | null
+          procent_wykonania: number | null
+          stawka: number
+          umowa_id: string
+          wartosc: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          ilosc: number
+          ilosc_wykonana?: number | null
+          jednostka?: string | null
+          nazwa: string
+          pozycja_biblioteka_id?: string | null
+          procent_wykonania?: number | null
+          stawka: number
+          umowa_id: string
+          wartosc?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          ilosc?: number
+          ilosc_wykonana?: number | null
+          jednostka?: string | null
+          nazwa?: string
+          pozycja_biblioteka_id?: string | null
+          procent_wykonania?: number | null
+          stawka?: number
+          umowa_id?: string
+          wartosc?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "umowa_pozycje_pozycja_biblioteka_id_fkey"
+            columns: ["pozycja_biblioteka_id"]
+            isOneToOne: false
+            referencedRelation: "pozycje_biblioteka"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "umowa_pozycje_umowa_id_fkey"
+            columns: ["umowa_id"]
+            isOneToOne: false
+            referencedRelation: "umowy"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      umowa_pozycje_zrodla: {
+        Row: {
+          id: string
+          ilosc: number
+          kosztorys_skladowa_r_id: string
+          umowa_pozycja_id: string
+        }
+        Insert: {
+          id?: string
+          ilosc: number
+          kosztorys_skladowa_r_id: string
+          umowa_pozycja_id: string
+        }
+        Update: {
+          id?: string
+          ilosc?: number
+          kosztorys_skladowa_r_id?: string
+          umowa_pozycja_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "umowa_pozycje_zrodla_kosztorys_skladowa_r_id_fkey"
+            columns: ["kosztorys_skladowa_r_id"]
+            isOneToOne: false
+            referencedRelation: "kosztorys_skladowe_robocizna"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "umowa_pozycje_zrodla_umowa_pozycja_id_fkey"
+            columns: ["umowa_pozycja_id"]
+            isOneToOne: false
+            referencedRelation: "umowa_pozycje"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      umowa_wykonanie: {
+        Row: {
+          created_at: string | null
+          data_wpisu: string
+          id: string
+          ilosc_wykonana: number
+          umowa_pozycja_id: string
+          uwagi: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          data_wpisu: string
+          id?: string
+          ilosc_wykonana: number
+          umowa_pozycja_id: string
+          uwagi?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          data_wpisu?: string
+          id?: string
+          ilosc_wykonana?: number
+          umowa_pozycja_id?: string
+          uwagi?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "umowa_wykonanie_umowa_pozycja_id_fkey"
+            columns: ["umowa_pozycja_id"]
+            isOneToOne: false
+            referencedRelation: "umowa_pozycje"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      umowy: {
+        Row: {
+          created_at: string | null
+          data_podpisania: string | null
+          id: string
+          numer: string
+          organization_id: string
+          podwykonawca_id: string
+          projekt_id: string
+          rewizja_id: string
+          status: Database["public"]["Enums"]["umowa_status"]
+          updated_at: string | null
+          uwagi: string | null
+          warunki_platnosci: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          data_podpisania?: string | null
+          id?: string
+          numer: string
+          organization_id: string
+          podwykonawca_id: string
+          projekt_id: string
+          rewizja_id: string
+          status?: Database["public"]["Enums"]["umowa_status"]
+          updated_at?: string | null
+          uwagi?: string | null
+          warunki_platnosci?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          data_podpisania?: string | null
+          id?: string
+          numer?: string
+          organization_id?: string
+          podwykonawca_id?: string
+          projekt_id?: string
+          rewizja_id?: string
+          status?: Database["public"]["Enums"]["umowa_status"]
+          updated_at?: string | null
+          uwagi?: string | null
+          warunki_platnosci?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "umowy_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "umowy_podwykonawca_id_fkey"
+            columns: ["podwykonawca_id"]
+            isOneToOne: false
+            referencedRelation: "podwykonawcy"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "umowy_projekt_id_fkey"
+            columns: ["projekt_id"]
+            isOneToOne: false
+            referencedRelation: "projekty"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "umowy_rewizja_id_fkey"
+            columns: ["rewizja_id"]
+            isOneToOne: false
+            referencedRelation: "rewizje"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "umowy_rewizja_id_fkey"
+            columns: ["rewizja_id"]
+            isOneToOne: false
+            referencedRelation: "rewizje_summary"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      zamowienia: {
+        Row: {
+          created_at: string | null
+          data_dostawy_planowana: string | null
+          data_zamowienia: string | null
+          dostawca_id: string
+          id: string
+          numer: string
+          organization_id: string
+          projekt_id: string
+          rewizja_id: string
+          status: Database["public"]["Enums"]["zamowienie_status"]
+          updated_at: string | null
+          uwagi: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          data_dostawy_planowana?: string | null
+          data_zamowienia?: string | null
+          dostawca_id: string
+          id?: string
+          numer: string
+          organization_id: string
+          projekt_id: string
+          rewizja_id: string
+          status?: Database["public"]["Enums"]["zamowienie_status"]
+          updated_at?: string | null
+          uwagi?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          data_dostawy_planowana?: string | null
+          data_zamowienia?: string | null
+          dostawca_id?: string
+          id?: string
+          numer?: string
+          organization_id?: string
+          projekt_id?: string
+          rewizja_id?: string
+          status?: Database["public"]["Enums"]["zamowienie_status"]
+          updated_at?: string | null
+          uwagi?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "zamowienia_dostawca_id_fkey"
+            columns: ["dostawca_id"]
+            isOneToOne: false
+            referencedRelation: "dostawcy"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "zamowienia_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "zamowienia_projekt_id_fkey"
+            columns: ["projekt_id"]
+            isOneToOne: false
+            referencedRelation: "projekty"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "zamowienia_rewizja_id_fkey"
+            columns: ["rewizja_id"]
+            isOneToOne: false
+            referencedRelation: "rewizje"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "zamowienia_rewizja_id_fkey"
+            columns: ["rewizja_id"]
+            isOneToOne: false
+            referencedRelation: "rewizje_summary"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      zamowienie_dostawy: {
+        Row: {
+          created_at: string | null
+          data_dostawy: string
+          id: string
+          numer_wz: string | null
+          uwagi: string | null
+          zamowienie_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          data_dostawy: string
+          id?: string
+          numer_wz?: string | null
+          uwagi?: string | null
+          zamowienie_id: string
+        }
+        Update: {
+          created_at?: string | null
+          data_dostawy?: string
+          id?: string
+          numer_wz?: string | null
+          uwagi?: string | null
+          zamowienie_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "zamowienie_dostawy_zamowienie_id_fkey"
+            columns: ["zamowienie_id"]
+            isOneToOne: false
+            referencedRelation: "zamowienia"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      zamowienie_dostawy_pozycje: {
+        Row: {
+          id: string
+          ilosc_dostarczona: number
+          zamowienie_dostawa_id: string
+          zamowienie_pozycja_id: string
+        }
+        Insert: {
+          id?: string
+          ilosc_dostarczona: number
+          zamowienie_dostawa_id: string
+          zamowienie_pozycja_id: string
+        }
+        Update: {
+          id?: string
+          ilosc_dostarczona?: number
+          zamowienie_dostawa_id?: string
+          zamowienie_pozycja_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "zamowienie_dostawy_pozycje_zamowienie_dostawa_id_fkey"
+            columns: ["zamowienie_dostawa_id"]
+            isOneToOne: false
+            referencedRelation: "zamowienie_dostawy"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "zamowienie_dostawy_pozycje_zamowienie_pozycja_id_fkey"
+            columns: ["zamowienie_pozycja_id"]
+            isOneToOne: false
+            referencedRelation: "zamowienie_pozycje"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      zamowienie_pozycje: {
+        Row: {
+          cena_jednostkowa: number
+          created_at: string | null
+          id: string
+          ilosc_dostarczona: number | null
+          ilosc_zamowiona: number
+          jednostka: string | null
+          nazwa: string
+          produkt_id: string | null
+          wartosc: number | null
+          zamowienie_id: string
+        }
+        Insert: {
+          cena_jednostkowa: number
+          created_at?: string | null
+          id?: string
+          ilosc_dostarczona?: number | null
+          ilosc_zamowiona: number
+          jednostka?: string | null
+          nazwa: string
+          produkt_id?: string | null
+          wartosc?: number | null
+          zamowienie_id: string
+        }
+        Update: {
+          cena_jednostkowa?: number
+          created_at?: string | null
+          id?: string
+          ilosc_dostarczona?: number | null
+          ilosc_zamowiona?: number
+          jednostka?: string | null
+          nazwa?: string
+          produkt_id?: string | null
+          wartosc?: number | null
+          zamowienie_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "zamowienie_pozycje_produkt_id_fkey"
+            columns: ["produkt_id"]
+            isOneToOne: false
+            referencedRelation: "produkty"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "zamowienie_pozycje_zamowienie_id_fkey"
+            columns: ["zamowienie_id"]
+            isOneToOne: false
+            referencedRelation: "zamowienia"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      zamowienie_pozycje_zrodla: {
+        Row: {
+          id: string
+          ilosc: number
+          kosztorys_skladowa_m_id: string
+          zamowienie_pozycja_id: string
+        }
+        Insert: {
+          id?: string
+          ilosc: number
+          kosztorys_skladowa_m_id: string
+          zamowienie_pozycja_id: string
+        }
+        Update: {
+          id?: string
+          ilosc?: number
+          kosztorys_skladowa_m_id?: string
+          zamowienie_pozycja_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "zamowienie_pozycje_zrodla_kosztorys_skladowa_m_id_fkey"
+            columns: ["kosztorys_skladowa_m_id"]
+            isOneToOne: false
+            referencedRelation: "kosztorys_skladowe_materialy"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "zamowienie_pozycje_zrodla_zamowienie_pozycja_id_fkey"
+            columns: ["zamowienie_pozycja_id"]
+            isOneToOne: false
+            referencedRelation: "zamowienie_pozycje"
             referencedColumns: ["id"]
           },
         ]
@@ -926,6 +1477,35 @@ export type Database = {
         Args: { new_nazwa?: string; source_rewizja_id: string }
         Returns: string
       }
+      generate_umowy_draft: {
+        Args: { p_projekt_id: string; p_rewizja_id: string }
+        Returns: number
+      }
+      generate_zamowienia_draft: {
+        Args: { p_projekt_id: string; p_rewizja_id: string }
+        Returns: number
+      }
+      get_dostawcy_aggregated: {
+        Args: {
+          p_branza?: string
+          p_kategoria?: string
+          p_limit?: number
+          p_offset?: number
+          p_podkategoria?: string
+          p_search?: string
+        }
+        Returns: {
+          aktywny: boolean
+          id: string
+          kod: string
+          kontakt: string
+          najnizsza_cena: number
+          nazwa: string
+          pozycje_count: number
+          produkty_count: number
+          total_count: number
+        }[]
+      }
       get_materialy_aggregated: {
         Args: {
           p_branza?: string
@@ -947,6 +1527,27 @@ export type Database = {
           total_count: number
         }[]
       }
+      get_podwykonawcy_aggregated: {
+        Args: {
+          p_branza?: string
+          p_kategoria?: string
+          p_limit?: number
+          p_offset?: number
+          p_podkategoria?: string
+          p_search?: string
+        }
+        Returns: {
+          aktywny: boolean
+          id: string
+          kontakt: string
+          najnizsza_stawka: number
+          najwyzsza_stawka: number
+          nazwa: string
+          pozycje_count: number
+          specjalizacja: string
+          total_count: number
+        }[]
+      }
       user_organizations: { Args: never; Returns: string[] }
     }
     Enums: {
@@ -959,6 +1560,19 @@ export type Database = {
         | "realizacja"
         | "zamkniety"
         | "odrzucony"
+      realizacja_wpis_typ: "material" | "robocizna" | "inny"
+      umowa_status:
+        | "draft"
+        | "wyslana"
+        | "podpisana"
+        | "wykonana"
+        | "rozliczona"
+      zamowienie_status:
+        | "draft"
+        | "wyslane"
+        | "czesciowo"
+        | "dostarczone"
+        | "rozliczone"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1095,6 +1709,15 @@ export const Constants = {
         "realizacja",
         "zamkniety",
         "odrzucony",
+      ],
+      realizacja_wpis_typ: ["material", "robocizna", "inny"],
+      umowa_status: ["draft", "wyslana", "podpisana", "wykonana", "rozliczona"],
+      zamowienie_status: [
+        "draft",
+        "wyslane",
+        "czesciowo",
+        "dostarczone",
+        "rozliczone",
       ],
     },
   },

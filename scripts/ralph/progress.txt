@@ -1,15 +1,64 @@
 # Ralph Progress Log
-Started: Fri Feb  6 10:02:15 CET 2026
+Started: Fri Feb  6 11:20:22 CET 2026
 ---
-[2026-02-06 12:00] US-001 PASS: DB migration rebuild_stawki_podwykonawcow applied
-[2026-02-06 12:00] US-009 PASS: TypeScript types regenerated from Supabase
-[2026-02-06 12:01] US-002 PASS: Zod schemas created in lib/validations/podwykonawcy.ts
-[2026-02-06 12:02] US-003 PASS: Server actions created in actions/podwykonawcy.ts (full CRUD)
-[2026-02-06 12:03] US-004 PASS: Podwykonawcy page with table, filters, pagination
-[2026-02-06 12:04] US-005 PASS: Detail panel with stawki cennik inline
-[2026-02-06 12:04] US-006 PASS: Podwykonawca form panel (add/edit)
-[2026-02-06 12:05] US-007 PASS: Stawka form panel with pozycja select
-[2026-02-06 12:05] US-008 PASS: Delete confirm panel (reuses kategorie component)
-[2026-02-06 12:06] US-010 PASS: Seed data - 5 podwykonawców + 11 stawek
-[2026-02-06 12:06] BUILD PASS: npm run build successful
-[2026-02-06 12:06] ALL 10 STORIES COMPLETE
+
+## US-001: enum types + ALTER tables + prevent_unlock trigger ✅
+- Migration: business_logic_types_and_alters
+- 3 enums: zamowienie_status, umowa_status, realizacja_wpis_typ
+- ALTER rewizje: +is_accepted, +accepted_at
+- ALTER projekty: +accepted_rewizja_id
+- Trigger: trigger_prevent_unlock_accepted + rewizje_prevent_unlock_accepted
+
+## US-010: get_podwykonawcy_aggregated function ✅
+- Migration: fn_get_podwykonawcy_aggregated
+- Aggregation: podwykonawcy -> stawki_podwykonawcow -> pozycje_biblioteka
+
+## US-011: get_dostawcy_aggregated function ✅
+- Migration: fn_get_dostawcy_aggregated
+- Aggregation: dostawcy -> ceny_dostawcow -> biblioteka_skladowe_materialy -> pozycje_biblioteka
+
+## US-002: zamowienia tables (5 tables) ✅
+- Migration: zamowienia_tables
+- Tables: zamowienia, zamowienie_pozycje, zamowienie_pozycje_zrodla, zamowienie_dostawy, zamowienie_dostawy_pozycje
+- GENERATED ALWAYS: wartosc = ilosc_zamowiona * cena_jednostkowa
+
+## US-003: umowy tables (4 tables) + realizacja_wpisy ✅
+- Migration: umowy_realizacja_tables
+- Tables: umowy, umowa_pozycje, umowa_pozycje_zrodla, umowa_wykonanie, realizacja_wpisy
+- GENERATED ALWAYS: wartosc = ilosc * stawka, procent_wykonania = ilosc_wykonana/ilosc*100
+
+## US-004: indexes (27 indexes) ✅
+- Migration: business_logic_indexes
+- 27 indexes across all 10 new tables
+
+## US-005: RLS policies for zamowienia tables ✅
+- Migration: rls_zamowienia
+- 20 policies (4 per table x 5 tables)
+- Pattern A (direct org_id), Pattern B (1 JOIN), Pattern B x2 (2 JOINs)
+
+## US-006: RLS policies for umowy + realizacja tables ✅
+- Migration: rls_umowy_realizacja
+- 20 policies (4 per table x 5 tables)
+
+## US-007: trigger functions ✅
+- Migration: business_logic_triggers
+- 3x updated_at triggers (reusing existing function)
+- 2x auto_numer triggers (ZAM/YYYY/NNN, UMW/YYYY/NNN)
+- 2x auto_sum triggers (ilosc_dostarczona, ilosc_wykonana)
+
+## US-008: generate_zamowienia_draft function ✅
+- Migration: fn_generate_zamowienia_draft
+- private.generate_zamowienia_draft (SECURITY DEFINER) + public wrapper (SECURITY INVOKER)
+- Creates private schema if not exists
+
+## US-009: generate_umowy_draft function ✅
+- Migration: fn_generate_umowy_draft
+- private.generate_umowy_draft (SECURITY DEFINER) + public wrapper (SECURITY INVOKER)
+
+## US-012: Regenerate TypeScript types ✅
+- Updated lib/supabase/database.types.ts
+- Verified all 10 new tables, 3 new enums, altered columns, 4 new functions
+- npm run build passes
+
+---
+ALL 12 STORIES COMPLETE. npm run build passes.

@@ -22,8 +22,8 @@
         "Typecheck passes"
       ],
       "priority": 1,
-      "passes": true,
-      "notes": "Applied via Supabase MCP apply_migration. All 3 enums, 3 ALTER columns, trigger function + trigger created successfully.",
+      "passes": false,
+      "notes": "Full SQL in docs/plans/2026-02-06-business-logic-db-migration.md sections 2-3 and 5.1",
       "dependsOn": []
     },
     {
@@ -42,8 +42,8 @@
         "Typecheck passes"
       ],
       "priority": 2,
-      "passes": true,
-      "notes": "All 5 zamowienia tables created successfully via Supabase MCP.",
+      "passes": false,
+      "notes": "Full SQL in docs/plans/2026-02-06-business-logic-db-migration.md section 4.1",
       "dependsOn": ["US-001"]
     },
     {
@@ -61,8 +61,8 @@
         "Typecheck passes"
       ],
       "priority": 3,
-      "passes": true,
-      "notes": "All 5 tables (4 umowy + realizacja_wpisy) created successfully via Supabase MCP.",
+      "passes": false,
+      "notes": "Full SQL in docs/plans/2026-02-06-business-logic-db-migration.md sections 4.2 and 4.3",
       "dependsOn": ["US-001"]
     },
     {
@@ -81,8 +81,8 @@
         "Typecheck passes"
       ],
       "priority": 4,
-      "passes": true,
-      "notes": "All 27 indexes created successfully.",
+      "passes": false,
+      "notes": "Full SQL in docs/plans/2026-02-06-business-logic-db-migration.md section 6",
       "dependsOn": ["US-002", "US-003"]
     },
     {
@@ -102,8 +102,8 @@
         "Typecheck passes"
       ],
       "priority": 5,
-      "passes": true,
-      "notes": "All 20 RLS policies for zamowienia tables created successfully.",
+      "passes": false,
+      "notes": "Full SQL pattern in docs/plans/2026-02-06-business-logic-db-migration.md section 7",
       "dependsOn": ["US-002"]
     },
     {
@@ -123,8 +123,8 @@
         "Typecheck passes"
       ],
       "priority": 6,
-      "passes": true,
-      "notes": "All 20 RLS policies for umowy + realizacja tables created successfully.",
+      "passes": false,
+      "notes": "Full SQL pattern in docs/plans/2026-02-06-business-logic-db-migration.md section 7",
       "dependsOn": ["US-003"]
     },
     {
@@ -146,8 +146,8 @@
         "Typecheck passes"
       ],
       "priority": 7,
-      "passes": true,
-      "notes": "All trigger functions and triggers created: 3x updated_at, 2x auto_numer, 2x auto_sum.",
+      "passes": false,
+      "notes": "Full SQL in docs/plans/2026-02-06-business-logic-db-migration.md sections 5.2-5.6",
       "dependsOn": ["US-002", "US-003"]
     },
     {
@@ -166,8 +166,8 @@
         "Typecheck passes"
       ],
       "priority": 8,
-      "passes": true,
-      "notes": "Private schema created, generate_zamowienia_draft function + public wrapper deployed successfully.",
+      "passes": false,
+      "notes": "Full SQL in docs/plans/2026-02-06-business-logic-db-migration.md section 8.1 and 8.3. Called from app via supabase.rpc('generate_zamowienia_draft', {p_projekt_id, p_rewizja_id})",
       "dependsOn": ["US-002", "US-005"]
     },
     {
@@ -186,8 +186,8 @@
         "Typecheck passes"
       ],
       "priority": 9,
-      "passes": true,
-      "notes": "generate_umowy_draft function + public wrapper deployed successfully.",
+      "passes": false,
+      "notes": "Full SQL in docs/plans/2026-02-06-business-logic-db-migration.md section 8.2 and 8.3. Called from app via supabase.rpc('generate_umowy_draft', {p_projekt_id, p_rewizja_id})",
       "dependsOn": ["US-003", "US-006"]
     },
     {
@@ -206,8 +206,8 @@
         "Typecheck passes"
       ],
       "priority": 10,
-      "passes": true,
-      "notes": "Function deployed successfully with all filters and aggregation logic.",
+      "passes": false,
+      "notes": "Full SQL in docs/plans/2026-02-06-business-logic-db-migration.md section 9.1",
       "dependsOn": []
     },
     {
@@ -226,8 +226,8 @@
         "Typecheck passes"
       ],
       "priority": 11,
-      "passes": true,
-      "notes": "Function deployed successfully with full JOIN chain and aggregation.",
+      "passes": false,
+      "notes": "Full SQL in docs/plans/2026-02-06-business-logic-db-migration.md section 9.2",
       "dependsOn": []
     },
     {
@@ -245,8 +245,8 @@
         "Typecheck passes"
       ],
       "priority": 12,
-      "passes": true,
-      "notes": "Types regenerated and verified. All 10 new tables, 3 new enums, altered columns on rewizje/projekty, and 4 new functions present. npm run build passes.",
+      "passes": false,
+      "notes": "",
       "dependsOn": ["US-001", "US-002", "US-003", "US-004", "US-005", "US-006", "US-007", "US-008", "US-009", "US-010", "US-011"]
     }
   ]
