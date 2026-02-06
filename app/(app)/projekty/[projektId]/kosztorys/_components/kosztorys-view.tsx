@@ -37,6 +37,7 @@ export function KosztorysView({ data }: KosztorysViewProps) {
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [sidebarFilter, setSidebarFilter] = useState<SidebarFilter>({ type: 'all' });
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const isLocked = rewizja.is_locked;
 
@@ -53,6 +54,11 @@ export function KosztorysView({ data }: KosztorysViewProps) {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isLocked]);
+
+  // Reset selection when filter or rewizja changes
+  useEffect(() => {
+    setSelectedIds(new Set());
+  }, [sidebarFilter, searchQuery, rewizja.id]);
 
   // Filter pozycje based on sidebar filter and search
   const filteredPozycje = pozycje.filter((p: KosztorysPozycjaView) => {
@@ -158,6 +164,8 @@ export function KosztorysView({ data }: KosztorysViewProps) {
             selectedId={detailPanelId}
             onSelect={(id) => setDetailPanelId(id)}
             isLocked={isLocked}
+            selectedIds={selectedIds}
+            onSelectionChange={setSelectedIds}
           />
         </div>
       </div>
