@@ -14,7 +14,13 @@ import { useState, useCallback, useEffect, useTransition } from 'react';
 import { cn } from '@/lib/utils';
 import { getKategorieForBranza, getKategorieByPoziom } from '@/actions/kategorie';
 
-const BRANZE = ['BUD', 'ELE', 'SAN', 'TEL', 'HVC'] as const;
+const BRANZE = [
+  { kod: 'BUD', nazwa: 'Budowlana' },
+  { kod: 'ELE', nazwa: 'Elektryczna' },
+  { kod: 'SAN', nazwa: 'Sanitarna' },
+  { kod: 'TEL', nazwa: 'Teletechnika' },
+  { kod: 'HVC', nazwa: 'HVAC' },
+] as const;
 
 export function PozycjeFilters() {
   const router = useRouter();
@@ -133,35 +139,25 @@ export function PozycjeFilters() {
     <div className="flex flex-col gap-3 mb-4">
       <div className="w-full bg-[#1A1A24]/40 backdrop-blur-sm border border-white/[0.08] rounded-lg p-1 flex gap-1">
         {BRANZE.map((b) => {
-          const isActive = currentBranza === b;
+          const isActive = currentBranza === b.kod;
           return (
             <button
-              key={b}
-              onClick={() => handleBranzaClick(b)}
+              key={b.kod}
+              onClick={() => handleBranzaClick(b.kod)}
               className={cn(
-                "flex-1 px-6 py-2.5 font-mono text-sm rounded-md transition-all",
+                "flex-1 px-6 py-2.5 text-sm rounded-md transition-all",
                 isActive
                   ? "bg-amber-500/15 text-amber-500 shadow-[0_0_12px_rgba(245,158,11,0.2)]"
                   : "text-white/50 hover:bg-white/5 hover:text-white/80"
               )}
             >
-              {b}
+              {b.nazwa}
             </button>
           );
         })}
       </div>
 
       <div className="flex items-center gap-3">
-        <div className="relative flex-1">
-          <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Szukaj po kodzie lub nazwie..."
-            className="pl-8"
-          />
-        </div>
-
       {currentBranza && (
         <>
           <Select
@@ -205,6 +201,16 @@ export function PozycjeFilters() {
           </Select>
         </>
       )}
+
+        <div className="relative flex-1">
+          <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Szukaj po kodzie lub nazwie..."
+            className="pl-8"
+          />
+        </div>
       </div>
     </div>
   );
