@@ -704,6 +704,7 @@ export async function updateKosztorysSkladowaR(
 
   const updateData: Record<string, unknown> = {
     stawka: parsed.data.stawka,
+    is_manual: true,
   };
   if (parsed.data.podwykonawca_id !== undefined) {
     updateData.podwykonawca_id = parsed.data.podwykonawca_id;
@@ -737,6 +738,7 @@ export async function updateKosztorysSkladowaM(
 
   const updateData: Record<string, unknown> = {
     cena: parsed.data.cena,
+    is_manual: true,
   };
   if (parsed.data.dostawca_id !== undefined) {
     updateData.dostawca_id = parsed.data.dostawca_id;
