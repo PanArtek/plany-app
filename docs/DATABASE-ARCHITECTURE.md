@@ -1,4 +1,4 @@
-# PLANY App - Architektura Bazy Danych Supabase (v3.4)
+# PLANY App - Architektura Bazy Danych Supabase (v4.0)
 
 ## Podsumowanie
 
@@ -8,6 +8,13 @@ Plan migracji modelu danych z wireframe do produkcyjnej bazy Supabase z RLS, tri
 - Cennik (ceny_dostawcow, stawki_podwykonawcow) = tylko podpowiedź/punkt startowy
 - Każdy kosztorys ma własne ceny, edytowalne i zapisywane
 - Każda rewizja = kopia z własnymi wartościami R, M, Narzut
+
+**Cykl życia projektu:**
+```
+draft → ofertowanie → realizacja → zamkniety/odrzucony
+                  ↓
+         akceptacja rewizji → generowanie zamówień + umów
+```
 
 **Model kalkulacji:**
 ```
@@ -52,12 +59,13 @@ Razem = (R + M) × (1 + narzut%)
 
 ---
 
-## 2. Schemat Tabel (17 tabel)
+## 2. Schemat Tabel (27 tabel)
 
 ### Kolejność migracji (FK dependencies):
 
 ```
-1. Extensions + Types
+--- Faza 1-5: Fundament (COMPLETE) ---
+1. Extensions + Types (position_type, project_status, org_role, branza_kod)
 2. organizations
 3. organization_members (→ organizations, auth.users)
 4. kategorie (self-ref, → organizations)
@@ -66,20 +74,39 @@ Razem = (R + M) × (1 + narzut%)
 7. dostawcy (→ organizations)
 8. ceny_dostawcow (→ dostawcy, produkty)
 9. podwykonawcy (→ organizations)
-10. stawki_podwykonawcow (→ podwykonawcy)
+10. stawki_podwykonawcow (→ podwykonawcy, pozycje_biblioteka)
 11. pozycje_biblioteka (→ organizations, kategorie)
 12. biblioteka_skladowe_robocizna (→ pozycje_biblioteka) [SZABLON]
 13. biblioteka_skladowe_materialy (→ pozycje_biblioteka) [SZABLON]
-14. projekty (→ organizations)
+14. projekty (→ organizations, rewizje)
 15. rewizje (→ projekty)
 16. kosztorys_pozycje (→ rewizje, pozycje_biblioteka)
 17. kosztorys_skladowe_robocizna (→ kosztorys_pozycje) [CENY]
 18. kosztorys_skladowe_materialy (→ kosztorys_pozycje) [CENY]
-19. Functions + Triggers + Views
-20. RLS Policies
+
+--- Faza 6: Business Logic (COMPLETE) ---
+19. Types: zamowienie_status, umowa_status, realizacja_wpis_typ
+20. ALTER: rewizje (+is_accepted, +accepted_at), projekty (+accepted_rewizja_id)
+21. zamowienia (→ organizations, projekty, rewizje, dostawcy)
+22. zamowienie_pozycje (→ zamowienia, produkty)
+23. zamowienie_pozycje_zrodla (→ zamowienie_pozycje, kosztorys_skladowe_materialy)
+24. zamowienie_dostawy (→ zamowienia)
+25. zamowienie_dostawy_pozycje (→ zamowienie_dostawy, zamowienie_pozycje)
+26. umowy (→ organizations, projekty, rewizje, podwykonawcy)
+27. umowa_pozycje (→ umowy, pozycje_biblioteka)
+28. umowa_pozycje_zrodla (→ umowa_pozycje, kosztorys_skladowe_robocizna)
+29. umowa_wykonanie (→ umowa_pozycje)
+30. realizacja_wpisy (→ organizations, projekty, zamowienia, umowy)
+
+--- Functions + Triggers + Views + RLS ---
+31. Triggers (prevent_unlock, updated_at, auto_numer, auto_sum)
+32. Functions (generate_zamowienia_draft, generate_umowy_draft, UX aggregation)
+33. Views + RLS Policies
 ```
 
 ### Tabele - przegląd:
+
+**Fundament (17 tabel):**
 
 | Tabela | Rola | Ceny? |
 |--------|------|-------|
@@ -91,15 +118,40 @@ Razem = (R + M) × (1 + narzut%)
 | `dostawcy` | Dostawcy | - |
 | `ceny_dostawcow` | **Cennik materiałów (PODPOWIEDŹ)** | TAK |
 | `podwykonawcy` | Ekipy robocze | - |
-| `stawki_podwykonawcow` | **Cennik robocizny (PODPOWIEDŹ)** | TAK |
+| `stawki_podwykonawcow` | **Cennik robocizny (PODPOWIEDŹ)** — powiązane z pozycja_biblioteka | TAK |
 | `pozycje_biblioteka` | Szablony pozycji | - |
 | `biblioteka_skladowe_robocizna` | **Szablony składowych R** (norma, stawka opcjonalna) | opcjonalne |
 | `biblioteka_skladowe_materialy` | **Szablony składowych M** (norma, cena opcjonalna) | opcjonalne |
-| `projekty` | Projekty | - |
-| `rewizje` | Wersje kosztorysu (locked/unlocked) | - |
+| `projekty` | Projekty (+accepted_rewizja_id) | - |
+| `rewizje` | Wersje kosztorysu (locked/unlocked, +is_accepted) | - |
 | `kosztorys_pozycje` | Pozycje w kosztorysie (ilość, narzut%) | - |
 | `kosztorys_skladowe_robocizna` | **Rzeczywiste R (ŹRÓDŁO PRAWDY)** - stawka, norma, ilosc, is_manual | TAK |
 | `kosztorys_skladowe_materialy` | **Rzeczywiste M (ŹRÓDŁO PRAWDY)** - cena, norma, ilosc, is_manual | TAK |
+
+**Zamówienia materiałów (5 tabel):**
+
+| Tabela | Rola |
+|--------|------|
+| `zamowienia` | Zamówienia do dostawców (auto-numer ZAM/YYYY/NNN) |
+| `zamowienie_pozycje` | Pozycje zamówienia (GENERATED wartosc) |
+| `zamowienie_pozycje_zrodla` | Traceability: skąd pochodzi ilość (FK → kosztorys_skladowe_materialy) |
+| `zamowienie_dostawy` | Dostawy (numer WZ, data) |
+| `zamowienie_dostawy_pozycje` | Pozycje dostawy (trigger → ilosc_dostarczona) |
+
+**Umowy z podwykonawcami (4 tabele):**
+
+| Tabela | Rola |
+|--------|------|
+| `umowy` | Umowy z podwykonawcami (auto-numer UMW/YYYY/NNN) |
+| `umowa_pozycje` | Pozycje umowy (GENERATED wartosc, procent_wykonania) |
+| `umowa_pozycje_zrodla` | Traceability: skąd pochodzi ilość (FK → kosztorys_skladowe_robocizna) |
+| `umowa_wykonanie` | Wpisy wykonania (trigger → ilosc_wykonana) |
+
+**Realizacja (1 tabela):**
+
+| Tabela | Rola |
+|--------|------|
+| `realizacja_wpisy` | Faktury i rozliczenia (typ: material/robocizna/inny) |
 
 ---
 
@@ -107,10 +159,16 @@ Razem = (R + M) × (1 + narzut%)
 
 ### 3.1 `supabase/migrations/001_types.sql`
 ```sql
+-- Faza 1
 CREATE TYPE position_type AS ENUM ('robocizna', 'material', 'komplet');
 CREATE TYPE project_status AS ENUM ('draft', 'ofertowanie', 'realizacja', 'zamkniety', 'odrzucony');
 CREATE TYPE org_role AS ENUM ('owner', 'admin', 'member');
 CREATE TYPE branza_kod AS ENUM ('BUD', 'ELE', 'SAN', 'TEL', 'HVC');
+
+-- Faza 6 (Business Logic)
+CREATE TYPE zamowienie_status AS ENUM ('draft', 'wyslane', 'czesciowo', 'dostarczone', 'rozliczone');
+CREATE TYPE umowa_status AS ENUM ('draft', 'wyslana', 'podpisana', 'wykonana', 'rozliczona');
+CREATE TYPE realizacja_wpis_typ AS ENUM ('material', 'robocizna', 'inny');
 ```
 
 ### 3.2 `supabase/migrations/002_organizations.sql`
@@ -217,15 +275,14 @@ CREATE TABLE podwykonawcy (
 );
 
 -- Stawki podwykonawców (CENNIK = PODPOWIEDŹ)
+-- WAŻNE: Powiązane z pozycja_biblioteka (nie nazwa_stawki)
 CREATE TABLE stawki_podwykonawcow (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     podwykonawca_id UUID NOT NULL REFERENCES podwykonawcy(id) ON DELETE CASCADE,
-    nazwa_stawki VARCHAR(255) NOT NULL,  -- np. "Malowanie standard"
+    pozycja_biblioteka_id UUID NOT NULL REFERENCES pozycje_biblioteka(id) ON DELETE CASCADE,
     stawka DECIMAL(12,2) NOT NULL,
-    jednostka VARCHAR(20) DEFAULT 'h',
     aktywny BOOLEAN DEFAULT TRUE,
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    updated_at TIMESTAMPTZ DEFAULT NOW()
+    created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- Indexes for price lookups
@@ -1164,6 +1221,219 @@ INSERT INTO kategorie (organization_id, parent_id, kod, nazwa, poziom)
 SELECT NULL, id, '03', 'Prace wykończeniowe', 2 FROM kategorie WHERE pelny_kod = 'BUD';
 ```
 
+### 3.11 Business Logic: ALTER + Akceptacja
+
+```sql
+-- Nowe kolumny na istniejących tabelach
+ALTER TABLE rewizje
+    ADD COLUMN is_accepted BOOLEAN DEFAULT FALSE,
+    ADD COLUMN accepted_at TIMESTAMPTZ;
+
+ALTER TABLE projekty
+    ADD COLUMN accepted_rewizja_id UUID REFERENCES rewizje(id);
+
+-- Blokada odblokowania/cofnięcia akceptacji
+CREATE FUNCTION trigger_prevent_unlock_accepted()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF OLD.is_accepted = TRUE AND NEW.is_locked = FALSE THEN
+        RAISE EXCEPTION 'Nie mozna odblokowac zaakceptowanej rewizji';
+    END IF;
+    IF OLD.is_accepted = TRUE AND NEW.is_accepted = FALSE THEN
+        RAISE EXCEPTION 'Nie mozna cofnac akceptacji rewizji';
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER rewizje_prevent_unlock_accepted
+    BEFORE UPDATE ON rewizje
+    FOR EACH ROW EXECUTE FUNCTION trigger_prevent_unlock_accepted();
+```
+
+### 3.12 Business Logic: Zamówienia (5 tabel)
+
+```sql
+CREATE TABLE zamowienia (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    projekt_id UUID NOT NULL REFERENCES projekty(id) ON DELETE CASCADE,
+    rewizja_id UUID NOT NULL REFERENCES rewizje(id),
+    dostawca_id UUID NOT NULL REFERENCES dostawcy(id),
+    numer VARCHAR(50) NOT NULL,  -- auto: ZAM/YYYY/NNN
+    status zamowienie_status NOT NULL DEFAULT 'draft',
+    data_zamowienia DATE,
+    data_dostawy_planowana DATE,
+    uwagi TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    CONSTRAINT zamowienia_numer_unique UNIQUE(organization_id, numer)
+);
+
+CREATE TABLE zamowienie_pozycje (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    zamowienie_id UUID NOT NULL REFERENCES zamowienia(id) ON DELETE CASCADE,
+    produkt_id UUID REFERENCES produkty(id) ON DELETE SET NULL,
+    nazwa VARCHAR(255) NOT NULL,
+    jednostka VARCHAR(20),
+    ilosc_zamowiona DECIMAL(12,3) NOT NULL,
+    cena_jednostkowa DECIMAL(12,2) NOT NULL,
+    wartosc DECIMAL(14,2) GENERATED ALWAYS AS (ilosc_zamowiona * cena_jednostkowa) STORED,
+    ilosc_dostarczona DECIMAL(12,3) DEFAULT 0,  -- trigger-updated SUM
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE zamowienie_pozycje_zrodla (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    zamowienie_pozycja_id UUID NOT NULL REFERENCES zamowienie_pozycje(id) ON DELETE CASCADE,
+    kosztorys_skladowa_m_id UUID NOT NULL REFERENCES kosztorys_skladowe_materialy(id),
+    ilosc DECIMAL(12,4) NOT NULL
+);
+
+CREATE TABLE zamowienie_dostawy (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    zamowienie_id UUID NOT NULL REFERENCES zamowienia(id) ON DELETE CASCADE,
+    data_dostawy DATE NOT NULL,
+    numer_wz VARCHAR(100),
+    uwagi TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE zamowienie_dostawy_pozycje (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    zamowienie_dostawa_id UUID NOT NULL REFERENCES zamowienie_dostawy(id) ON DELETE CASCADE,
+    zamowienie_pozycja_id UUID NOT NULL REFERENCES zamowienie_pozycje(id) ON DELETE CASCADE,
+    ilosc_dostarczona DECIMAL(12,3) NOT NULL
+);
+```
+
+### 3.13 Business Logic: Umowy (4 tabele)
+
+```sql
+CREATE TABLE umowy (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    projekt_id UUID NOT NULL REFERENCES projekty(id) ON DELETE CASCADE,
+    rewizja_id UUID NOT NULL REFERENCES rewizje(id),
+    podwykonawca_id UUID NOT NULL REFERENCES podwykonawcy(id),
+    numer VARCHAR(50) NOT NULL,  -- auto: UMW/YYYY/NNN
+    status umowa_status NOT NULL DEFAULT 'draft',
+    data_podpisania DATE,
+    warunki_platnosci TEXT,
+    uwagi TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    CONSTRAINT umowy_numer_unique UNIQUE(organization_id, numer)
+);
+
+CREATE TABLE umowa_pozycje (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    umowa_id UUID NOT NULL REFERENCES umowy(id) ON DELETE CASCADE,
+    pozycja_biblioteka_id UUID REFERENCES pozycje_biblioteka(id) ON DELETE SET NULL,
+    nazwa VARCHAR(500) NOT NULL,
+    jednostka VARCHAR(20),
+    ilosc DECIMAL(12,3) NOT NULL,
+    stawka DECIMAL(12,2) NOT NULL,
+    wartosc DECIMAL(14,2) GENERATED ALWAYS AS (ilosc * stawka) STORED,
+    ilosc_wykonana DECIMAL(12,3) DEFAULT 0,  -- trigger-updated SUM
+    procent_wykonania DECIMAL(5,2) GENERATED ALWAYS AS (
+        CASE WHEN ilosc > 0 THEN ROUND(ilosc_wykonana / ilosc * 100, 2) ELSE 0 END
+    ) STORED,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE umowa_pozycje_zrodla (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    umowa_pozycja_id UUID NOT NULL REFERENCES umowa_pozycje(id) ON DELETE CASCADE,
+    kosztorys_skladowa_r_id UUID NOT NULL REFERENCES kosztorys_skladowe_robocizna(id),
+    ilosc DECIMAL(12,4) NOT NULL
+);
+
+CREATE TABLE umowa_wykonanie (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    umowa_pozycja_id UUID NOT NULL REFERENCES umowa_pozycje(id) ON DELETE CASCADE,
+    data_wpisu DATE NOT NULL,
+    ilosc_wykonana DECIMAL(12,3) NOT NULL,
+    uwagi TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+```
+
+### 3.14 Business Logic: Realizacja
+
+```sql
+CREATE TABLE realizacja_wpisy (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    projekt_id UUID NOT NULL REFERENCES projekty(id) ON DELETE CASCADE,
+    zamowienie_id UUID REFERENCES zamowienia(id) ON DELETE SET NULL,
+    umowa_id UUID REFERENCES umowy(id) ON DELETE SET NULL,
+    typ realizacja_wpis_typ NOT NULL,
+    opis VARCHAR(500),
+    kwota_netto DECIMAL(12,2) NOT NULL,
+    numer_faktury VARCHAR(100),
+    data_faktury DATE,
+    oplacone BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+```
+
+### 3.15 Business Logic: Triggery
+
+```sql
+-- Auto-sum: dostawy → ilosc_dostarczona na zamowienie_pozycje
+CREATE FUNCTION trigger_update_zamowienie_dostarczona() ...
+CREATE TRIGGER zam_dost_poz_update_sum
+    AFTER INSERT OR UPDATE OR DELETE ON zamowienie_dostawy_pozycje
+    FOR EACH ROW EXECUTE FUNCTION trigger_update_zamowienie_dostarczona();
+
+-- Auto-sum: wykonanie → ilosc_wykonana na umowa_pozycje
+CREATE FUNCTION trigger_update_umowa_wykonana() ...
+CREATE TRIGGER umowa_wyk_update_sum
+    AFTER INSERT OR UPDATE OR DELETE ON umowa_wykonanie
+    FOR EACH ROW EXECUTE FUNCTION trigger_update_umowa_wykonana();
+
+-- Auto-numer zamówień: ZAM/YYYY/NNN (skip jeśli numer podany)
+CREATE FUNCTION trigger_auto_numer_zamowienia() ...
+CREATE TRIGGER zamowienia_auto_numer BEFORE INSERT ON zamowienia ...
+
+-- Auto-numer umów: UMW/YYYY/NNN (skip jeśli numer podany)
+CREATE FUNCTION trigger_auto_numer_umowy() ...
+CREATE TRIGGER umowy_auto_numer BEFORE INSERT ON umowy ...
+
+-- updated_at (reuse istniejącego trigger_updated_at)
+CREATE TRIGGER zamowienia_updated_at BEFORE UPDATE ON zamowienia ...
+CREATE TRIGGER umowy_updated_at BEFORE UPDATE ON umowy ...
+CREATE TRIGGER realizacja_wpisy_updated_at BEFORE UPDATE ON realizacja_wpisy ...
+```
+
+### 3.16 Business Logic: Funkcje draft + agregujące
+
+```sql
+-- Generowanie zamówień z zaakceptowanej rewizji (grupowanie per dostawca)
+-- private.generate_zamowienia_draft(p_projekt_id, p_rewizja_id) → INTEGER (liczba zamówień)
+-- Public wrapper: generate_zamowienia_draft() SECURITY INVOKER
+
+-- Generowanie umów z zaakceptowanej rewizji (grupowanie per podwykonawca)
+-- private.generate_umowy_draft(p_projekt_id, p_rewizja_id) → INTEGER (liczba umów)
+-- Public wrapper: generate_umowy_draft() SECURITY INVOKER
+
+-- Wywołanie z app:
+-- supabase.rpc('generate_zamowienia_draft', { p_projekt_id, p_rewizja_id })
+-- supabase.rpc('generate_umowy_draft', { p_projekt_id, p_rewizja_id })
+
+-- UX: agregacja podwykonawców per kategoria/podkategoria
+-- get_podwykonawcy_aggregated(p_branza, p_kategoria, p_podkategoria, p_search, p_limit, p_offset)
+-- Łańcuch: podwykonawcy → stawki_podwykonawcow → pozycje_biblioteka → kategorie
+
+-- UX: agregacja dostawców per kategoria/podkategoria
+-- get_dostawcy_aggregated(p_branza, p_kategoria, p_podkategoria, p_search, p_limit, p_offset)
+-- Łańcuch: dostawcy → ceny_dostawcow → produkty → biblioteka_skladowe_materialy → pozycje_biblioteka
+```
+
+> Pełne SQL dla funkcji: `docs/plans/2026-02-06-business-logic-db-migration.md`
+
 ---
 
 ## 4. Flow pracy
@@ -1298,6 +1568,21 @@ SELECT copy_revision('uuid-rev-00', 'Po negocjacjach');
 | `kosztorys_skladowe_materialy` | `idx_ksz_skladowe_m_produkt` | Ile użyć produktu |
 | `kosztorys_skladowe_materialy` | `idx_ksz_skladowe_m_dostawca` | Zakupy od dostawcy |
 
+### Indeksy Business Logic (27 nowych):
+
+| Tabela | Index | Cel |
+|--------|-------|-----|
+| `zamowienia` | `idx_zamowienia_org`, `_projekt`, `_dostawca`, `_rewizja`, `_status` | RLS, filtrowanie, JOINy |
+| `zamowienie_pozycje` | `idx_zam_pozycje_zamowienie`, `_produkt` | JOIN z zamowienia |
+| `zamowienie_pozycje_zrodla` | `idx_zam_poz_zrodla_pozycja`, `_skladowa` | Traceability |
+| `zamowienie_dostawy` | `idx_zam_dostawy_zamowienie` | JOIN z zamowienia |
+| `zamowienie_dostawy_pozycje` | `idx_zam_dost_poz_dostawa`, `_pozycja` | Trigger SUM |
+| `umowy` | `idx_umowy_org`, `_projekt`, `_podwykonawca`, `_rewizja`, `_status` | RLS, filtrowanie, JOINy |
+| `umowa_pozycje` | `idx_umowa_pozycje_umowa`, `_poz_bib` | JOIN z umowy |
+| `umowa_pozycje_zrodla` | `idx_umowa_poz_zrodla_pozycja`, `_skladowa` | Traceability |
+| `umowa_wykonanie` | `idx_umowa_wykonanie_pozycja` | Trigger SUM |
+| `realizacja_wpisy` | `idx_realizacja_org`, `_projekt`, `_zamowienie`, `_umowa`, `_typ` | RLS, filtrowanie |
+
 ---
 
 ## 6. Security Notes
@@ -1310,12 +1595,26 @@ Wszystkie views używają `security_invoker = true` aby wymuszać RLS policies:
 ### Security Definer Functions
 Funkcje SECURITY DEFINER są w `private` schema, niedostępne przez API:
 - `private.copy_revision()` - deep copy rewizji
+- `private.generate_zamowienia_draft()` - generowanie zamówień z zaakceptowanej rewizji
+- `private.generate_umowy_draft()` - generowanie umów z zaakceptowanej rewizji
 
 Public wrappers używają SECURITY INVOKER dla bezpieczeństwa.
 
 ### RLS Policies - Role
-- `TO authenticated` - dla danych prywatnych (projekty, kosztorysy)
+- `TO authenticated` - dla danych prywatnych (projekty, kosztorysy, zamówienia, umowy)
 - `TO authenticated, anon` - dla danych publicznych/systemowych (kategorie, produkty z `organization_id IS NULL`)
+
+### RLS Patterns (Business Logic)
+| Pattern | Tabele | Opis |
+|---------|--------|------|
+| A (direct org_id) | zamowienia, umowy, realizacja_wpisy | Bezpośredni `organization_id IN (SELECT user_organizations())` |
+| B (1 JOIN) | zamowienie_pozycje, zamowienie_dostawy, umowa_pozycje | Przez parent FK → org_id |
+| B×2 (2 JOINy) | zamowienie_pozycje_zrodla, zamowienie_dostawy_pozycje, umowa_pozycje_zrodla, umowa_wykonanie | Przez 2 JOINy → org_id |
+
+### Ochrona akceptacji
+- `is_accepted = TRUE` → nie można odblokować rewizji (`is_locked = FALSE`)
+- `is_accepted = TRUE` → nie można cofnąć akceptacji (`is_accepted = FALSE`)
+- Trigger: `rewizje_prevent_unlock_accepted`
 
 ---
 
@@ -1393,9 +1692,35 @@ Po implementacji:
 
 ---
 
-## 9. Referencje
+## 9. Schemat Relacji (Business Logic)
+
+```
+projekty
+├── rewizje (+ is_accepted, accepted_at)
+│   ├── kosztorys_pozycje
+│   │   ├── kosztorys_skladowe_materialy ──┐
+│   │   └── kosztorys_skladowe_robocizna ──┤
+│   │                                      │ zrodla (traceability)
+│   ├── zamowienia ─── dostawcy            │
+│   │   └── zamowienie_pozycje ◄───────────┤ zamowienie_pozycje_zrodla
+│   │       └── zamowienie_dostawy         │
+│   │           └── zamowienie_dostawy_pozycje (trigger → ilosc_dostarczona)
+│   │                                      │
+│   └── umowy ─── podwykonawcy             │
+│       └── umowa_pozycje ◄────────────────┘ umowa_pozycje_zrodla
+│           └── umowa_wykonanie (trigger → ilosc_wykonana)
+│
+└── realizacja_wpisy (faktury → zamowienie_id / umowa_id)
+
+projekty.accepted_rewizja_id ──→ rewizje.id
+```
+
+---
+
+## 10. Referencje
 
 - **Wireframe data model**: `/home/artur/Projekty/wireframe/docs/DATA-MODEL.md`
-- **Business logic**: `/home/artur/Projekty/wireframe/docs/BUSINESS-LOGIC.md`
+- **Business logic**: `/home/artur/Projekty/wireframe/docs/BUSINESS-LOGIC.md` + `docs/BUSINESS-LOGIC.md`
+- **Business logic migration plan**: `docs/plans/2026-02-06-business-logic-db-migration.md`
 - **Mock data**: `/home/artur/Projekty/wireframe/js/data/*.js`
 - **Supabase RLS docs**: Context7 `/supabase/supabase`
