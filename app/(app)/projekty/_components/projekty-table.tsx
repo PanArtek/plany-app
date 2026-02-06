@@ -7,6 +7,7 @@ import {
   flexRender,
 } from '@tanstack/react-table';
 import { type ProjektWithCount } from '@/actions/projekty';
+import { getStatusConfig } from '@/lib/projekty/status-config';
 import { cn } from '@/lib/utils';
 
 interface ProjektyTableProps {
@@ -50,17 +51,8 @@ const columns = [
   }),
 ];
 
-// Inline status badge (will be extracted to shared config in PROJ-004)
-function StatusBadge({ status }: { status: string }) {
-  const config: Record<string, { label: string; className: string }> = {
-    draft: { label: 'Szkic', className: 'bg-zinc-500/10 text-zinc-400 border-zinc-500/20' },
-    ofertowanie: { label: 'Ofertowanie', className: 'bg-amber-500/10 text-amber-400 border-amber-500/20' },
-    realizacja: { label: 'Realizacja', className: 'bg-blue-500/10 text-blue-400 border-blue-500/20' },
-    zamkniety: { label: 'Zamknięty', className: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' },
-    odrzucony: { label: 'Odrzucony', className: 'bg-red-500/10 text-red-400 border-red-500/20' },
-  };
-
-  const c = config[status] || { label: status, className: 'bg-zinc-500/10 text-zinc-400 border-zinc-500/20' };
+export function StatusBadge({ status }: { status: string }) {
+  const c = getStatusConfig(status);
 
   return (
     <span className={cn('inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full border', c.className)}>
