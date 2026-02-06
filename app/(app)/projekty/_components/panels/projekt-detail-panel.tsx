@@ -259,10 +259,12 @@ export function ProjektDetailPanel({
               </div>
             </div>
 
-            {/* Action button placeholder */}
+            {/* Kosztorys link */}
             <div>
-              <Button disabled className="w-full bg-white/5 text-white/30 border border-white/10">
-                Otwórz kosztorys
+              <Button asChild className="w-full bg-amber-500/10 text-amber-500 border border-amber-500/30 hover:bg-amber-500/20">
+                <a href={`/projekty/${projektId}/kosztorys`}>
+                  Otwórz kosztorys
+                </a>
               </Button>
             </div>
           </>

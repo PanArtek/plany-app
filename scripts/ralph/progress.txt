@@ -1,68 +1,77 @@
 # Ralph Progress Log
-Started: Fri Feb  6 12:21:22 CET 2026
+Started: Fri Feb  6 13:43:42 CET 2026
 ---
 
-## PROJ-001 + PROJ-002: Server Actions + Validation Schemas [DONE]
-- Created actions/projekty.ts with full CRUD (getProjekty, getProjekt, createProjekt, updateProjekt, deleteProjekt)
-- Created lib/validations/projekty.ts with Zod schemas
-- Slug generation handles Polish characters (ą→a, ć→c, etc.)
-- Rewizje count via separate query on rewizje table
+## KSZ-001: Validation schemas for kosztorys ✅
+- Created lib/validations/kosztorys.ts
+- 4 schemas: updateKosztorysPozycjaSchema, updateSkladowaRSchema, updateSkladowaMSchema, libraryFiltersSchema
+- All types exported
 - Build passes
 
-## PROJ-003: Projekty page with table, filters, pagination [DONE]
-- Server component page.tsx reads searchParams, calls getProjekty
-- TanStack Table with columns: Nazwa, Klient, Status, Rewizje, Data
-- Filters: search with 300ms debounce + status Select dropdown
-- Pagination: 15/page, hardcoded /projekty route
-- View manages detailPanel, formPanel, deletePanel states
-- Build passes
+## KSZ-002: Server Actions for kosztorys reads ✅
+- Created actions/kosztorys.ts with read functions
+- getKosztorysData: joins kosztorys_pozycje_view with pozycje_biblioteka and kategorie hierarchy for kod/branza/kategoria names
+- getKosztorysPozycjaDetail: fetches pozycja + skladoweR/M + podwykonawcy/dostawcy dropdowns
+- getLibraryPositions: paginated with search/branza filters and skladowe counts
 
-## PROJ-004: Status badges [DONE]
-- Shared config in lib/projekty/status-config.ts
-- StatusBadge component exported from projekty-table.tsx
-- 5 statuses with Polish labels and color-coded badges
-- Build passes
+## KSZ-003: Server Actions for kosztorys writes ✅
+- addPositionFromLibrary: COPY pattern with 3-tier price discovery (cheapest supplier -> library default -> 0)
+- updateKosztorysPozycja, updateKosztorysSkladowaR, updateKosztorysSkladowaM
+- deleteKosztorysPozycje (cascade), copyRevision (via RPC)
+- All writes call revalidatePath('/projekty')
 
-## PROJ-005: Projekt form panel [DONE]
-- SlidePanel with react-hook-form + zodResolver
-- Form schema uses .or(z.literal('')) pattern for optional strings
-- Powierzchnia uses valueAsNumber on onChange
-- Add/edit modes, toast feedback
-- Build passes
+## KSZ-004: Kosztorys page route and 3-column layout ✅
+- Page at app/(app)/projekty/[projektId]/kosztorys/page.tsx (async server component)
+- Deleted old app/(app)/kosztorys/ placeholder
+- KosztorysView: 3-column layout (sidebar 260px, main flex-1, detail SlidePanel)
+- Header with breadcrumb, rewizja selector, + Dodaj pozycję button
+- Enabled 'Otwórz kosztorys' link in projekt detail panel
 
-## PROJ-006: Projekt detail panel [DONE]
-- SlidePanel variant='wide' with header (name + status badge + edit/delete buttons)
-- Sections: Dane projektu, Rewizje, Otwórz kosztorys (disabled)
-- Wired into projekty-view.tsx with edit/delete handlers
-- Build passes
+## KSZ-005: Rewizja selector dropdown ✅
+- Select component with R0, R1, R2 options
+- Lock/Check icons for locked/accepted rewizje
+- Navigates via router.push with ?rewizja= param
 
-## PROJ-007: Server Actions for rewizje CRUD [DONE]
-- Created actions/rewizje.ts with getRewizje, createRewizja, lockRewizja, unlockRewizja
-- Auto-increment numer using MAX(numer)+1
-- revalidatePath('/projekty') after mutations
-- Build passes
+## KSZ-006: Sidebar branża tree with filtering ✅
+- Groups pozycje by branża (3 chars) then kategoria (6 chars)
+- "Wszystkie" at top, expandable branże with counts
+- Search input filters tree + table
+- Amber highlight for active filter
 
-## PROJ-008: Rewizja selector in detail panel [DONE]
-- Horizontal badges R0, R1, R2... with Lock/Check icons
-- Selected revision shows details (numer, nazwa, status, date)
-- Create new revision, lock/unlock toggle
-- Auto-selects latest revision on load
-- Build passes
+## KSZ-007: KPI summary bar ✅
+- 5 KPIs: Wartość netto, Marża %, Zysk, Cena/m², Pozycje
+- Recalculates from filtered pozycje
+- pl-PL currency formatting
 
-## PROJ-009: Delete projekt with confirmation [DONE]
-- Reuses DeleteConfirmPanel from kategorie module
-- Warning message about irreversible operation
-- ON DELETE CASCADE handles revisions
-- Build passes
+## KSZ-008: Kosztorys table with grouping ✅
+- Custom grouping (not TanStack) with branża/kategoria collapsible headers
+- 10 columns: Lp, Kod, Zadanie, Ilość, Jedn, R, M, Narzut%, Cena/j, Wartość
+- Group headers show name + Σ sum
+- Selected row highlighted with amber border-l-2
+- Empty state with prompt to add from library
 
-## PROJ-010: Seed sample data [DONE]
-- Created Demo Organization (organizations table was empty)
-- 4 projects: Biuro Acme (realizacja, 3 rewizje), Klinika (ofertowanie, 2), Coworking (draft, 1), Restauracja (zamkniety, 2)
-- Multiple locked revisions
-- Idempotent: ON CONFLICT + NOT EXISTS
-- Migration applied successfully
+## KSZ-009: Add position from library panel ✅
+- SlidePanel with search input and branża dropdown filter
+- Checkbox multi-select with 'Wybrano: N' counter
+- Sequential addPositionFromLibrary calls with useTransition
+- 'Dodano' label for already-added positions
 
-## Notes
-- organizations table was empty, had to create Demo Organization first
-- organization_id is NOT NULL on projekty (unlike dostawcy where it's nullable)
-- stale .next cache caused ENOENT error on pages-manifest.json - fixed with rm -rf .next
+## KSZ-010: Position detail panel with składowe ✅
+- Loads detail via getKosztorysPozycjaDetail on pozycjaId change
+- Editable fields: Nazwa, Ilość, Jedn., Narzut %
+- Inline editable składowe R (stawka + podwykonawca) and M (cena + dostawca)
+- Totals: R+M, Narzut, Cena/j, WARTOŚĆ
+- isLocked disables all inputs
+
+## KSZ-011: Delete positions and locked banner ✅
+- Reuses DeleteConfirmPanel from kategorie
+- LockedBanner with copyRevision + redirect to new rewizja
+- isLocked hides '+ Dodaj pozycję' button
+
+## KSZ-012: Seed kosztorys test data ✅
+- 12 positions for Biuro Acme R2 (unlocked rewizja)
+- Linked to pozycje_biblioteka by kod
+- BUD(4), ELE(3), SAN(2), TEL(1), HVC(2)
+- Each with 1-3 robocizna + 1-3 materiały składowe
+- Total ~210K zł
+- Applied via Supabase MCP apply_migration
