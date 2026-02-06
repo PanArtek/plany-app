@@ -177,8 +177,8 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 10,
-      "passes": false,
-      "notes": "",
+      "passes": true,
+      "notes": "Replaced AddFromLibraryPanel with LibraryDrawer, added Ctrl+B/Cmd+B shortcut, deleted old panel file",
       "dependsOn": ["US-009"]
     },
     {
