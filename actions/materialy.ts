@@ -297,7 +297,7 @@ export async function deleteProdukt(id: string): Promise<ActionResult> {
 
   const { error } = await supabase
     .from('produkty')
-    .delete()
+    .update({ aktywny: false })
     .eq('id', id);
 
   if (error) {

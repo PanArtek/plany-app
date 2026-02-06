@@ -63,6 +63,9 @@ export function DostawcaDetailPanel({
         setDostawca(d);
         setCennik(c);
         setPozycje(p);
+      }).catch(() => {
+        setDostawca(null);
+      }).finally(() => {
         setLoading(false);
       });
     }

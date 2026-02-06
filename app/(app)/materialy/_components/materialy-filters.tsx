@@ -136,6 +136,24 @@ export function MaterialyFilters() {
   return (
     <div className="flex flex-col gap-3 mb-4">
       <div className="w-full bg-[#1A1A24]/40 backdrop-blur-sm border border-white/[0.08] rounded-lg p-1 flex gap-1">
+        <button
+          onClick={() => {
+            const params = new URLSearchParams(searchParams.toString());
+            params.delete('branza');
+            params.delete('kategoria');
+            params.delete('podkategoria');
+            params.delete('page');
+            router.push(`/materialy?${params.toString()}`);
+          }}
+          className={cn(
+            "flex-1 px-6 py-2.5 text-sm rounded-md transition-all",
+            !currentBranza
+              ? "bg-amber-500/15 text-amber-500 shadow-[0_0_12px_rgba(245,158,11,0.2)]"
+              : "text-white/50 hover:bg-white/5 hover:text-white/80"
+          )}
+        >
+          Wszystkie
+        </button>
         {BRANZE.map((b) => {
           const isActive = currentBranza === b.kod;
           return (

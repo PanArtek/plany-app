@@ -24,7 +24,7 @@ const columns = [
   columnHelper.accessor('kod', {
     header: 'Kod',
     cell: (info) => (
-      <span className="font-mono text-amber-500">{info.getValue() || '—'}</span>
+      <span className="font-mono text-xs text-amber-500">{info.getValue() || '—'}</span>
     ),
   }),
   columnHelper.accessor('produktyCount', {

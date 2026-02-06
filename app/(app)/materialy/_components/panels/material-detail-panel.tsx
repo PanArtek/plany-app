@@ -51,6 +51,9 @@ export function MaterialDetailPanel({ produktId, open, onOpenChange, onEdit, onD
         setProdukt(p);
         setDostawcy(d);
         setPozycje(poz);
+      }).catch(() => {
+        setProdukt(null);
+      }).finally(() => {
         setLoading(false);
       });
     }
