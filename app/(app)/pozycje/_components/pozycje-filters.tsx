@@ -13,7 +13,7 @@ import {
 import { Plus, Search } from 'lucide-react';
 import { useState, useCallback, useEffect, useTransition } from 'react';
 import { cn } from '@/lib/utils';
-import { getKategorieForBranza } from '@/actions/kategorie';
+import { getKategorieForBranza, getKategorieByPoziom } from '@/actions/kategorie';
 
 const BRANZE = ['BUD', 'ELE', 'SAN', 'TEL', 'HVC'] as const;
 
@@ -48,6 +48,25 @@ export function PozycjeFilters({ onAddClick }: PozycjeFiltersProps) {
     });
     setPodkategorieOptions([]);
   }, [currentBranza]);
+
+  // Fetch podkategorie when kategoria changes
+  useEffect(() => {
+    if (!currentKategoria) {
+      setPodkategorieOptions([]);
+      return;
+    }
+
+    const selectedKat = kategorieOptions.find((k) => k.kod === currentKategoria);
+    if (!selectedKat) {
+      setPodkategorieOptions([]);
+      return;
+    }
+
+    startTransition(async () => {
+      const podkategorie = await getKategorieByPoziom(3, selectedKat.id);
+      setPodkategorieOptions(podkategorie);
+    });
+  }, [currentKategoria, kategorieOptions]);
 
   // Debounce search
   useEffect(() => {
