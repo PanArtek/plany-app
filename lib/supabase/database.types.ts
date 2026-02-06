@@ -804,31 +804,25 @@ export type Database = {
           aktywny: boolean | null
           created_at: string | null
           id: string
-          jednostka: string | null
-          nazwa_stawki: string
           podwykonawca_id: string
+          pozycja_biblioteka_id: string
           stawka: number
-          updated_at: string | null
         }
         Insert: {
           aktywny?: boolean | null
           created_at?: string | null
           id?: string
-          jednostka?: string | null
-          nazwa_stawki: string
           podwykonawca_id: string
+          pozycja_biblioteka_id: string
           stawka: number
-          updated_at?: string | null
         }
         Update: {
           aktywny?: boolean | null
           created_at?: string | null
           id?: string
-          jednostka?: string | null
-          nazwa_stawki?: string
           podwykonawca_id?: string
+          pozycja_biblioteka_id?: string
           stawka?: number
-          updated_at?: string | null
         }
         Relationships: [
           {
@@ -836,6 +830,13 @@ export type Database = {
             columns: ["podwykonawca_id"]
             isOneToOne: false
             referencedRelation: "podwykonawcy"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stawki_podwykonawcow_pozycja_biblioteka_id_fkey"
+            columns: ["pozycja_biblioteka_id"]
+            isOneToOne: false
+            referencedRelation: "pozycje_biblioteka"
             referencedColumns: ["id"]
           },
         ]
@@ -924,6 +925,27 @@ export type Database = {
       copy_revision: {
         Args: { new_nazwa?: string; source_rewizja_id: string }
         Returns: string
+      }
+      get_materialy_aggregated: {
+        Args: {
+          p_branza?: string
+          p_kategoria?: string
+          p_limit?: number
+          p_offset?: number
+          p_podkategoria?: string
+          p_search?: string
+        }
+        Returns: {
+          aktywny: boolean
+          dostawcy_count: number
+          id: string
+          jednostka: string
+          najlepsza_cena: number
+          nazwa: string
+          pozycje_count: number
+          sku: string
+          total_count: number
+        }[]
       }
       user_organizations: { Args: never; Returns: string[] }
     }

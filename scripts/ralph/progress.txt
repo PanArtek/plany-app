@@ -1,54 +1,15 @@
 # Ralph Progress Log
-Started: Fri Feb  6 09:21:15 CET 2026
+Started: Fri Feb  6 10:02:15 CET 2026
 ---
-## US-001: Zod schemas for produkty, dostawcy, and ceny_dostawcow ✅
-- Created lib/validations/materialy.ts: createProduktSchema, updateProduktSchema, materialyFiltersSchema, types, jednostkaOptions
-- Created lib/validations/dostawcy.ts: createDostawcaSchema, updateDostawcaSchema, createCenaSchema, updateCenaSchema, dostawcyFiltersSchema, types
-- Build passes ✅
-
-## US-002: Server Actions - getMaterialy with aggregation ✅
-- Created Postgres function `get_materialy_aggregated` via Supabase migration
-- Implemented getMaterialy() using supabase.rpc() in actions/materialy.ts
-- Handles branza/kategoria/podkategoria filtering via kod prefix matching through JOINs
-
-## US-003: Server Actions - CRUD produkty and detail queries ✅
-- createProdukt, updateProdukt, deleteProdukt with proper validation and error handling
-- getProdukt, getProduktDostawcy, getProduktPozycje for detail panel
-- getAllProdukty (no pagination) for select dropdowns
-- Delete checks usage in ceny_dostawcow and biblioteka_skladowe_materialy
-
-## US-004: Server Actions - CRUD dostawcy and ceny_dostawcow ✅
-- Full CRUD for dostawcy in actions/dostawcy.ts
-- getDostawcy with produktyCount via two-query approach (list + count)
-- getDostawcaCennik, getDostawcaPozycje for detail panel
-- createCena/updateCena/deleteCena with dual revalidatePath
-- Build passes ✅
-
-## US-005/006/007: Materialy page, filters, table ✅
-- Server Component page reads searchParams, calls getMaterialy, passes to client view
-- Filters: branza tabs + cascading kategoria/podkategoria dropdowns + debounced search
-- TanStack Table with 5 columns (nazwa+sku, jednostka, pozycje, dostawcy, najlepsza cena)
-- Pagination component, empty state
-
-## US-008/009: Material detail panel + form panel + delete ✅
-- Detail panel fetches product data lazily via useEffect
-- Sections: dostawcy z cenami (sorted by price, NAJLEPSZA badge), pozycje (links to /pozycje)
-- Form panel with produktFormSchema (separate from server-side schema for zodResolver compat)
-- Installed shadcn Checkbox component
-- DeleteConfirmPanel reused from kategorie
-
-## US-010/011/012: Dostawcy page + detail panel + forms ✅
-- Simpler layout than materialy (no branza tabs, just search)
-- Detail panel with kontakt, cennik CRUD (add/edit/delete prices), pozycje links
-- Dostawca form with Textarea for kontakt
-- Cennik form fetches all products via getAllProdukty for dropdown
-- z.number() instead of z.coerce.number() for zodResolver compatibility
-
-## US-013: Seed data ✅
-- 17 produkty, 5 dostawcy, 21 ceny_dostawcow via Supabase migration
-- ON CONFLICT DO NOTHING for idempotency
-- Uses JOIN on sku/kod to link by name (no hardcoded UUIDs)
-
-### Learnings:
-- zodResolver with z.default() creates input/output type mismatch - use separate form schema without defaults
-- z.coerce.number() also incompatible with zodResolver - use z.number() + valueAsNumber in input
+[2026-02-06 12:00] US-001 PASS: DB migration rebuild_stawki_podwykonawcow applied
+[2026-02-06 12:00] US-009 PASS: TypeScript types regenerated from Supabase
+[2026-02-06 12:01] US-002 PASS: Zod schemas created in lib/validations/podwykonawcy.ts
+[2026-02-06 12:02] US-003 PASS: Server actions created in actions/podwykonawcy.ts (full CRUD)
+[2026-02-06 12:03] US-004 PASS: Podwykonawcy page with table, filters, pagination
+[2026-02-06 12:04] US-005 PASS: Detail panel with stawki cennik inline
+[2026-02-06 12:04] US-006 PASS: Podwykonawca form panel (add/edit)
+[2026-02-06 12:05] US-007 PASS: Stawka form panel with pozycja select
+[2026-02-06 12:05] US-008 PASS: Delete confirm panel (reuses kategorie component)
+[2026-02-06 12:06] US-010 PASS: Seed data - 5 podwykonawców + 11 stawek
+[2026-02-06 12:06] BUILD PASS: npm run build successful
+[2026-02-06 12:06] ALL 10 STORIES COMPLETE
