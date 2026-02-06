@@ -12,6 +12,7 @@ import {
 import { ProjektyFilters } from './projekty-filters';
 import { ProjektyTable } from './projekty-table';
 import { ProjektyPagination } from './projekty-pagination';
+import { ProjektFormPanel } from './panels/projekt-form-panel';
 import { DeleteConfirmPanel } from '../../kategorie/_components/panels/delete-confirm-panel';
 
 interface ProjektyViewProps {
@@ -114,13 +115,13 @@ function ProjektyViewContent({ initialData }: ProjektyViewProps) {
         </div>
       )}
 
-      {/* Form panel - placeholder until PROJ-005 */}
-      {formPanel.open && (
-        <div className="hidden">
-          {/* Will be replaced by ProjektFormPanel in PROJ-005 */}
-          {formPanel.mode}
-        </div>
-      )}
+      {/* Form panel (add/edit) */}
+      <ProjektFormPanel
+        mode={formPanel.mode}
+        projekt={formPanel.mode === 'edit' && selectedProjekt ? selectedProjekt : undefined}
+        open={formPanel.open}
+        onOpenChange={(open) => setFormPanel((prev) => ({ ...prev, open }))}
+      />
 
       {/* Delete confirm panel */}
       {deletePanel.projekt && (
