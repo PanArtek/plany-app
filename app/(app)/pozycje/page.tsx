@@ -26,15 +26,16 @@ export default async function PozycjePage({ searchParams }: PageProps) {
   };
 
   const result = params.branza ? await getPozycje(filters) : null;
-  const pozycje = result?.data ?? [];
 
   return (
     <div className="p-6">
-      <h1 className="text-2xl font-semibold font-display tracking-tight mb-6">Pozycje</h1>
       <PozycjeView
-        initialData={pozycje}
+        initialData={result?.data ?? []}
         initialFilters={filters}
         initialSelected={params.selected ?? null}
+        totalCount={result?.totalCount ?? 0}
+        page={result?.page ?? 1}
+        pageSize={result?.pageSize ?? 15}
       />
     </div>
   );

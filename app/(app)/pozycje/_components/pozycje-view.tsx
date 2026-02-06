@@ -15,6 +15,9 @@ interface PozycjeViewProps {
   initialData: Pozycja[];
   initialFilters: PozycjeFilters;
   initialSelected: string | null;
+  totalCount: number;
+  page: number;
+  pageSize: number;
 }
 
 interface FormPanelState {
@@ -22,7 +25,7 @@ interface FormPanelState {
   mode: 'add' | 'edit';
 }
 
-function PozycjeViewContent({ initialData, initialFilters, initialSelected }: PozycjeViewProps) {
+function PozycjeViewContent({ initialData, initialFilters, initialSelected, totalCount, page, pageSize }: PozycjeViewProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
