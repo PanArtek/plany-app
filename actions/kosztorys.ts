@@ -757,6 +757,48 @@ export async function updateKosztorysSkladowaM(
   return { success: true };
 }
 
+// --- WRITE: Reset składowa R to library value ---
+
+export async function resetSkladowaR(
+  id: string,
+  libraryStawka: number
+): Promise<ActionResult> {
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from('kosztorys_skladowe_robocizna')
+    .update({ stawka: libraryStawka, is_manual: false })
+    .eq('id', id);
+
+  if (error) {
+    return { success: false, error: error.message };
+  }
+
+  revalidatePath('/projekty');
+  return { success: true };
+}
+
+// --- WRITE: Reset składowa M to library value ---
+
+export async function resetSkladowaM(
+  id: string,
+  libraryCena: number
+): Promise<ActionResult> {
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from('kosztorys_skladowe_materialy')
+    .update({ cena: libraryCena, is_manual: false })
+    .eq('id', id);
+
+  if (error) {
+    return { success: false, error: error.message };
+  }
+
+  revalidatePath('/projekty');
+  return { success: true };
+}
+
 // --- WRITE: Delete positions ---
 
 export async function deleteKosztorysPozycje(
