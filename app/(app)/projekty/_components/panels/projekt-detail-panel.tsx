@@ -74,7 +74,7 @@ export function ProjektDetailPanel({
     try {
       const result = await createRewizja(projektId);
       if (result.success && result.data) {
-        const r = await refreshRewizje();
+        await refreshRewizje();
         setSelectedRewizjaId(result.data.id);
         toast.success(`Utworzono rewizję R${result.data.numer}`);
       } else {

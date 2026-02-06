@@ -11,9 +11,13 @@
 | 4 | Materiały + Dostawcy | 13 | **COMPLETE** | `ralph/phase4-materialy-dostawcy` |
 | 5 | Podwykonawcy | 10 | **COMPLETE** | `ralph/phase5-podwykonawcy` |
 | 6 | Business Logic DB | 12 | **COMPLETE** | `ralph/business-logic-db-migration` |
-| 7 | Projekty + Rewizje | ~10 | Pending | `ralph/phase6-projekty` |
-| 8 | Kosztorys (CORE) | ~20 | Pending | `ralph/phase7-kosztorys` |
-| 9 | Kalkulatory | ~8 | Pending | `ralph/phase8-kalkulatory` |
+| 7 | Projekty + Rewizje | 10 | **COMPLETE** | `ralph/phase7-projekty` |
+| 8 | Kosztorys CORE | ~20 | Pending | `ralph/phase8-kosztorys` |
+| 8b | Kalkulatory | ~8 | Pending | `ralph/phase8b-kalkulatory` |
+| 9 | Akceptacja + State Machine | ~6 | Pending | `ralph/phase9-akceptacja` |
+| 10 | Zamówienia | ~12 | Pending | `ralph/phase10-zamowienia` |
+| 11 | Umowy | ~10 | Pending | `ralph/phase11-umowy` |
+| 12 | Realizacja Dashboard | ~8 | Pending | `ralph/phase12-realizacja` |
 
 ---
 
@@ -36,11 +40,18 @@ FAZA 4        FAZA 5          ← oba ✅ COMPLETE
                 ↓
 FAZA 6 (Business Logic DB)     ✅ COMPLETE ← enumy, zamówienia, umowy, realizacja
                 ↓
-FAZA 7 (Projekty + Rewizje)    ⏳ Pending
+FAZA 7 (Projekty + Rewizje)    ✅ COMPLETE
                 ↓
 FAZA 8 (Kosztorys CORE)        ⏳ Pending ← wymaga 3,4,5,6,7
-                ↓
-FAZA 9 (Kalkulatory)           ⏳ Pending
+        ↓               ↘
+FAZA 8b (Kalkulatory)    FAZA 9 (Akceptacja)  ← niezależne
+                                ↓
+                    ┌───────────┴───────────┐
+                    ↓                       ↓
+            FAZA 10 (Zamówienia)    FAZA 11 (Umowy)  ← równoległe
+                    └───────────┬───────────┘
+                                ↓
+                    FAZA 12 (Realizacja Dashboard)
 ```
 
 ---
@@ -109,72 +120,139 @@ Podwykonawcy CRUD z stawkami powiązanymi z pozycje_biblioteka, detail panel.
 
 ---
 
-## FAZA 7: Projekty + Rewizje (Pending)
+## FAZA 7: Projekty + Rewizje (COMPLETE)
 
-**Branch:** `ralph/phase6-projekty`
+**Branch:** `ralph/phase7-projekty` → merged to main
+**Stories:** 10/10 COMPLETE
 
-### Planowane Stories (~10):
-- PROJ-001: Server Actions for projekty CRUD
-- PROJ-002: Projekty page with grid cards
-- PROJ-003: Project card component
-- PROJ-004: Create project modal
-- PROJ-005: Edit project modal
-- PROJ-006: Server Actions for rewizje CRUD
-- PROJ-007: Revision selector dropdown
-- PROJ-008: Create new revision
-- PROJ-009: Lock/unlock revision + akceptacja
-- PROJ-010: Seed projekty + rewizje data from wireframe
-
-**Źródło:** `wireframe/js/views/projekty.js`
+Projekty CRUD (table, filters, pagination, status badges), Rewizje CRUD (create, lock/unlock, selector), detail panel, form panel, delete confirmation, seed data.
 
 ---
 
-## FAZA 8: Kosztorys (CORE) (Pending)
+## FAZA 8: Kosztorys CORE (Pending)
 
-**Branch:** `ralph/phase7-kosztorys`
+**Branch:** `ralph/phase8-kosztorys`
+**Route:** `/projekty/[id]/kosztorys`
 
 ### Planowane Stories (~20):
 - KSZ-001: Kosztorys page layout (3-column: sidebar, table, detail)
-- KSZ-002: Server Actions for kosztorys_pozycje CRUD
-- KSZ-003: Kosztorys table with TanStack Table
-- KSZ-004: Position grouping by branża/kategoria
-- KSZ-005: KPI summary bar (wartość, marża, zysk, cena/m²)
-- KSZ-006: Sidebar with branża tree and sums
-- KSZ-007: Position detail panel
-- KSZ-008: Skladowe display (robocizna + materialy)
-- KSZ-009: Implement calculatePosition() utility
-- KSZ-010: Implement getEffectiveSkladowe() with overrides
-- KSZ-011: Inline cell editing (double-click)
-- KSZ-012: Keyboard navigation (Tab, Arrows, Enter)
-- KSZ-013: Undo/Redo (Ctrl+Z/Y)
-- KSZ-014: Add new position
-- KSZ-015: Delete selected positions
-- KSZ-016: Override stawka/cena in detail panel
-- KSZ-017: Change podwykonawca/dostawca in detail panel
-- KSZ-018: Reset overrides
-- KSZ-019: Locked revision banner + disabled editing
-- KSZ-020: Client view toggle (hide R/M/Narzut)
+- KSZ-002: Server Actions for kosztorys CRUD
+- KSZ-003: KPI summary bar (wartość, marża, zysk, cena/m²)
+- KSZ-004: Sidebar branża tree (collapsible, counts)
+- KSZ-005: Main table with TanStack Table (grouping)
+- KSZ-006: Position detail panel (składowe R + M)
+- KSZ-007: calculatePosition utility (formula)
+- KSZ-008: getEffectiveSkladowe utility (3-tier price discovery)
+- KSZ-009: Add position from library (COPY pattern)
+- KSZ-010: Inline cell editing (double-click)
+- KSZ-011: Keyboard navigation (arrows, tab, enter)
+- KSZ-012: Undo/Redo (Ctrl+Z/Y, stack 20)
+- KSZ-013: Delete selected positions (multi-select)
+- KSZ-014: Override stawka/cena in detail panel
+- KSZ-015: Change preferred dostawca/podwykonawca
+- KSZ-016: Locked revision banner + disabled editing
+- KSZ-017: Client view toggle (hide R/M/Narzut)
+- KSZ-018: Add inline position (new row)
+- KSZ-019: Row selection + context toolbar
+- KSZ-020: Seed kosztorys data
 
 **Źródło:** `wireframe/js/views/kosztorys.js` (najsłożniejszy moduł!)
-**Utils:** `wireframe/docs/BUSINESS-LOGIC.md`
 
 ---
 
-## FAZA 9: Kalkulatory (Pending)
+## FAZA 8b: Kalkulatory (Pending)
 
-**Branch:** `ralph/phase8-kalkulatory`
+**Branch:** `ralph/phase8b-kalkulatory`
+**Route:** `/kalkulatory`
+**Niezależny** - może być realizowany równolegle z Phase 9-12.
 
 ### Planowane Stories (~8):
 - KALK-001: Kalkulatory page with cards
-- KALK-002: Calculator modal framework
-- KALK-003: Malowanie calculator
-- KALK-004: Płytki calculator
-- KALK-005: Sufit GK calculator
-- KALK-006: Ściany GK calculator
-- KALK-007: Calculator results display
-- KALK-008: Add calculator result to kosztorys
+- KALK-002: Calculator SlidePanel framework
+- KALK-003: Kalkulator Malowanie
+- KALK-004: Kalkulator Płytki
+- KALK-005: Kalkulator Sufit GK
+- KALK-006: Kalkulator Ściany GK
+- KALK-007: Wyniki kalkulacji (tabela)
+- KALK-008: Dodaj do kosztorysu
 
 **Źródło:** `wireframe/js/views/kalkulatory.js`
+
+---
+
+## FAZA 9: Akceptacja + State Machine (Pending)
+
+**Branch:** `ralph/phase9-akceptacja`
+**Route:** rozszerzenie `/projekty/[id]`
+**DB:** Already done (is_accepted, accepted_at, accepted_rewizja_id, triggers)
+
+### Planowane Stories (~6):
+- AKC-001: Status transition actions (state machine validation)
+- AKC-002: Accept revision action (is_accepted, accepted_at, status=realizacja)
+- AKC-003: Status change UI (contextual buttons per status)
+- AKC-004: Auto-generate draft zamówień (Postgres function)
+- AKC-005: Auto-generate draft umów (Postgres function)
+- AKC-006: Locked project UI indicators
+
+---
+
+## FAZA 10: Zamówienia (Pending)
+
+**Branch:** `ralph/phase10-zamowienia`
+**Route:** `/projekty/[id]/zamowienia`
+**DB:** 5 tabel already exist
+
+### Planowane Stories (~12):
+- ZAM-001: Server Actions for zamowienia CRUD
+- ZAM-002: Validation schemas
+- ZAM-003: Zamówienia list page (table, filters, pagination)
+- ZAM-004: Zamówienie detail panel (pozycje + dostawy)
+- ZAM-005: Status badges (draft/wysłane/częściowo/dostarczone/rozliczone)
+- ZAM-006: Status change actions (state machine)
+- ZAM-007: Zamówienie pozycje view
+- ZAM-008: Dodaj dostawę (SlidePanel + auto-update)
+- ZAM-009: Dostawa detail
+- ZAM-010: Link z projektu (mini-lista + navigate)
+- ZAM-011: Edycja zamówienia draft (editable only in draft)
+- ZAM-012: Podsumowanie zamówień w projekcie
+
+---
+
+## FAZA 11: Umowy (Pending)
+
+**Branch:** `ralph/phase11-umowy`
+**Route:** `/projekty/[id]/umowy`
+**DB:** 4 tabele already exist
+
+### Planowane Stories (~10):
+- UMW-001: Server Actions for umowy CRUD
+- UMW-002: Validation schemas
+- UMW-003: Umowy list page (table + % wykonania)
+- UMW-004: Umowa detail panel (załącznik cennikowy + wpisy)
+- UMW-005: Status badges (draft/wysłana/podpisana/wykonana/rozliczona)
+- UMW-006: Status change actions (state machine)
+- UMW-007: Załącznik cennikowy (pozycje + ilość_wykonana + %)
+- UMW-008: Dodaj wpis wykonania (SlidePanel)
+- UMW-009: Link z projektu
+- UMW-010: Podsumowanie umów w projekcie
+
+---
+
+## FAZA 12: Realizacja Dashboard (Pending)
+
+**Branch:** `ralph/phase12-realizacja`
+**Route:** `/projekty/[id]/realizacja`
+**DB:** `realizacja_wpisy` already exists
+
+### Planowane Stories (~8):
+- REAL-001: Server Actions for realizacja (stats + wpisy CRUD)
+- REAL-002: Dashboard page (KPI cards + breakdown)
+- REAL-003: Postgres function get_realizacja_stats
+- REAL-004: Wpisy list (faktury table)
+- REAL-005: Dodaj wpis form (SlidePanel)
+- REAL-006: Zamówienia/umowy summary mini-section
+- REAL-007: Opłacone toggle (inline checkbox)
+- REAL-008: Link z projektu (mini KPI + navigate)
 
 ---
 
