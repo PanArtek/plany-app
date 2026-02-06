@@ -168,7 +168,7 @@ export function PozycjeFilters() {
             value={currentKategoria ?? '__all__'}
             onValueChange={handleKategoriaChange}
           >
-            <SelectTrigger className="w-[260px] bg-[#1A1A24]/40 border-white/[0.08]">
+            <SelectTrigger className="w-[320px] bg-[#1A1A24]/40 border-white/[0.08]">
               <SelectValue placeholder="Wszystkie kategorie" />
             </SelectTrigger>
             <SelectContent>
@@ -188,7 +188,7 @@ export function PozycjeFilters() {
           >
             <SelectTrigger
               className={cn(
-                "w-[260px] bg-[#1A1A24]/40 border-white/[0.08]",
+                "w-[320px] bg-[#1A1A24]/40 border-white/[0.08]",
                 !currentKategoria && "opacity-50 pointer-events-none"
               )}
             >
