@@ -1,13 +1,20 @@
-import { getKategorieCounts } from '@/actions/kategorie';
-import { BranzeGrid } from './_components/branze-grid';
+import { getKategorieTree } from '@/actions/kategorie';
+import { KategorieView } from './_components/kategorie-view';
 
-export default async function KategoriePage() {
-  const counts = await getKategorieCounts();
+interface PageProps {
+  searchParams: Promise<{
+    branza?: string;
+    search?: string;
+  }>;
+}
+
+export default async function KategoriePage({ searchParams }: PageProps) {
+  const params = await searchParams;
+  const tree = await getKategorieTree();
 
   return (
     <div className="p-6">
-      <h1 className="text-2xl font-semibold font-display tracking-tight mb-6">Kategorie</h1>
-      <BranzeGrid counts={counts} />
+      <KategorieView initialData={tree} activeBranza={params.branza} />
     </div>
   );
 }
