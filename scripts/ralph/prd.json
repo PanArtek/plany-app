@@ -67,8 +67,8 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 4,
-      "passes": false,
-      "notes": "",
+      "passes": true,
+      "notes": "Added resetSkladowaR/M server actions, wired OverrideIndicator into both row types with library value comparison by lp",
       "dependsOn": ["US-001", "US-002", "US-003"]
     },
     {
