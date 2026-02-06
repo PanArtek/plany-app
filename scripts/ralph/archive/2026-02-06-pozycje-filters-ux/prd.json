@@ -19,8 +19,8 @@
         "Typecheck passes"
       ],
       "priority": 1,
-      "passes": true,
-      "notes": "Also updated page.tsx minimally to destructure result.data so build passes. Exported PozycjeResult interface.",
+      "passes": false,
+      "notes": "",
       "dependsOn": []
     },
     {
@@ -37,8 +37,8 @@
         "Typecheck passes"
       ],
       "priority": 2,
-      "passes": true,
-      "notes": "Removed h1 title. PozycjeView now accepts totalCount/page/pageSize props.",
+      "passes": false,
+      "notes": "",
       "dependsOn": ["US-001"]
     },
     {
@@ -61,8 +61,8 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 3,
-      "passes": true,
-      "notes": "Resolved category names via server-side lookup in page.tsx. Moved 'Dodaj pozycję' button to breadcrumb row. Removed onAddClick from PozycjeFilters.",
+      "passes": false,
+      "notes": "Need to resolve kategoria/podkategoria names. Options: 1) pass names from page.tsx (extra query), 2) derive from initialData, 3) pass from filters component state. Simplest: pass names from page.tsx by looking up kategoria record.",
       "dependsOn": ["US-002"]
     },
     {
@@ -80,8 +80,8 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 4,
-      "passes": true,
-      "notes": "Tabs now full-width with flex-1. Button already removed in US-003. Also restructured search/dropdowns into a single row below tabs (prep for US-005).",
+      "passes": false,
+      "notes": "",
       "dependsOn": ["US-003"]
     },
     {
@@ -100,8 +100,8 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 5,
-      "passes": true,
-      "notes": "Search + kategoria + podkategoria in one flex row with gap-3. Dropdowns widened to 320px. Search takes flex-1.",
+      "passes": false,
+      "notes": "",
       "dependsOn": ["US-004"]
     },
     {
@@ -124,8 +124,8 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 6,
-      "passes": true,
-      "notes": "Created pozycje-pagination.tsx with page numbers, ellipsis, prev/next buttons, amber active state.",
+      "passes": false,
+      "notes": "",
       "dependsOn": ["US-002"]
     },
     {
@@ -142,8 +142,8 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 7,
-      "passes": true,
-      "notes": "Pagination wired below table. Table height adjusted to account for pagination bar.",
+      "passes": false,
+      "notes": "",
       "dependsOn": ["US-006"]
     },
     {
@@ -165,8 +165,8 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 8,
-      "passes": true,
-      "notes": "All stories complete. Build passes. Breadcrumb, wider tabs, wider dropdowns, search+filters row, pagination all working.",
+      "passes": false,
+      "notes": "",
       "dependsOn": ["US-003", "US-005", "US-007"]
     }
   ]

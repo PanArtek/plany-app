@@ -39,6 +39,7 @@ export const pozycjeFiltersSchema = z.object({
   podkategoria: z.string().optional(),
   search: z.string().optional(),
   selected: z.string().uuid().optional(),
+  page: z.coerce.number().optional().default(1),
 });
 
 // Typy TypeScript

@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react';
 import { Plus } from 'lucide-react';
 import { BranzaTabs } from './branza-tabs';
 import { KategorieList } from './kategorie-list';
@@ -8,6 +9,13 @@ import type { BranzaKod } from '@/stores/kategorie-ui-store';
 import { useKategoriaModal } from '@/hooks/use-kategoria-modal';
 import type { KategoriaNode } from '@/actions/kategorie';
 import { Button } from '@/components/ui/button';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 interface Props {
   initialData: KategoriaNode[];
@@ -24,8 +32,10 @@ const BRANZE_NAMES: Record<BranzaKod, string> = {
 
 export function KategorieView({ initialData, activeBranza }: Props) {
   const modal = useKategoriaModal();
+  const [selectedKategoriaId, setSelectedKategoriaId] = useState<string>('all');
 
   const currentBranza = initialData.find(b => b.kod === activeBranza);
+  const kategorie = currentBranza?.children || [];
 
   const handleAddKategoria = () => {
     if (currentBranza) {
@@ -40,7 +50,23 @@ export function KategorieView({ initialData, activeBranza }: Props) {
 
   return (
     <div>
-      <BranzaTabs branzeList={initialData} activeBranza={activeBranza} />
+      <div className="flex items-center gap-4 flex-wrap">
+        <BranzaTabs branzeList={initialData} activeBranza={activeBranza} />
+
+        <Select value={selectedKategoriaId} onValueChange={setSelectedKategoriaId}>
+          <SelectTrigger className="w-[220px]">
+            <SelectValue placeholder="Wszystkie kategorie" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Wszystkie kategorie</SelectItem>
+            {kategorie.map((kat) => (
+              <SelectItem key={kat.id} value={kat.id}>
+                {kat.nazwa}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
 
       <div className="mt-6">
         <div className="flex items-center justify-between mb-4">
@@ -54,7 +80,7 @@ export function KategorieView({ initialData, activeBranza }: Props) {
         </div>
 
         <KategorieList
-          kategorie={currentBranza?.children || []}
+          kategorie={selectedKategoriaId === 'all' ? kategorie : kategorie.filter(k => k.id === selectedKategoriaId)}
           branzaKod={currentBranza?.kod || activeBranza}
           branzaNazwa={currentBranza?.nazwa || BRANZE_NAMES[activeBranza]}
           onAddPodkategoria={(parentId, parentKod, parentNazwa) =>

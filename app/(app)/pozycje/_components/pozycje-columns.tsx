@@ -4,7 +4,8 @@ import { ColumnDef, RowData } from '@tanstack/react-table';
 import { Badge } from '@/components/ui/badge';
 import { type Pozycja } from '@/actions/pozycje';
 import { obliczCenePozycji } from '@/lib/utils/pozycje';
-import { ChevronDown, ChevronUp } from 'lucide-react';
+import { ChevronDown, ChevronUp, Pencil, Trash2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 // Extend TanStack Table's ColumnMeta to add responsive visibility
 declare module '@tanstack/react-table' {
@@ -16,15 +17,15 @@ declare module '@tanstack/react-table' {
 }
 
 const TYP_COLORS: Record<string, string> = {
-  robocizna: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
-  material: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+  robocizna: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
+  material: 'bg-green-500/10 text-green-400 border-green-500/20',
   komplet: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
 };
 
 const TYP_LABELS: Record<string, string> = {
-  robocizna: 'Robocizna',
-  material: 'Materiał',
-  komplet: 'Komplet',
+  robocizna: 'R',
+  material: 'M',
+  komplet: 'R+M',
 };
 
 function formatCena(value: number): string {
@@ -45,31 +46,18 @@ function SortIcon({ column }: { column: { getIsSorted: () => false | 'asc' | 'de
   );
 }
 
-// Helper to get kategoria and podkategoria names
-function getKategoriaNames(pozycja: Pozycja): { kategoria: string | null; podkategoria: string | null } {
-  if (!pozycja.kategoria) return { kategoria: null, podkategoria: null };
-
-  // If poziom = 2, this is a subcategory - parent is the main category
-  if (pozycja.kategoria.poziom === 2 && pozycja.kategoria.parent) {
-    return {
-      kategoria: pozycja.kategoria.parent.nazwa,
-      podkategoria: pozycja.kategoria.nazwa,
-    };
-  }
-
-  // If poziom = 1, this is a main category
-  return {
-    kategoria: pozycja.kategoria.nazwa,
-    podkategoria: null,
-  };
+interface PozycjeColumnsOptions {
+  onEdit: (id: string) => void;
+  onDelete: (id: string) => void;
 }
 
-export const pozycjeColumns: ColumnDef<Pozycja>[] = [
+export function getPozycjeColumns({ onEdit, onDelete }: PozycjeColumnsOptions): ColumnDef<Pozycja>[] {
+  return [
   {
     accessorKey: 'kod',
     header: ({ column }) => (
       <button
-        className="flex items-center hover:text-foreground text-xs uppercase tracking-wider font-medium"
+        className="flex items-center hover:text-foreground text-sm font-medium text-muted-foreground"
         onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
       >
         Kod
@@ -85,7 +73,7 @@ export const pozycjeColumns: ColumnDef<Pozycja>[] = [
     accessorKey: 'nazwa',
     header: ({ column }) => (
       <button
-        className="flex items-center hover:text-foreground text-xs uppercase tracking-wider font-medium"
+        className="flex items-center hover:text-foreground text-sm font-medium text-muted-foreground"
         onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
       >
         Nazwa
@@ -93,49 +81,17 @@ export const pozycjeColumns: ColumnDef<Pozycja>[] = [
       </button>
     ),
     cell: ({ row }) => (
-      <span className="block truncate max-w-[150px] md:max-w-none font-medium text-foreground">
+      <span className="block truncate max-w-[150px] md:max-w-none text-sm font-normal text-foreground">
         {row.getValue('nazwa')}
       </span>
     ),
     minSize: 200,
   },
   {
-    id: 'kategoria',
-    header: () => <span className="text-xs uppercase tracking-wider font-medium">Kategoria</span>,
-    accessorFn: (row) => getKategoriaNames(row).kategoria,
-    cell: ({ row }) => {
-      const { kategoria } = getKategoriaNames(row.original);
-      if (!kategoria) return <span className="text-muted-foreground/50">—</span>;
-      return (
-        <span className="text-xs text-muted-foreground uppercase tracking-wide">
-          {kategoria}
-        </span>
-      );
-    },
-    size: 120,
-    meta: { hideOnMobile: true },
-  },
-  {
-    id: 'podkategoria',
-    header: () => <span className="text-xs uppercase tracking-wider font-medium">Podkategoria</span>,
-    accessorFn: (row) => getKategoriaNames(row).podkategoria,
-    cell: ({ row }) => {
-      const { podkategoria } = getKategoriaNames(row.original);
-      if (!podkategoria) return <span className="text-muted-foreground/50">—</span>;
-      return (
-        <span className="text-xs text-muted-foreground">
-          {podkategoria}
-        </span>
-      );
-    },
-    size: 120,
-    meta: { hideOnMobile: true },
-  },
-  {
     accessorKey: 'jednostka',
-    header: () => <span className="text-xs uppercase tracking-wider font-medium text-center block">Jedn.</span>,
+    header: () => <span className="text-sm font-medium text-muted-foreground text-center block">Jedn.</span>,
     cell: ({ row }) => (
-      <span className="text-sm text-muted-foreground text-center block font-mono">
+      <span className="text-sm text-white/50 text-center block font-mono">
         {row.getValue('jednostka')}
       </span>
     ),
@@ -144,7 +100,7 @@ export const pozycjeColumns: ColumnDef<Pozycja>[] = [
   },
   {
     accessorKey: 'typ',
-    header: () => <span className="text-xs uppercase tracking-wider font-medium">Typ</span>,
+    header: () => <span className="text-sm font-medium text-muted-foreground">Typ</span>,
     cell: ({ row }) => {
       const typ = row.getValue('typ') as string;
       return (
@@ -153,14 +109,14 @@ export const pozycjeColumns: ColumnDef<Pozycja>[] = [
         </Badge>
       );
     },
-    size: 100,
+    size: 70,
     meta: { hideOnTablet: true },
   },
   {
     id: 'cenaJednostkowa',
     header: ({ column }) => (
       <button
-        className="flex items-center hover:text-foreground justify-end w-full text-xs uppercase tracking-wider font-medium"
+        className="flex items-center hover:text-foreground justify-end w-full text-sm font-medium text-muted-foreground"
         onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
       >
         Cena
@@ -171,11 +127,41 @@ export const pozycjeColumns: ColumnDef<Pozycja>[] = [
     cell: ({ row }) => {
       const { cena } = obliczCenePozycji(row.original);
       return (
-        <span className="font-mono text-sm text-right block tabular-nums">
+        <span className="font-mono text-sm font-medium text-right block tabular-nums">
           {formatCena(cena)}
         </span>
       );
     },
     size: 110,
   },
+  {
+    id: 'akcje',
+    header: () => null,
+    cell: ({ row }) => (
+      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        <Button
+          variant="ghost"
+          className="h-7 w-7 p-0"
+          onClick={(e) => {
+            e.stopPropagation();
+            onEdit(row.original.id);
+          }}
+        >
+          <Pencil className="h-4 w-4" />
+        </Button>
+        <Button
+          variant="ghost"
+          className="h-7 w-7 p-0"
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete(row.original.id);
+          }}
+        >
+          <Trash2 className="h-4 w-4" />
+        </Button>
+      </div>
+    ),
+    size: 80,
+  },
 ];
+}

@@ -42,7 +42,7 @@ export function KategoriaCard({
     <div className="bg-[#1A1A24]/60 backdrop-blur-sm border border-white/[0.08] rounded-xl hover:border-white/15 transition-colors">
       <div
         className={cn(
-          "flex items-center justify-between p-4",
+          "flex items-center justify-between p-3",
           "hover:bg-white/[0.02] transition-colors"
         )}
       >
@@ -77,30 +77,30 @@ export function KategoriaCard({
           <Button
             size="icon"
             variant="ghost"
-            className="h-8 w-8"
+            className="h-7 w-7"
             onClick={(e) => {
               e.stopPropagation();
               onEditKategoria(kategoria, branzaKod, branzaNazwa);
             }}
           >
-            <Pencil className="h-4 w-4" />
+            <Pencil className="h-3.5 w-3.5" />
           </Button>
           <Button
             size="icon"
             variant="ghost"
-            className="h-8 w-8 text-destructive hover:text-destructive"
+            className="h-7 w-7 text-destructive hover:text-destructive"
             onClick={(e) => {
               e.stopPropagation();
               setDeleteModalOpen(true);
             }}
           >
-            <Trash2 className="h-4 w-4" />
+            <Trash2 className="h-3.5 w-3.5" />
           </Button>
         </div>
       </div>
 
       {isExpanded && (
-        <div className="border-t border-white/[0.05] px-4 py-2 bg-white/[0.02]">
+        <div className="border-t border-white/[0.05] px-3 py-2 bg-white/[0.02]">
           {kategoria.children.map((podkategoria) => (
             <div
               key={podkategoria.id}

@@ -21,7 +21,7 @@ const BRANZE: { kod: BranzaKod; nazwa: string }[] = [
 export function BranzaTabs({ branzeList, activeBranza }: Props) {
   return (
     <div className="bg-[#1A1A24]/40 backdrop-blur-sm border border-white/[0.08] rounded-lg p-1 inline-flex gap-1">
-      {BRANZE.map(({ kod }) => {
+      {BRANZE.map(({ kod, nazwa }) => {
         const isActive = activeBranza === kod;
         const branzaData = branzeList.find(b => b.kod === kod);
         const count = branzaData?.children?.length || 0;
@@ -37,7 +37,7 @@ export function BranzaTabs({ branzeList, activeBranza }: Props) {
                 : "text-white/50 hover:bg-white/5 hover:text-white/80"
             )}
           >
-            <span>{kod}</span>
+            <span>{nazwa}</span>
             <span className={cn(
               "ml-2 text-xs px-1.5 py-0.5 rounded",
               isActive ? "bg-amber-500/20 text-amber-500" : "text-white/40"

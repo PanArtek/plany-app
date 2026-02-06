@@ -1,24 +1,73 @@
 'use client';
 
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Search } from 'lucide-react';
-import { useState, useCallback, useEffect } from 'react';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Search } from 'lucide-react';
+import { useState, useCallback, useEffect, useTransition } from 'react';
 import { cn } from '@/lib/utils';
+import { getKategorieForBranza, getKategorieByPoziom } from '@/actions/kategorie';
 
-const BRANZE = ['BUD', 'ELE', 'SAN', 'TEL', 'HVC'] as const;
+const BRANZE = [
+  { kod: 'BUD', nazwa: 'Budowlana' },
+  { kod: 'ELE', nazwa: 'Elektryczna' },
+  { kod: 'SAN', nazwa: 'Sanitarna' },
+  { kod: 'TEL', nazwa: 'Teletechnika' },
+  { kod: 'HVC', nazwa: 'HVAC' },
+] as const;
 
-interface PozycjeFiltersProps {
-  onAddClick: () => void;
-}
-
-export function PozycjeFilters({ onAddClick }: PozycjeFiltersProps) {
+export function PozycjeFilters() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
   const [search, setSearch] = useState(searchParams.get('search') || '');
   const currentBranza = searchParams.get('branza');
+  const currentKategoria = searchParams.get('kategoria');
+  const currentPodkategoria = searchParams.get('podkategoria');
+
+  const [kategorieOptions, setKategorieOptions] = useState<{ id: string; kod: string; nazwa: string }[]>([]);
+  const [podkategorieOptions, setPodkategorieOptions] = useState<{ id: string; kod: string; nazwa: string }[]>([]);
+  const [, startTransition] = useTransition();
+
+  // Fetch kategorie when branza changes
+  useEffect(() => {
+    if (!currentBranza) {
+      setKategorieOptions([]);
+      setPodkategorieOptions([]);
+      return;
+    }
+
+    startTransition(async () => {
+      const kategorie = await getKategorieForBranza(currentBranza);
+      setKategorieOptions(kategorie);
+    });
+    setPodkategorieOptions([]);
+  }, [currentBranza]);
+
+  // Fetch podkategorie when kategoria changes
+  useEffect(() => {
+    if (!currentKategoria) {
+      setPodkategorieOptions([]);
+      return;
+    }
+
+    const selectedKat = kategorieOptions.find((k) => k.kod === currentKategoria);
+    if (!selectedKat) {
+      setPodkategorieOptions([]);
+      return;
+    }
+
+    startTransition(async () => {
+      const podkategorie = await getKategorieByPoziom(3, selectedKat.id);
+      setPodkategorieOptions(podkategorie);
+    });
+  }, [currentKategoria, kategorieOptions]);
 
   // Debounce search
   useEffect(() => {
@@ -56,29 +105,103 @@ export function PozycjeFilters({ onAddClick }: PozycjeFiltersProps) {
     [currentBranza, searchParams, router]
   );
 
+  const handleKategoriaChange = useCallback(
+    (value: string) => {
+      const params = new URLSearchParams(searchParams.toString());
+      if (value === '__all__') {
+        params.delete('kategoria');
+        params.delete('podkategoria');
+      } else {
+        params.set('kategoria', value);
+        params.delete('podkategoria');
+      }
+      params.delete('selected');
+      router.push(`/pozycje?${params.toString()}`);
+    },
+    [searchParams, router]
+  );
+
+  const handlePodkategoriaChange = useCallback(
+    (value: string) => {
+      const params = new URLSearchParams(searchParams.toString());
+      if (value === '__all__') {
+        params.delete('podkategoria');
+      } else {
+        params.set('podkategoria', value);
+      }
+      params.delete('selected');
+      router.push(`/pozycje?${params.toString()}`);
+    },
+    [searchParams, router]
+  );
+
   return (
-    <div className="flex items-center justify-between gap-4 mb-4">
-      <div className="bg-[#1A1A24]/40 backdrop-blur-sm border border-white/[0.08] rounded-lg p-1 inline-flex gap-1">
+    <div className="flex flex-col gap-3 mb-4">
+      <div className="w-full bg-[#1A1A24]/40 backdrop-blur-sm border border-white/[0.08] rounded-lg p-1 flex gap-1">
         {BRANZE.map((b) => {
-          const isActive = currentBranza === b;
+          const isActive = currentBranza === b.kod;
           return (
             <button
-              key={b}
-              onClick={() => handleBranzaClick(b)}
+              key={b.kod}
+              onClick={() => handleBranzaClick(b.kod)}
               className={cn(
-                "px-4 py-2 font-mono text-sm rounded-md transition-all",
+                "flex-1 px-6 py-2.5 text-sm rounded-md transition-all",
                 isActive
                   ? "bg-amber-500/15 text-amber-500 shadow-[0_0_12px_rgba(245,158,11,0.2)]"
                   : "text-white/50 hover:bg-white/5 hover:text-white/80"
               )}
             >
-              {b}
+              {b.nazwa}
             </button>
           );
         })}
       </div>
 
-      <div className="flex items-center gap-2 flex-1 max-w-md">
+      <div className="flex items-center gap-3">
+      {currentBranza && (
+        <>
+          <Select
+            value={currentKategoria ?? '__all__'}
+            onValueChange={handleKategoriaChange}
+          >
+            <SelectTrigger className="w-[320px] bg-[#1A1A24]/40 border-white/[0.08]">
+              <SelectValue placeholder="Wszystkie kategorie" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all__">Wszystkie kategorie</SelectItem>
+              {kategorieOptions.map((k) => (
+                <SelectItem key={k.id} value={k.kod}>
+                  {k.kod} - {k.nazwa}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select
+            value={currentPodkategoria ?? '__all__'}
+            onValueChange={handlePodkategoriaChange}
+            disabled={!currentKategoria}
+          >
+            <SelectTrigger
+              className={cn(
+                "w-[320px] bg-[#1A1A24]/40 border-white/[0.08]",
+                !currentKategoria && "opacity-50 pointer-events-none"
+              )}
+            >
+              <SelectValue placeholder="Wszystkie podkategorie" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all__">Wszystkie podkategorie</SelectItem>
+              {podkategorieOptions.map((p) => (
+                <SelectItem key={p.id} value={p.kod}>
+                  {p.kod} - {p.nazwa}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </>
+      )}
+
         <div className="relative flex-1">
           <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
@@ -89,11 +212,6 @@ export function PozycjeFilters({ onAddClick }: PozycjeFiltersProps) {
           />
         </div>
       </div>
-
-      <Button onClick={onAddClick}>
-        <Plus className="h-4 w-4 mr-2" />
-        Dodaj pozycję
-      </Button>
     </div>
   );
 }
