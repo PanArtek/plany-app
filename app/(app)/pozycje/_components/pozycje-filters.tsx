@@ -131,42 +131,39 @@ export function PozycjeFilters() {
 
   return (
     <div className="flex flex-col gap-3 mb-4">
-      <div className="flex items-center justify-between gap-4">
-        <div className="bg-[#1A1A24]/40 backdrop-blur-sm border border-white/[0.08] rounded-lg p-1 inline-flex gap-1">
-          {BRANZE.map((b) => {
-            const isActive = currentBranza === b;
-            return (
-              <button
-                key={b}
-                onClick={() => handleBranzaClick(b)}
-                className={cn(
-                  "px-4 py-2 font-mono text-sm rounded-md transition-all",
-                  isActive
-                    ? "bg-amber-500/15 text-amber-500 shadow-[0_0_12px_rgba(245,158,11,0.2)]"
-                    : "text-white/50 hover:bg-white/5 hover:text-white/80"
-                )}
-              >
-                {b}
-              </button>
-            );
-          })}
-        </div>
-
-        <div className="flex items-center gap-2 flex-1 max-w-md">
-          <div className="relative flex-1">
-            <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Szukaj po kodzie lub nazwie..."
-              className="pl-8"
-            />
-          </div>
-        </div>
+      <div className="w-full bg-[#1A1A24]/40 backdrop-blur-sm border border-white/[0.08] rounded-lg p-1 flex gap-1">
+        {BRANZE.map((b) => {
+          const isActive = currentBranza === b;
+          return (
+            <button
+              key={b}
+              onClick={() => handleBranzaClick(b)}
+              className={cn(
+                "flex-1 px-6 py-2.5 font-mono text-sm rounded-md transition-all",
+                isActive
+                  ? "bg-amber-500/15 text-amber-500 shadow-[0_0_12px_rgba(245,158,11,0.2)]"
+                  : "text-white/50 hover:bg-white/5 hover:text-white/80"
+              )}
+            >
+              {b}
+            </button>
+          );
+        })}
       </div>
 
+      <div className="flex items-center gap-3">
+        <div className="relative flex-1">
+          <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Szukaj po kodzie lub nazwie..."
+            className="pl-8"
+          />
+        </div>
+
       {currentBranza && (
-        <div className="flex items-center gap-2">
+        <>
           <Select
             value={currentKategoria ?? '__all__'}
             onValueChange={handleKategoriaChange}
@@ -206,8 +203,9 @@ export function PozycjeFilters() {
               ))}
             </SelectContent>
           </Select>
-        </div>
+        </>
       )}
+      </div>
     </div>
   );
 }
