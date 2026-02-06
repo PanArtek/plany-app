@@ -85,8 +85,8 @@
         "Typecheck passes"
       ],
       "priority": 5,
-      "passes": false,
-      "notes": "",
+      "passes": true,
+      "notes": "Resets all skladowe R/M by lp matching, includes 3-tier price discovery for materials",
       "dependsOn": ["US-001"]
     },
     {
@@ -119,8 +119,8 @@
         "Typecheck passes"
       ],
       "priority": 7,
-      "passes": false,
-      "notes": "",
+      "passes": true,
+      "notes": "Returns kategorie by parent_id or top-level (poziom=0)",
       "dependsOn": []
     },
     {
@@ -135,8 +135,8 @@
         "Typecheck passes"
       ],
       "priority": 8,
-      "passes": false,
-      "notes": "",
+      "passes": true,
+      "notes": "Added kategoriaId/podkategoriaId to LibraryFilters, cascading filter logic with child kategorie lookup",
       "dependsOn": []
     },
     {
@@ -214,8 +214,8 @@
         "Typecheck passes"
       ],
       "priority": 12,
-      "passes": false,
-      "notes": "",
+      "passes": true,
+      "notes": "Validates narzut >= 0, filters by org_id for security",
       "dependsOn": []
     },
     {

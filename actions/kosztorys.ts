@@ -434,10 +434,23 @@ export async function getLibraryPositions(
     .range(offset, offset + LIBRARY_PAGE_SIZE - 1);
 
   if (filters.search) {
-    query = query.ilike('nazwa', `%${filters.search}%`);
+    query = query.or(`nazwa.ilike.%${filters.search}%,kod.ilike.%${filters.search}%`);
   }
 
-  if (filters.branza) {
+  // Cascading filters: podkategoriaId > kategoriaId > branza
+  if (filters.podkategoriaId) {
+    query = query.eq('kategoria_id', filters.podkategoriaId);
+  } else if (filters.kategoriaId) {
+    // Positions in kategoria OR any of its podkategorie
+    // Fetch child kategoria IDs first
+    const { data: children } = await supabase
+      .from('kategorie')
+      .select('id')
+      .eq('parent_id', filters.kategoriaId);
+    const childIds = (children || []).map((c: { id: string }) => c.id);
+    const allIds = [filters.kategoriaId, ...childIds];
+    query = query.in('kategoria_id', allIds);
+  } else if (filters.branza) {
     query = query.like('kod', `${filters.branza}%`);
   }
 
@@ -959,4 +972,84 @@ export async function copyRevision(
     success: true,
     data: newRewizja as { id: string; numer: number },
   };
+}
+
+// --- READ: Kategorie for cascading filter dropdowns ---
+
+export interface KategoriaFilter {
+  id: string;
+  kod: string;
+  nazwa: string;
+  pelny_kod: string;
+}
+
+export async function getKategorieForFilter(
+  parentId?: string
+): Promise<ActionResult<KategoriaFilter[]>> {
+  const supabase = await createClient();
+
+  let query = supabase
+    .from('kategorie')
+    .select('id, kod, nazwa, pelny_kod')
+    .order('kod', { ascending: true });
+
+  if (parentId) {
+    query = query.eq('parent_id', parentId);
+  } else {
+    query = query.eq('poziom', 0);
+  }
+
+  const { data, error } = await query;
+
+  if (error) {
+    return { success: false, error: error.message };
+  }
+
+  return {
+    success: true,
+    data: (data || []) as KategoriaFilter[],
+  };
+}
+
+// --- WRITE: Bulk update narzut on multiple positions ---
+
+export async function bulkUpdateNarzut(
+  pozycjaIds: string[],
+  narzutPercent: number
+): Promise<ActionResult<{ count: number }>> {
+  if (narzutPercent < 0) {
+    return { success: false, error: 'Narzut nie może być ujemny' };
+  }
+
+  const supabase = await createClient();
+
+  const { data: userData } = await supabase.auth.getUser();
+  if (!userData?.user) {
+    return { success: false, error: 'Brak autoryzacji' };
+  }
+
+  // Get organization_id for security filtering
+  const { data: orgData } = await supabase
+    .from('organization_members')
+    .select('organization_id')
+    .eq('user_id', userData.user.id)
+    .limit(1)
+    .single();
+
+  if (!orgData) {
+    return { success: false, error: 'Brak organizacji' };
+  }
+
+  const { error, count } = await supabase
+    .from('kosztorys_pozycje')
+    .update({ narzut_percent: narzutPercent })
+    .in('id', pozycjaIds)
+    .eq('organization_id', orgData.organization_id);
+
+  if (error) {
+    return { success: false, error: error.message };
+  }
+
+  revalidatePath('/projekty');
+  return { success: true, data: { count: count ?? pozycjaIds.length } };
 }
