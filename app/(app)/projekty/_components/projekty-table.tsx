@@ -35,6 +35,17 @@ const columns = [
       return <StatusBadge status={status} />;
     },
   }),
+  columnHelper.accessor('sent_at', {
+    header: 'Wysłano',
+    cell: (info) => {
+      const val = info.getValue();
+      return (
+        <span className="text-white/50 text-sm">
+          {val ? new Date(val).toLocaleDateString('pl-PL') : '—'}
+        </span>
+      );
+    },
+  }),
   columnHelper.accessor('rewizjeCount', {
     header: 'Rewizje',
     cell: (info) => (
