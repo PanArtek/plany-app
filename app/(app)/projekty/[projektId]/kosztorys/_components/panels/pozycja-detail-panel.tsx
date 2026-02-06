@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Loader2, Trash2 } from 'lucide-react';
+import { Loader2, Trash2, RotateCcw } from 'lucide-react';
 import { toast } from 'sonner';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -20,12 +20,24 @@ import {
   SlidePanelContent,
 } from '@/components/ui/slide-panel';
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+import {
   getKosztorysPozycjaDetail,
   updateKosztorysPozycja,
   updateKosztorysSkladowaR,
   updateKosztorysSkladowaM,
   resetSkladowaR,
   resetSkladowaM,
+  resetPozycjaToLibrary,
   type KosztorysPozycjaDetail as DetailType,
   type BibliotekaSkladowaR,
   type BibliotekaSkladowaM,
@@ -151,6 +163,37 @@ export function PozycjaDetailPanel({
   const rPlusM = (rJednostkowy + mJednostkowy) * ilosc;
   const narzutWartosc = rPlusM * (narzut / 100);
   const razem = rPlusM + narzutWartosc;
+
+  // Check if any skladowe have overrides (differ from library)
+  const hasOverrides = detail ? (
+    detail.skladoweR.some((r) => {
+      const lib = detail.bibliotekaSkladoweR.find((l) => l.lp === r.lp);
+      return lib && r.stawka !== lib.stawka_domyslna;
+    }) ||
+    detail.skladoweM.some((m) => {
+      const lib = detail.bibliotekaSkladoweM.find((l) => l.lp === m.lp);
+      return lib && m.cena !== lib.cena_domyslna;
+    })
+  ) : false;
+
+  const [resetting, setResetting] = useState(false);
+
+  const handleResetAll = async () => {
+    if (!pozycjaId) return;
+    setResetting(true);
+    try {
+      const result = await resetPozycjaToLibrary(pozycjaId);
+      if (result.success) {
+        toast.success('Zresetowano do wartości z biblioteki');
+        router.refresh();
+        await refreshDetail();
+      } else {
+        toast.error(result.error || 'Błąd resetowania');
+      }
+    } finally {
+      setResetting(false);
+    }
+  };
 
   return (
     <SlidePanel open={open} onOpenChange={onOpenChange} variant="wide">
@@ -298,6 +341,36 @@ export function PozycjaDetailPanel({
                 <span className="text-amber-500">{formatCurrency(razem)}</span>
               </div>
             </div>
+
+            {/* Reset to library */}
+            {!isLocked && hasOverrides && detail.pozycja.pozycja_biblioteka_id && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="outline"
+                    disabled={resetting}
+                    className="w-full text-white/60 border-white/[0.1] hover:bg-white/[0.04]"
+                  >
+                    <RotateCcw className="h-4 w-4 mr-2" />
+                    {resetting ? 'Resetowanie...' : 'Resetuj do biblioteki'}
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Resetuj do biblioteki</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Czy na pewno chcesz zresetować wszystkie wartości do aktualnych wartości z biblioteki?
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Anuluj</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleResetAll}>
+                      Resetuj
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
 
             {/* Actions */}
             {!isLocked && (
