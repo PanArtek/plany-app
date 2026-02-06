@@ -20,8 +20,8 @@
         "Typecheck passes"
       ],
       "priority": 1,
-      "passes": false,
-      "notes": "",
+      "passes": true,
+      "notes": "Migration applied via apply_migration. Returns correct JSON with zeros for empty data.",
       "dependsOn": []
     },
     {
@@ -38,8 +38,8 @@
         "Typecheck passes"
       ],
       "priority": 1,
-      "passes": false,
-      "notes": "",
+      "passes": true,
+      "notes": "Added separate wpisFormSchema without .default() for zodResolver compatibility.",
       "dependsOn": []
     },
     {
@@ -54,7 +54,7 @@
         "Typecheck passes"
       ],
       "priority": 1,
-      "passes": false,
+      "passes": true,
       "notes": "",
       "dependsOn": []
     },
@@ -75,8 +75,8 @@
         "Typecheck passes"
       ],
       "priority": 2,
-      "passes": false,
-      "notes": "",
+      "passes": true,
+      "notes": "8 actions: getStats, getWpisy, getZamowieniaForSelect, getUmowyForSelect, create, update, delete, toggleOplacone",
       "dependsOn": ["US-001", "US-002"]
     },
     {
@@ -91,8 +91,8 @@
         "Typecheck passes"
       ],
       "priority": 2,
-      "passes": false,
-      "notes": "",
+      "passes": true,
+      "notes": "Added as 4th tab. Disabled logic works via existing isEnabled check.",
       "dependsOn": []
     },
     {
@@ -111,8 +111,8 @@
         "Typecheck passes"
       ],
       "priority": 3,
-      "passes": false,
-      "notes": "",
+      "passes": true,
+      "notes": "Two-column layout with sticky sidebar. Client-side filtering with debounced search.",
       "dependsOn": ["US-004", "US-005"]
     },
     {
@@ -131,8 +131,8 @@
         "Typecheck passes"
       ],
       "priority": 3,
-      "passes": false,
-      "notes": "",
+      "passes": true,
+      "notes": "3 sections: budget with progress bars, zamowienia per-status, umowy per-status with avg % wykonania.",
       "dependsOn": ["US-006"]
     },
     {
@@ -153,8 +153,8 @@
         "Typecheck passes"
       ],
       "priority": 3,
-      "passes": false,
-      "notes": "",
+      "passes": true,
+      "notes": "7 columns with TanStack sorting. Inline oplacone toggle. RAZEM footer.",
       "dependsOn": ["US-006", "US-003"]
     },
     {
@@ -173,8 +173,8 @@
         "Typecheck passes"
       ],
       "priority": 4,
-      "passes": false,
-      "notes": "",
+      "passes": true,
+      "notes": "Create/edit form with zodResolver, typ toggle, powiazanie two-step select.",
       "dependsOn": ["US-008"]
     },
     {
@@ -192,8 +192,8 @@
         "Typecheck passes"
       ],
       "priority": 4,
-      "passes": false,
-      "notes": "",
+      "passes": true,
+      "notes": "Read-only detail with inline delete confirmation.",
       "dependsOn": ["US-008"]
     },
     {
@@ -211,8 +211,8 @@
         "Typecheck passes"
       ],
       "priority": 4,
-      "passes": false,
-      "notes": "",
+      "passes": true,
+      "notes": "All interactions wired in realizacja-view.tsx with useTransition for oplacone toggle.",
       "dependsOn": ["US-008", "US-009", "US-010"]
     },
     {
@@ -227,7 +227,7 @@
         "Typecheck passes"
       ],
       "priority": 4,
-      "passes": false,
+      "passes": true,
       "notes": "",
       "dependsOn": ["US-006"]
     },
@@ -249,8 +249,8 @@
         "Typecheck passes"
       ],
       "priority": 5,
-      "passes": false,
-      "notes": "",
+      "passes": true,
+      "notes": "6 wpisy seeded. Build passes. Project set to realizacja status for testing.",
       "dependsOn": ["US-011", "US-012"]
     }
   ]

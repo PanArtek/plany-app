@@ -13,6 +13,7 @@ const tabs = [
   { label: 'Kosztorys', segment: 'kosztorys' },
   { label: 'Zamówienia', segment: 'zamowienia' },
   { label: 'Umowy', segment: 'umowy' },
+  { label: 'Realizacja', segment: 'realizacja' },
 ];
 
 export function ProjectTabs({ projektId, status }: ProjectTabsProps) {

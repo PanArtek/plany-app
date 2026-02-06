@@ -1,49 +1,60 @@
 # Ralph Progress Log
-Started: Fri Feb  6 16:37:35 CET 2026
+Started: Fri Feb  6 17:18:20 CET 2026
 ---
 
-## US-001: Create shared project layout with tab bar ✅
-- Created `app/(app)/projekty/[projektId]/layout.tsx` - Server Component with breadcrumb header + StatusBadge
-- Created `app/(app)/projekty/[projektId]/_components/project-tabs.tsx` - Client tabs with active/disabled states
+## US-001: get_realizacja_stats Postgres function ✅
+- Applied migration via apply_migration
+- Function aggregates from realizacja_wpisy, rewizje_summary, zamowienia, umowy
+- Returns JSON with budzet, zamowienia, umowy sections
+- Handles edge case: returns 0s when no data exists
 
-## US-002: Remove project header duplication from kosztorys-view ✅
-- Removed breadcrumb header and StatusBadge from kosztorys-view.tsx (now in shared layout)
-- Kept RewizjaSelector and functional toolbar
+## US-002: Validation schemas ✅
+- Created lib/validations/realizacja.ts
+- wpisCreateSchema with .default() for server-side, wpisFormSchema without .default() for zodResolver
+- Uses z.number() not z.coerce.number()
 
-## US-003: Create status configs and validation schemas ✅
-- Created `lib/zamowienia/status-config.ts` with 5 status configs
-- Created `lib/umowy/status-config.ts` with 5 status configs
-- Created `lib/validations/zamowienia.ts` with zamowienieEditSchema + dostawaSchema
-- Created `lib/validations/umowy.ts` with umowaEditSchema + wykonanieSchema
+## US-003: Typ config ✅
+- Created lib/realizacja/typ-config.ts
+- material=blue, robocizna=amber, inny=zinc
 
-## US-004: Create zamówienia server actions ✅
-- Created `actions/zamowienia.ts` with 7 server actions (CRUD + status + dostawa)
+## US-004: Server Actions ✅
+- Created actions/realizacja.ts with 8 actions
+- getRealizacjaStats, getRealizacjaWpisy, getZamowieniaForSelect, getUmowyForSelect
+- createRealizacjaWpis, updateRealizacjaWpis, deleteRealizacjaWpis, toggleOplacone
 
-## US-005: Create umowy server actions ✅
-- Created `actions/umowy.ts` with 7 server actions (CRUD + status + wykonanie)
+## US-005: Realizacja tab ✅
+- Added 4th tab to project-tabs.tsx
+- Disabled when project status is draft/ofertowanie
 
-## US-006: Auto-generate drafts on acceptance ✅
-- Modified `actions/acceptance.ts` to call generate_zamowienia_draft and generate_umowy_draft on transition to realizacja
+## US-006: Page and view ✅
+- Server Component page fetches 4 data sources in parallel
+- Client view with two-column layout, client-side filtering with debounced search
 
-## US-007: Create zamówienia page, empty state, table ✅
-- Created zamowienia/page.tsx, zamowienia-empty.tsx, zamowienia-table.tsx
+## US-007: Sidebar ✅
+- Budget section with progress bars (green/amber/red)
+- Zamówienia/Umowy sections with per-status counts and navigation links
 
-## US-008: Create zamówienia view and detail panel ✅
-- Created zamowienia-view.tsx and zamowienie-detail-panel.tsx with all status-dependent sections
+## US-008: Wpisy table ✅
+- TanStack Table with 7 columns, sorting, RAZEM footer
+- Inline oplacone toggle with stopPropagation
 
-## US-009: Add dostawa form to zamówienie detail panel ✅
-- Created dostawa-form.tsx with per-pozycja quantity inputs
+## US-009: Form panel ✅
+- SlidePanel for create/edit with zodResolver
+- Typ toggle group, powiazanie two-step select
 
-## US-010: Create umowy page, empty state, table ✅
-- Created umowy/page.tsx, umowy-empty.tsx, umowy-table.tsx with progress bars
+## US-010: Detail panel ✅
+- Read-only detail with all fields
+- Inline delete confirmation
 
-## US-011: Create umowy view and detail panel ✅
-- Created umowy-view.tsx and umowa-detail-panel.tsx with załącznik cennikowy table
+## US-011: Panel interactions ✅
+- useTransition for oplacone toggle
+- Row click → detail, Dodaj → form create, Edit → form edit
+- router.refresh on form close
 
-## US-012: Add wykonanie form to umowa detail panel ✅
-- Created wykonanie-form.tsx with inline form below clicked pozycja row
+## US-012: Empty state ✅
+- Receipt icon, title, subtitle, amber CTA
 
-## US-013: Final build verification ✅
-- `npm run build` passes without errors
-- All routes verified: /projekty/[projektId]/kosztorys, /zamowienia, /umowy
-- Fixed Supabase JOIN type casting (as unknown as Record pattern)
+## US-013: Seed data + verification ✅
+- 6 wpisy seeded (2 material, 2 robocizna, 2 inny)
+- npm run build passes
+- Project set to realizacja status for testing
