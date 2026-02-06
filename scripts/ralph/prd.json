@@ -234,8 +234,8 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 13,
-      "passes": false,
-      "notes": "",
+      "passes": true,
+      "notes": "BulkToolbar with Popover for narzut, AlertDialog for delete, wired into kosztorys-view between summary and table",
       "dependsOn": ["US-011", "US-012"]
     },
     {
@@ -256,8 +256,8 @@
         "All features disabled when revision is locked"
       ],
       "priority": 14,
-      "passes": false,
-      "notes": "",
+      "passes": true,
+      "notes": "npm run build passes, all features implemented and type-safe",
       "dependsOn": ["US-006", "US-010", "US-013"]
     }
   ]

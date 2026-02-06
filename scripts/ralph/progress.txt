@@ -1,34 +1,37 @@
 # Ralph Progress Log
-Started: Fri Feb  6 14:31:55 CET 2026
+Started: Fri Feb  6 15:36:03 CET 2026
 ---
 
-## AKC-001: DB migration - acceptance state machine ✅
-- Added sent_at column to projekty
-- Recreated rewizje_summary view to include is_accepted/accepted_at (DROP + CREATE needed due to column order change)
-- Created change_project_status() RPC with full state machine validation
-- Tested: invalid transitions properly raise exceptions, draft→ofertowanie requires locked rewizja
+## Phase 8b: Kosztorys Interactions
 
-## AKC-002: Server action wrapper ✅
-- Created actions/acceptance.ts with changeProjectStatus() calling supabase.rpc()
+### Completed Stories
+- US-001: Extended getKosztorysPozycjaDetail with library reference values (already done)
+- US-002: Set is_manual flag on skladowe updates (already done)
+- US-003: Created OverrideIndicator component (already done)
+- US-004: Added override indicators to detail panel skladowe rows
+  - Added resetSkladowaR/M server actions for per-field reset
+  - Wired OverrideIndicator into SkladowaRRow and SkladowaMRow with lp matching
+- US-005: Added resetPozycjaToLibrary server action
+  - Resets all skladowe R/M by lp matching to library defaults
+  - Includes 3-tier price discovery for materials
+- US-006: Added 'Resetuj do biblioteki' button with AlertDialog confirmation
+  - Hidden when locked or no overrides exist
+- US-007: Added getKategorieForFilter server action (already done)
+- US-008: Extended getLibraryPositions with cascading filters (already done)
+- US-009: Created library-drawer component (bottom Sheet)
+  - Cascading branza > kategoria > podkategoria filters
+  - Search, pagination, multi-select, 'Dodano' badges
+- US-010: Wired library drawer with Ctrl+B shortcut
+  - Replaced AddFromLibraryPanel, deleted old file
+- US-011: Added checkbox column to kosztorys table
+  - Header select-all, row checkboxes with stopPropagation
+  - Selection state managed in kosztorys-view, resets on filter change
+- US-012: Added bulkUpdateNarzut server action (already done)
+- US-013: Created bulk-toolbar with delete and narzut actions
+  - Popover for narzut input, AlertDialog for delete confirmation
+  - Wired between summary and table in kosztorys-view
+- US-014: Final build verification passes
 
-## AKC-003: Status config + interfaces + StatusBadge extraction ✅
-- Updated labels: ofertowanie→'Wysłano do klienta' (blue), realizacja→green, zamkniety→gray
-- Added sent_at and accepted_rewizja_id to ProjektBase and ProjektWithCount
-- Extracted StatusBadge to separate status-badge.tsx, re-exported from projekty-table.tsx for compatibility
-
-## AKC-004: Projects table Wysłano column ✅
-- Added sent_at column accessor between Status and Rewizje columns
-
-## AKC-005 + AKC-006: Action buttons + accept dialog ✅
-- Contextual action buttons based on projekt.status (DRAFT/OFERTOWANIE/REALIZACJA/ODRZUCONY/ZAMKNIETY)
-- Inline accept revision dialog with locked rewizja selector
-- sent_at shown in project data when not null
-- All transitions call handleStatusChange with refreshAll after success
-
-## AKC-007: Kosztorys header badge + accepted banner ✅
-- Added StatusBadge to kosztorys breadcrumb header
-- Added isAccepted prop to LockedBanner: permanent lock message, hides copy button
-- Added status to ProjektInfo interface and select query
-
-## AKC-008: Seed data ✅
-- Reset Biuro Acme to draft with R0/R1 locked for manual flow testing
+### Learnings
+- WSL2 can cause intermittent ENOENT build errors with .next cache - deleting node_modules/.cache alongside .next fixes it
+- shadcn Sheet component works well for bottom drawers with side="bottom"
