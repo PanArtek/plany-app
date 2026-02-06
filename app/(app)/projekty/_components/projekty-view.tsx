@@ -12,6 +12,7 @@ import {
 import { ProjektyFilters } from './projekty-filters';
 import { ProjektyTable } from './projekty-table';
 import { ProjektyPagination } from './projekty-pagination';
+import { ProjektDetailPanel } from './panels/projekt-detail-panel';
 import { ProjektFormPanel } from './panels/projekt-form-panel';
 import { DeleteConfirmPanel } from '../../kategorie/_components/panels/delete-confirm-panel';
 
@@ -107,13 +108,14 @@ function ProjektyViewContent({ initialData }: ProjektyViewProps) {
         </>
       )}
 
-      {/* Detail panel - placeholder until PROJ-006 */}
-      {detailPanel.open && selectedProjekt && (
-        <div className="hidden">
-          {/* Will be replaced by ProjektDetailPanel in PROJ-006 */}
-          {selectedProjekt.id}
-        </div>
-      )}
+      {/* Detail panel */}
+      <ProjektDetailPanel
+        projektId={detailPanel.projektId}
+        open={detailPanel.open}
+        onOpenChange={(open) => setDetailPanel((prev) => ({ ...prev, open }))}
+        onEdit={handleEdit}
+        onDelete={handleDelete}
+      />
 
       {/* Form panel (add/edit) */}
       <ProjektFormPanel
