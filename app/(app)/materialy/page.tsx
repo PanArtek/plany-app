@@ -16,6 +16,10 @@ interface PageProps {
     kategoria?: string;
     podkategoria?: string;
     search?: string;
+    statusCenowy?: string;
+    showInactive?: string;
+    sort?: string;
+    order?: string;
     page?: string;
   }>;
 }
@@ -28,6 +32,10 @@ export default async function MaterialyPage({ searchParams }: PageProps) {
     kategoria: params.kategoria,
     podkategoria: params.podkategoria,
     search: params.search,
+    statusCenowy: params.statusCenowy as 'with_suppliers' | 'without_suppliers' | undefined,
+    showInactive: params.showInactive === 'true',
+    sort: params.sort,
+    order: params.order as 'asc' | 'desc' | undefined,
     page: params.page ? Number(params.page) : 1,
   };
 

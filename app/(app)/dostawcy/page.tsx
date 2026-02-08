@@ -6,6 +6,8 @@ interface PageProps {
   searchParams: Promise<{
     search?: string;
     showInactive?: string;
+    sort?: string;
+    order?: string;
     page?: string;
   }>;
 }
@@ -16,6 +18,8 @@ export default async function DostawcyPage({ searchParams }: PageProps) {
   const filters: DostawcyFilters = {
     search: params.search,
     showInactive: params.showInactive === 'true',
+    sort: params.sort,
+    order: params.order as 'asc' | 'desc' | undefined,
     page: params.page ? Number(params.page) : 1,
   };
 

@@ -39,8 +39,8 @@
         "Typecheck passes"
       ],
       "priority": 2,
-      "passes": false,
-      "notes": "",
+      "passes": true,
+      "notes": "Added statusCenowy, showInactive, sort, order to materialy; sort, order to dostawcy; specjalizacja, sort, order to podwykonawcy. Updated page.tsx files to pass new params.",
       "dependsOn": ["US-001"]
     },
     {
