@@ -1,4 +1,4 @@
-import { getPodwykonawcy } from '@/actions/podwykonawcy';
+import { getPodwykonawcy, getPodwykonawcyStats, getDistinctSpecjalizacje } from '@/actions/podwykonawcy';
 import { PodwykonawcyView } from './_components/podwykonawcy-view';
 import { type PodwykonawcyFilters } from '@/lib/validations/podwykonawcy';
 
@@ -25,11 +25,15 @@ export default async function PodwykonawcyPage({ searchParams }: PageProps) {
     page: params.page ? Number(params.page) : 1,
   };
 
-  const result = await getPodwykonawcy(filters);
+  const [result, stats, specjalizacje] = await Promise.all([
+    getPodwykonawcy(filters),
+    getPodwykonawcyStats(),
+    getDistinctSpecjalizacje(),
+  ]);
 
   return (
     <div className="p-6">
-      <PodwykonawcyView initialData={result} />
+      <PodwykonawcyView initialData={result} stats={stats} specjalizacje={specjalizacje} />
     </div>
   );
 }
