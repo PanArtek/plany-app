@@ -31,6 +31,135 @@ export interface RealizacjaStats {
   umowy: { total: number; per_status: Record<string, number>; avg_procent_wykonania: number; wartosc_total: number; };
 }
 
+export interface ZamowienieChecklistaRow {
+  id: string;
+  numer: string;
+  status: string;
+  dostawca_nazwa: string;
+  wartosc: number;
+  data_zamowienia: string | null;
+  data_dostawy_planowana: string | null;
+}
+
+export interface UmowaChecklistaRow {
+  id: string;
+  numer: string;
+  status: string;
+  podwykonawca_nazwa: string;
+  wartosc: number;
+  avg_procent_wykonania: number;
+  data_podpisania: string | null;
+}
+
+// --- READ: Checklista zamówień ---
+
+export async function getZamowieniaChecklista(projektId: string): Promise<ZamowienieChecklistaRow[]> {
+  const supabase = await createClient();
+
+  const { data: zamowienia, error } = await supabase
+    .from('zamowienia')
+    .select('id, numer, status, data_zamowienia, data_dostawy_planowana, dostawcy(nazwa)')
+    .eq('projekt_id', projektId)
+    .order('status', { ascending: true })
+    .order('numer', { ascending: true });
+
+  if (error) throw error;
+  if (!zamowienia || zamowienia.length === 0) return [];
+
+  // Fetch pozycje aggregates for wartosc
+  const zamIds = zamowienia.map((z: Record<string, unknown>) => z.id as string);
+  const { data: pozycjeData } = await supabase
+    .from('zamowienie_pozycje')
+    .select('zamowienie_id, ilosc_zamowiona, cena_jednostkowa')
+    .in('zamowienie_id', zamIds);
+
+  const aggregates: Record<string, number> = {};
+  for (const p of (pozycjeData || [])) {
+    const zId = p.zamowienie_id as string;
+    if (!aggregates[zId]) aggregates[zId] = 0;
+    aggregates[zId] += Number(p.ilosc_zamowiona) * Number(p.cena_jednostkowa);
+  }
+
+  const rows: ZamowienieChecklistaRow[] = zamowienia.map((z: Record<string, unknown>) => {
+    const dostawca = z.dostawcy as unknown as Record<string, unknown> | null;
+    return {
+      id: z.id as string,
+      numer: z.numer as string,
+      status: z.status as string,
+      dostawca_nazwa: (dostawca?.nazwa as string) || '—',
+      wartosc: aggregates[z.id as string] || 0,
+      data_zamowienia: z.data_zamowienia as string | null,
+      data_dostawy_planowana: z.data_dostawy_planowana as string | null,
+    };
+  });
+
+  // Sort: drafts first, then by numer
+  rows.sort((a, b) => {
+    const aIsDraft = a.status === 'draft' ? 0 : 1;
+    const bIsDraft = b.status === 'draft' ? 0 : 1;
+    if (aIsDraft !== bIsDraft) return aIsDraft - bIsDraft;
+    return a.numer.localeCompare(b.numer);
+  });
+
+  return rows;
+}
+
+// --- READ: Checklista umów ---
+
+export async function getUmowyChecklista(projektId: string): Promise<UmowaChecklistaRow[]> {
+  const supabase = await createClient();
+
+  const { data: umowy, error } = await supabase
+    .from('umowy')
+    .select('id, numer, status, data_podpisania, podwykonawcy(nazwa)')
+    .eq('projekt_id', projektId)
+    .order('status', { ascending: true })
+    .order('numer', { ascending: true });
+
+  if (error) throw error;
+  if (!umowy || umowy.length === 0) return [];
+
+  // Fetch pozycje aggregates for wartosc and avg_procent_wykonania
+  const umIds = umowy.map((u: Record<string, unknown>) => u.id as string);
+  const { data: pozycjeData } = await supabase
+    .from('umowa_pozycje')
+    .select('umowa_id, ilosc, stawka, procent_wykonania')
+    .in('umowa_id', umIds);
+
+  const aggregates: Record<string, { total: number; sumProcent: number; count: number }> = {};
+  for (const p of (pozycjeData || [])) {
+    const uId = p.umowa_id as string;
+    if (!aggregates[uId]) aggregates[uId] = { total: 0, sumProcent: 0, count: 0 };
+    aggregates[uId].count++;
+    aggregates[uId].total += Number(p.ilosc) * Number(p.stawka);
+    aggregates[uId].sumProcent += Number(p.procent_wykonania || 0);
+  }
+
+  const rows: UmowaChecklistaRow[] = umowy.map((u: Record<string, unknown>) => {
+    const agg = aggregates[u.id as string] || { total: 0, sumProcent: 0, count: 0 };
+    const podwykonawca = u.podwykonawcy as unknown as Record<string, unknown> | null;
+    return {
+      id: u.id as string,
+      numer: u.numer as string,
+      status: u.status as string,
+      podwykonawca_nazwa: (podwykonawca?.nazwa as string) || '—',
+      wartosc: agg.total,
+      avg_procent_wykonania: agg.count > 0 ? Math.round(agg.sumProcent / agg.count) : 0,
+      data_podpisania: u.data_podpisania as string | null,
+    };
+  });
+
+  // Sort: drafts first, then by numer
+  rows.sort((a, b) => {
+    const aIsDraft = a.status === 'draft' ? 0 : 1;
+    const bIsDraft = b.status === 'draft' ? 0 : 1;
+    if (aIsDraft !== bIsDraft) return aIsDraft - bIsDraft;
+    return a.numer.localeCompare(b.numer);
+  });
+
+  return rows;
+}
+
 // --- READ: Stats ---
 
 export async function getRealizacjaStats(projektId: string): Promise<RealizacjaStats> {
