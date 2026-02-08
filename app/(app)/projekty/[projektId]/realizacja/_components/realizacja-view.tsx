@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { Plus, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,8 +13,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import type { RealizacjaStats, RealizacjaWpisRow } from '@/actions/realizacja';
+import type { RealizacjaStats, RealizacjaWpisRow, ZamowienieChecklistaRow, UmowaChecklistaRow } from '@/actions/realizacja';
 import { toggleOplacone } from '@/actions/realizacja';
+import { cn } from '@/lib/utils';
 import { RealizacjaSidebar } from './realizacja-sidebar';
 import { WpisyTable } from './wpisy-table';
 import { WpisyEmpty } from './wpisy-empty';
@@ -27,9 +29,13 @@ interface RealizacjaViewProps {
   projektId: string;
   zamowieniaList: { id: string; numer: string }[];
   umowyList: { id: string; numer: string }[];
+  tab: string;
+  zamowieniaChecklista: ZamowienieChecklistaRow[];
+  umowyChecklista: UmowaChecklistaRow[];
 }
 
-export function RealizacjaView({ stats, wpisy, projektId, zamowieniaList, umowyList }: RealizacjaViewProps) {
+export function RealizacjaView({ stats, wpisy, projektId, zamowieniaList, umowyList, tab, zamowieniaChecklista, umowyChecklista }: RealizacjaViewProps) {
+  const activeTab = tab === 'wpisy' ? 'wpisy' : 'checklista';
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
@@ -119,56 +125,88 @@ export function RealizacjaView({ stats, wpisy, projektId, zamowieniaList, umowyL
 
       {/* Main content */}
       <div className="flex-1 min-w-0 space-y-4">
-        {/* Toolbar */}
-        <div className="flex items-center gap-3">
-          <Select value={filterTyp || 'all'} onValueChange={(v) => setFilterTyp(v === 'all' ? null : v)}>
-            <SelectTrigger className="w-[140px]">
-              <SelectValue placeholder="Typ" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Wszystkie</SelectItem>
-              <SelectItem value="material">Materiał</SelectItem>
-              <SelectItem value="robocizna">Robocizna</SelectItem>
-              <SelectItem value="inny">Inny</SelectItem>
-            </SelectContent>
-          </Select>
-
-          <Select value={filterOplacone || 'all'} onValueChange={(v) => setFilterOplacone(v === 'all' ? null : v)}>
-            <SelectTrigger className="w-[140px]">
-              <SelectValue placeholder="Opłacone" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Wszystkie</SelectItem>
-              <SelectItem value="oplacone">Opłacone</SelectItem>
-              <SelectItem value="nieoplacone">Nieopłacone</SelectItem>
-            </SelectContent>
-          </Select>
-
-          <div className="relative flex-1 max-w-xs">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/30" />
-            <Input
-              value={searchQuery}
-              onChange={(e) => handleSearchChange(e.target.value)}
-              placeholder="Szukaj..."
-              className="pl-9"
-            />
-          </div>
-
-          <Button onClick={handleAddClick} className="bg-amber-600 hover:bg-amber-500 text-white ml-auto">
-            <Plus className="h-4 w-4 mr-2" />
-            Dodaj wpis
-          </Button>
+        {/* Tab bar */}
+        <div className="flex gap-1 border-b border-white/[0.06] mb-4">
+          <Link
+            href={`/projekty/${projektId}/realizacja?tab=checklista`}
+            className={cn(
+              'px-4 py-2 text-sm transition-colors',
+              activeTab === 'checklista'
+                ? 'text-amber-500 border-b-2 border-amber-500'
+                : 'text-white/40 hover:text-white/60'
+            )}
+          >
+            Checklista
+          </Link>
+          <Link
+            href={`/projekty/${projektId}/realizacja?tab=wpisy`}
+            className={cn(
+              'px-4 py-2 text-sm transition-colors',
+              activeTab === 'wpisy'
+                ? 'text-amber-500 border-b-2 border-amber-500'
+                : 'text-white/40 hover:text-white/60'
+            )}
+          >
+            Wpisy
+          </Link>
         </div>
 
-        {/* Table or Empty */}
-        {wpisy.length === 0 ? (
-          <WpisyEmpty onAddClick={handleAddClick} />
+        {activeTab === 'checklista' ? (
+          <div className="text-white/40 text-sm">Checklista — placeholder (US-003)</div>
         ) : (
-          <WpisyTable
-            wpisy={filteredWpisy}
-            onRowClick={handleRowClick}
-            onToggleOplacone={handleToggleOplacone}
-          />
+          <>
+            {/* Toolbar */}
+            <div className="flex items-center gap-3">
+              <Select value={filterTyp || 'all'} onValueChange={(v) => setFilterTyp(v === 'all' ? null : v)}>
+                <SelectTrigger className="w-[140px]">
+                  <SelectValue placeholder="Typ" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Wszystkie</SelectItem>
+                  <SelectItem value="material">Materiał</SelectItem>
+                  <SelectItem value="robocizna">Robocizna</SelectItem>
+                  <SelectItem value="inny">Inny</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select value={filterOplacone || 'all'} onValueChange={(v) => setFilterOplacone(v === 'all' ? null : v)}>
+                <SelectTrigger className="w-[140px]">
+                  <SelectValue placeholder="Opłacone" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Wszystkie</SelectItem>
+                  <SelectItem value="oplacone">Opłacone</SelectItem>
+                  <SelectItem value="nieoplacone">Nieopłacone</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <div className="relative flex-1 max-w-xs">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/30" />
+                <Input
+                  value={searchQuery}
+                  onChange={(e) => handleSearchChange(e.target.value)}
+                  placeholder="Szukaj..."
+                  className="pl-9"
+                />
+              </div>
+
+              <Button onClick={handleAddClick} className="bg-amber-600 hover:bg-amber-500 text-white ml-auto">
+                <Plus className="h-4 w-4 mr-2" />
+                Dodaj wpis
+              </Button>
+            </div>
+
+            {/* Table or Empty */}
+            {wpisy.length === 0 ? (
+              <WpisyEmpty onAddClick={handleAddClick} />
+            ) : (
+              <WpisyTable
+                wpisy={filteredWpisy}
+                onRowClick={handleRowClick}
+                onToggleOplacone={handleToggleOplacone}
+              />
+            )}
+          </>
         )}
       </div>
 
