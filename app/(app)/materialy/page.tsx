@@ -1,4 +1,4 @@
-import { getMaterialy } from '@/actions/materialy';
+import { getMaterialy, getMaterialyStats } from '@/actions/materialy';
 import { MaterialyView } from './_components/materialy-view';
 import { type MaterialyFilters } from '@/lib/validations/materialy';
 
@@ -39,7 +39,10 @@ export default async function MaterialyPage({ searchParams }: PageProps) {
     page: params.page ? Number(params.page) : 1,
   };
 
-  const result = await getMaterialy(filters);
+  const [result, stats] = await Promise.all([
+    getMaterialy(filters),
+    getMaterialyStats(),
+  ]);
 
   const branzaLabel = params.branza ? BRANZE_NAMES[params.branza] : undefined;
 
@@ -47,6 +50,7 @@ export default async function MaterialyPage({ searchParams }: PageProps) {
     <div className="p-6">
       <MaterialyView
         initialData={result}
+        stats={stats}
         initialBranza={params.branza}
         branzaLabel={branzaLabel}
       />

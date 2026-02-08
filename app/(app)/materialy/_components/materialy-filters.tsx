@@ -218,6 +218,29 @@ export function MaterialyFilters() {
           </>
         )}
 
+        <Select
+          value={searchParams.get('statusCenowy') ?? '__all__'}
+          onValueChange={(value) => {
+            const params = new URLSearchParams(searchParams.toString());
+            if (value === '__all__') {
+              params.delete('statusCenowy');
+            } else {
+              params.set('statusCenowy', value);
+            }
+            params.delete('page');
+            router.push(`/materialy?${params.toString()}`);
+          }}
+        >
+          <SelectTrigger className="w-[200px] bg-[#1A1A24]/40 border-white/[0.08]">
+            <SelectValue placeholder="Status cenowy" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__all__">Wszystkie</SelectItem>
+            <SelectItem value="with_suppliers">Z dostawcami</SelectItem>
+            <SelectItem value="without_suppliers">Bez dostawców</SelectItem>
+          </SelectContent>
+        </Select>
+
         <div className="relative flex-1">
           <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
@@ -227,6 +250,25 @@ export function MaterialyFilters() {
             className="pl-8"
           />
         </div>
+
+        <label className="flex items-center gap-2 text-sm text-white/50 whitespace-nowrap cursor-pointer">
+          <input
+            type="checkbox"
+            checked={searchParams.get('showInactive') === 'true'}
+            onChange={(e) => {
+              const params = new URLSearchParams(searchParams.toString());
+              if (e.target.checked) {
+                params.set('showInactive', 'true');
+              } else {
+                params.delete('showInactive');
+              }
+              params.delete('page');
+              router.push(`/materialy?${params.toString()}`);
+            }}
+            className="rounded border-white/20 bg-transparent"
+          />
+          Nieaktywne
+        </label>
       </div>
     </div>
   );

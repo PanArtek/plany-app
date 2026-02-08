@@ -105,8 +105,8 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 5,
-      "passes": false,
-      "notes": "",
+      "passes": true,
+      "notes": "Stats bar with 4 KPIs, price range column (min-max zł), sortable headers (nazwa, pozycje, dostawcy, cena), statusCenowy filter, showInactive toggle, breadcrumb with count, inactive rows dimmed.",
       "dependsOn": ["US-003", "US-004"]
     },
     {
