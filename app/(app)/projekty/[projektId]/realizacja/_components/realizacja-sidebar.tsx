@@ -36,9 +36,11 @@ function BudgetRow({ label, planowane, rzeczywiste, color }: { label: string; pl
 interface RealizacjaSidebarProps {
   stats: RealizacjaStats;
   projektId: string;
+  zamowieniaProgress: { done: number; total: number };
+  umowyProgress: { done: number; total: number };
 }
 
-export function RealizacjaSidebar({ stats, projektId }: RealizacjaSidebarProps) {
+export function RealizacjaSidebar({ stats, projektId, zamowieniaProgress, umowyProgress }: RealizacjaSidebarProps) {
   const { budzet, zamowienia, umowy } = stats;
   const rzeczywisteRazem = budzet.rzeczywiste_razem;
   const planowaneRazem = budzet.planowane_razem;
@@ -106,6 +108,20 @@ export function RealizacjaSidebar({ stats, projektId }: RealizacjaSidebarProps) 
             );
           })}
         </div>
+        {zamowieniaProgress.total > 0 && (
+          <div className="mt-2 space-y-1">
+            <div className="flex justify-between text-xs text-white/40">
+              <span>Postęp</span>
+              <span>{zamowieniaProgress.done}/{zamowieniaProgress.total}</span>
+            </div>
+            <div className="h-1.5 rounded-full bg-white/[0.06]">
+              <div
+                className="h-full rounded-full bg-amber-500 transition-all"
+                style={{ width: `${(zamowieniaProgress.done / zamowieniaProgress.total) * 100}%` }}
+              />
+            </div>
+          </div>
+        )}
         <div className="text-xs text-white/40 pt-1 border-t border-white/[0.06]">
           Wartość: {fmt(zamowienia.wartosc_total)} zł
         </div>
@@ -138,6 +154,20 @@ export function RealizacjaSidebar({ stats, projektId }: RealizacjaSidebarProps) 
             );
           })}
         </div>
+        {umowyProgress.total > 0 && (
+          <div className="mt-2 space-y-1">
+            <div className="flex justify-between text-xs text-white/40">
+              <span>Postęp</span>
+              <span>{umowyProgress.done}/{umowyProgress.total}</span>
+            </div>
+            <div className="h-1.5 rounded-full bg-white/[0.06]">
+              <div
+                className="h-full rounded-full bg-amber-500 transition-all"
+                style={{ width: `${(umowyProgress.done / umowyProgress.total) * 100}%` }}
+              />
+            </div>
+          </div>
+        )}
         {umowy.total > 0 && (
           <div className="text-xs text-white/40">
             Wykonanie: {umowy.avg_procent_wykonania}%

@@ -22,6 +22,7 @@ import { WpisyEmpty } from './wpisy-empty';
 import { WpisFormPanel } from './panels/wpis-form-panel';
 import { WpisDetailPanel } from './panels/wpis-detail-panel';
 import { toast } from 'sonner';
+import { RealizacjaChecklista } from './realizacja-checklista';
 
 interface RealizacjaViewProps {
   stats: RealizacjaStats;
@@ -38,6 +39,17 @@ export function RealizacjaView({ stats, wpisy, projektId, zamowieniaList, umowyL
   const activeTab = tab === 'wpisy' ? 'wpisy' : 'checklista';
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+
+  // Progress for sidebar
+  const zamowieniaProgress = useMemo(() => ({
+    done: zamowieniaChecklista.filter(z => ['wyslane', 'czesciowo', 'dostarczone', 'rozliczone'].includes(z.status)).length,
+    total: zamowieniaChecklista.length,
+  }), [zamowieniaChecklista]);
+
+  const umowyProgress = useMemo(() => ({
+    done: umowyChecklista.filter(u => ['podpisana', 'wykonana', 'rozliczona'].includes(u.status)).length,
+    total: umowyChecklista.length,
+  }), [umowyChecklista]);
 
   // Panel state
   const [formPanelOpen, setFormPanelOpen] = useState(false);
@@ -120,7 +132,7 @@ export function RealizacjaView({ stats, wpisy, projektId, zamowieniaList, umowyL
     <div className="flex gap-6 p-6">
       {/* Sidebar */}
       <div className="w-80 shrink-0 space-y-4 sticky top-0 self-start">
-        <RealizacjaSidebar stats={stats} projektId={projektId} />
+        <RealizacjaSidebar stats={stats} projektId={projektId} zamowieniaProgress={zamowieniaProgress} umowyProgress={umowyProgress} />
       </div>
 
       {/* Main content */}
@@ -152,7 +164,11 @@ export function RealizacjaView({ stats, wpisy, projektId, zamowieniaList, umowyL
         </div>
 
         {activeTab === 'checklista' ? (
-          <div className="text-white/40 text-sm">Checklista — placeholder (US-003)</div>
+          <RealizacjaChecklista
+            zamowienia={zamowieniaChecklista}
+            umowy={umowyChecklista}
+            projektId={projektId}
+          />
         ) : (
           <>
             {/* Toolbar */}

@@ -1,60 +1,10 @@
 # Ralph Progress Log
-Started: Fri Feb  6 17:18:20 CET 2026
+Started: Sun Feb  8 11:00:58 CET 2026
 ---
-
-## US-001: get_realizacja_stats Postgres function ✅
-- Applied migration via apply_migration
-- Function aggregates from realizacja_wpisy, rewizje_summary, zamowienia, umowy
-- Returns JSON with budzet, zamowienia, umowy sections
-- Handles edge case: returns 0s when no data exists
-
-## US-002: Validation schemas ✅
-- Created lib/validations/realizacja.ts
-- wpisCreateSchema with .default() for server-side, wpisFormSchema without .default() for zodResolver
-- Uses z.number() not z.coerce.number()
-
-## US-003: Typ config ✅
-- Created lib/realizacja/typ-config.ts
-- material=blue, robocizna=amber, inny=zinc
-
-## US-004: Server Actions ✅
-- Created actions/realizacja.ts with 8 actions
-- getRealizacjaStats, getRealizacjaWpisy, getZamowieniaForSelect, getUmowyForSelect
-- createRealizacjaWpis, updateRealizacjaWpis, deleteRealizacjaWpis, toggleOplacone
-
-## US-005: Realizacja tab ✅
-- Added 4th tab to project-tabs.tsx
-- Disabled when project status is draft/ofertowanie
-
-## US-006: Page and view ✅
-- Server Component page fetches 4 data sources in parallel
-- Client view with two-column layout, client-side filtering with debounced search
-
-## US-007: Sidebar ✅
-- Budget section with progress bars (green/amber/red)
-- Zamówienia/Umowy sections with per-status counts and navigation links
-
-## US-008: Wpisy table ✅
-- TanStack Table with 7 columns, sorting, RAZEM footer
-- Inline oplacone toggle with stopPropagation
-
-## US-009: Form panel ✅
-- SlidePanel for create/edit with zodResolver
-- Typ toggle group, powiazanie two-step select
-
-## US-010: Detail panel ✅
-- Read-only detail with all fields
-- Inline delete confirmation
-
-## US-011: Panel interactions ✅
-- useTransition for oplacone toggle
-- Row click → detail, Dodaj → form create, Edit → form edit
-- router.refresh on form close
-
-## US-012: Empty state ✅
-- Receipt icon, title, subtitle, amber CTA
-
-## US-013: Seed data + verification ✅
-- 6 wpisy seeded (2 material, 2 robocizna, 2 inny)
-- npm run build passes
-- Project set to realizacja status for testing
+US-001: PASS - getZamowieniaChecklista and getUmowyChecklista server actions added
+US-002: PASS - Tab switcher with URL state (?tab=checklista|wpisy)
+US-003: PASS - realizacja-checklista component with zamówienia/umowy sections
+US-004: PASS - Progress bars added to sidebar (zamowieniaProgress, umowyProgress)
+US-005: PASS - Build passes, browser verification complete
+---
+ALL STORIES COMPLETE
