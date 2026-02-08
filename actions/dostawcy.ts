@@ -25,6 +25,7 @@ export interface DostawcaWithCount {
   kontakt: string | null;
   aktywny: boolean;
   produktyCount: number;
+  totalWartosc: number;
 }
 
 export interface DostawcyResult {
@@ -70,56 +71,41 @@ export async function getDostawcy(filters: DostawcyFilters): Promise<DostawcyRes
   const page = filters.page ?? 1;
   const offset = (page - 1) * PAGE_SIZE;
 
-  // We need aggregation (produktyCount), so use raw SQL via rpc or a simpler approach
-  // Since PostgREST doesn't support GROUP BY with count on joins easily,
-  // we'll do two queries: one for the list, one for counts
-
-  let query = supabase
-    .from('dostawcy')
-    .select('id, nazwa, kod, kontakt, aktywny', { count: 'exact' })
-    .order('nazwa')
-    .range(offset, offset + PAGE_SIZE - 1);
-
-  if (!filters.showInactive) {
-    query = query.eq('aktywny', true);
-  }
-
-  if (filters.search) {
-    query = query.or(`nazwa.ilike.%${filters.search}%,kod.ilike.%${filters.search}%`);
-  }
-
-  const { data, error, count } = await query;
+  const { data, error } = await supabase.rpc('get_dostawcy_aggregated', {
+    p_search: filters.search || null,
+    p_show_inactive: filters.showInactive || false,
+    p_sort: filters.sort || 'nazwa',
+    p_order: filters.order || 'asc',
+    p_limit: PAGE_SIZE,
+    p_offset: offset,
+  });
 
   if (error) throw error;
 
-  // Fetch product counts for these suppliers
-  const ids = (data || []).map((d: { id: string }) => d.id);
+  const rows = (data || []) as Array<{
+    id: string;
+    nazwa: string;
+    kod: string | null;
+    kontakt: string | null;
+    aktywny: boolean;
+    produkty_count: number;
+    total_wartosc: number;
+    total_count: number;
+  }>;
 
-  let countsMap: Record<string, number> = {};
-  if (ids.length > 0) {
-    const { data: countData, error: countError } = await supabase
-      .from('ceny_dostawcow')
-      .select('dostawca_id')
-      .in('dostawca_id', ids);
-
-    if (!countError && countData) {
-      countsMap = (countData as { dostawca_id: string }[]).reduce<Record<string, number>>((acc, row) => {
-        acc[row.dostawca_id] = (acc[row.dostawca_id] || 0) + 1;
-        return acc;
-      }, {});
-    }
-  }
+  const totalCount = rows.length > 0 ? Number(rows[0].total_count) : 0;
 
   return {
-    data: (data || []).map((d: Record<string, unknown>) => ({
-      id: d.id as string,
-      nazwa: d.nazwa as string,
-      kod: d.kod as string | null,
-      kontakt: d.kontakt as string | null,
-      aktywny: d.aktywny as boolean,
-      produktyCount: countsMap[d.id as string] || 0,
+    data: rows.map(r => ({
+      id: r.id,
+      nazwa: r.nazwa,
+      kod: r.kod,
+      kontakt: r.kontakt,
+      aktywny: r.aktywny,
+      produktyCount: Number(r.produkty_count),
+      totalWartosc: Number(r.total_wartosc),
     })),
-    totalCount: count ?? 0,
+    totalCount,
     page,
     pageSize: PAGE_SIZE,
   };
@@ -202,6 +188,26 @@ export async function getDostawcaPozycje(dostawcaId: string): Promise<DostawcaPo
     }
   }
   return result;
+}
+
+// --- STATS ---
+
+export interface DostawcyStats {
+  total: number;
+  totalProducts: number;
+  avgProducts: number;
+}
+
+export async function getDostawcyStats(): Promise<DostawcyStats> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc('get_dostawcy_stats');
+  if (error) throw error;
+  const row = (data as Array<Record<string, unknown>>)?.[0];
+  return {
+    total: Number(row?.total ?? 0),
+    totalProducts: Number(row?.total_products ?? 0),
+    avgProducts: Number(row?.avg_products ?? 0),
+  };
 }
 
 // --- CREATE dostawca ---

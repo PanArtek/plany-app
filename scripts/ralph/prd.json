@@ -62,8 +62,8 @@
         "Typecheck passes"
       ],
       "priority": 3,
-      "passes": false,
-      "notes": "",
+      "passes": true,
+      "notes": "Updated all 3 action files. Materialy: added najgorszaCena + getMaterialyStats. Dostawcy: replaced N+1 with RPC, added totalWartosc + getDostawcyStats. Podwykonawcy: replaced N+1 with RPC, added minStawka/maxStawka + getPodwykonawcyStats + getDistinctSpecjalizacje.",
       "dependsOn": ["US-002"]
     },
     {
