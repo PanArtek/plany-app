@@ -1,10 +1,44 @@
 # Ralph Progress Log
-Started: Sun Feb  8 11:00:58 CET 2026
+Started: Sun Feb  8 11:44:39 CET 2026
 ---
-US-001: PASS - getZamowieniaChecklista and getUmowyChecklista server actions added
-US-002: PASS - Tab switcher with URL state (?tab=checklista|wpisy)
-US-003: PASS - realizacja-checklista component with zamówienia/umowy sections
-US-004: PASS - Progress bars added to sidebar (zamowieniaProgress, umowyProgress)
-US-005: PASS - Build passes, browser verification complete
----
-ALL STORIES COMPLETE
+
+## US-001: Setup Vitest + test helpers + factory functions ✅
+- Installed vitest 4.0.18 as devDependency
+- Created vitest.config.ts with @ alias, 30s timeout, node environment
+- Added test + test:watch scripts to package.json
+- Created tests/helpers/setup.ts with:
+  - Supabase admin client (service_role key, bypasses RLS)
+  - cleanupOrganization(orgId) — cascade delete
+  - 15 factory functions: createTestOrganization, createKategoria, createKategoriaHierarchy, createPozycjaBiblioteka, createDostawca, createProdukt, createCenaDostawcy, createPodwykonawca, createStawkaPodwykonawcy, createBibliotekaSkladowaM, createBibliotekaSkladowaR, createProjekt, createRewizja, createKosztorysPozycja, createKosztorysSkladowaR, createKosztorysSkladowaM
+- Created tests/smoke.test.ts — passes
+- npm run test: 2 tests pass
+- npm run build: passes
+
+## US-002: Test pozycja-materialy ✅
+- 3 tests: 4 skladowe linked, price update snapshot vs live, multi-supplier coexistence
+
+## US-003: Test pozycja-robocizna ✅
+- 3 tests: 3 skladowe linked, stawki_podwykonawcow, multi-subcontractor coexistence
+
+## US-004: Test pozycja-do-kosztorysu ✅
+- 3 tests: view calculations (m_jednostkowy, r_jednostkowy, razem), quantity change recalc, manual component (is_manual=true)
+
+## US-005: Test pozycja-do-umowy ✅
+- 5 tests: state machine (draft->ofertowanie->realizacja), generate_umowy_draft RPC, umowa_pozycje grouping, zrodla links, status transitions, execution tracking
+
+## US-006: Test pozycja-do-zamowienia ✅
+- 5 tests: generate_zamowienia_draft RPC, zamowienie_pozycje grouping (produkt_id,cena), zrodla links, partial delivery, full delivery
+
+## US-007: Test pozycja-do-realizacji ✅
+- 5 tests: material/labor/other entry types, FK links (zamowienie_id, umowa_id), payment marking, aggregates
+
+## US-008: Test full-flow E2E ✅
+- 5 tests: 2 pozycje, 2 dostawcy (Bricoman+SIG), 2 podwykonawcy (Kowalski+Malarz)
+- Budget consistency: kosztorys labor = umowy total, kosztorys material = zamowienia total
+- rewizje_summary aggregates correct
+
+## US-009: Fix all + build + lint ✅
+- All 8 test files, 31 tests pass
+- npm run build passes
+- Lint clean on test files (pre-existing warnings in app code unchanged)
+- Ran tests twice — deterministic, no flaky tests
