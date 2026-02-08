@@ -1,10 +1,15 @@
 # Ralph Progress Log
-Started: Sun Feb  8 11:00:58 CET 2026
+Started: Sun Feb  8 11:44:39 CET 2026
 ---
-US-001: PASS - getZamowieniaChecklista and getUmowyChecklista server actions added
-US-002: PASS - Tab switcher with URL state (?tab=checklista|wpisy)
-US-003: PASS - realizacja-checklista component with zamówienia/umowy sections
-US-004: PASS - Progress bars added to sidebar (zamowieniaProgress, umowyProgress)
-US-005: PASS - Build passes, browser verification complete
----
-ALL STORIES COMPLETE
+
+## US-001: Setup Vitest + test helpers + factory functions ✅
+- Installed vitest 4.0.18 as devDependency
+- Created vitest.config.ts with @ alias, 30s timeout, node environment
+- Added test + test:watch scripts to package.json
+- Created tests/helpers/setup.ts with:
+  - Supabase admin client (service_role key, bypasses RLS)
+  - cleanupOrganization(orgId) — cascade delete
+  - 15 factory functions: createTestOrganization, createKategoria, createKategoriaHierarchy, createPozycjaBiblioteka, createDostawca, createProdukt, createCenaDostawcy, createPodwykonawca, createStawkaPodwykonawcy, createBibliotekaSkladowaM, createBibliotekaSkladowaR, createProjekt, createRewizja, createKosztorysPozycja, createKosztorysSkladowaR, createKosztorysSkladowaM
+- Created tests/smoke.test.ts — passes
+- npm run test: 2 tests pass
+- npm run build: passes
