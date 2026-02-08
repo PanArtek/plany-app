@@ -100,7 +100,7 @@ Razem = (R + M) × (1 + narzut%)
 
 --- Functions + Triggers + Views + RLS ---
 31. Triggers (prevent_unlock, updated_at, auto_numer, auto_sum)
-32. Functions (generate_zamowienia_draft, generate_umowy_draft, UX aggregation)
+32. Functions (generate_zamowienia_draft, generate_umowy_draft, get_realizacja_stats, UX aggregation)
 33. Views + RLS Policies
 ```
 
@@ -1430,6 +1430,12 @@ CREATE TRIGGER realizacja_wpisy_updated_at BEFORE UPDATE ON realizacja_wpisy ...
 -- UX: agregacja dostawców per kategoria/podkategoria
 -- get_dostawcy_aggregated(p_branza, p_kategoria, p_podkategoria, p_search, p_limit, p_offset)
 -- Łańcuch: dostawcy → ceny_dostawcow → produkty → biblioteka_skladowe_materialy → pozycje_biblioteka
+
+-- Realizacja: statystyki budżetowe (Phase 12)
+-- get_realizacja_stats(p_projekt_id UUID) → JSON
+-- Agreguje: rewizje_summary (budżet), realizacja_wpisy (wydatki per typ),
+--           zamówienia (per status + sumy), umowy (per status + sumy)
+-- Wywołanie: supabase.rpc('get_realizacja_stats', { p_projekt_id })
 ```
 
 > Pełne SQL dla funkcji: `docs/plans/2026-02-06-business-logic-db-migration.md`
