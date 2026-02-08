@@ -350,6 +350,35 @@ SUGESTIE          KOPIA ROBOCZA      ZAMROŻONY SNAPSHOT   KOPIA OPERACYJNA
 | oplacone | BOOLEAN | |
 
 ### Dashboard realizacji:
+
+Dwie zakładki: **Checklista** (domyślna) i **Wpisy**.
+
+**Zakładka Checklista** — operacyjny przegląd zamówień i umów:
+```
+┌────────────────────────────────────────────────────────────┐
+│ ZAMÓWIENIA MATERIAŁÓW                          4/6 ✓      │
+│ ┌──────────────────────────────────────────────────────┐   │
+│ │ ☐ ZAM/2026/001  Hurtownia Atlas   10 780 zł  Szkic →│   │
+│ │ ☑ ZAM/2026/002  Elektro-Hurt      18 432 zł  Dost.  │   │
+│ │ ...                                                   │   │
+│ └──────────────────────────────────────────────────────┘   │
+│                                                            │
+│ UMOWY Z PODWYKONAWCAMI                         3/5 ✓      │
+│ ┌──────────────────────────────────────────────────────┐   │
+│ │ ☐ UMW/2026/001  Ekipa Budmont     23 376 zł  Szkic →│   │
+│ │ ☑ UMW/2026/002  Tynki-Expres       4 560 zł  Podp.  │   │
+│ │ ...                                                   │   │
+│ └──────────────────────────────────────────────────────┘   │
+└────────────────────────────────────────────────────────────┘
+```
+
+**Logika statusu "done":**
+- Zamówienie done: `status IN ('wyslane', 'czesciowo', 'dostarczone', 'rozliczone')`
+- Umowa done: `status IN ('podpisana', 'wykonana', 'rozliczona')`
+
+Każdy wiersz jest linkiem do strony szczegółowej (`/zamowienia?detail=ID` / `/umowy?detail=ID`).
+
+**Zakładka Wpisy** — tabela faktur kosztowych (istniejący widok):
 ```
 ┌─────────────────────────────────────────────────┐
 │ Projekt: Biuro XYZ     Status: REALIZACJA       │
@@ -359,11 +388,13 @@ SUGESTIE          KOPIA ROBOCZA      ZAMROŻONY SNAPSHOT   KOPIA OPERACYJNA
 │ Robocizna:         │  380 000   │195 000 │ 51%  │
 │ Narzut:            │  309 000   │   -    │  -   │
 │ RAZEM:             │1 339 000   │618 000 │ 46%  │
-├────────────────────┴────────────┴────────┴──────┤
-│ Zamówienia: 5 (3 dostarczone, 1 w drodze)       │
-│ Umowy: 4 (2 podpisane, 1 w trakcie)             │
 └─────────────────────────────────────────────────┘
 ```
+
+**Sidebar KPI** (widoczny na obu zakładkach):
+- Budżet: materiały + robocizna + razem (progress bars green/amber/red)
+- Zamówienia: per-status breakdown + **progress bar** (done/total)
+- Umowy: per-status breakdown + **progress bar** (done/total) + % wykonania
 
 Planowane = z `rewizje_summary` (zaakceptowana rewizja)
 Rzeczywiste = z `realizacja_wpisy` (dopasowane faktury)

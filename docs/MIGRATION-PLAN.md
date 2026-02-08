@@ -221,6 +221,22 @@ Projekty CRUD (table, filters, pagination, status badges), Rewizje CRUD (create,
 - Empty state with CTA
 - Seed data (6 wpisy: 2 material, 2 robocizna, 2 inny)
 
+### Redesign: Checklista tab (PR #14)
+
+**Branch:** `ralph/realizacja-dashboard-redesign` → merged to main (PR #14)
+**Stories:** 5/5 COMPLETE
+**Design doc:** `docs/plans/2026-02-08-realizacja-dashboard-redesign.md`
+
+Redesign realizacji z expense trackera na operational hub:
+- **Checklista tab** (domyślna) — przegląd zamówień do wysłania i umów do podpisania
+  - Sekcja "Zamówienia materiałów" z done/total counter i wierszami-linkami
+  - Sekcja "Umowy z podwykonawcami" z done/total counter i % wykonania
+  - Status badges z kolorami z status-config
+  - Done items: faded + green checkmark; undone: arrow icon
+- **Tab switcher** z URL state (`?tab=checklista|wpisy`)
+- **Progress bars** w sidebarze (amber, done/total) dla zamówień i umów
+- Server Actions: `getZamowieniaChecklista()`, `getUmowyChecklista()` z agregacją wartości
+
 ---
 
 ## Jak używać Ralph
