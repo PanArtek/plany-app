@@ -1,4 +1,4 @@
-import { getDostawcy } from '@/actions/dostawcy';
+import { getDostawcy, getDostawcyStats } from '@/actions/dostawcy';
 import { DostawcyView } from './_components/dostawcy-view';
 import { type DostawcyFilters } from '@/lib/validations/dostawcy';
 
@@ -23,11 +23,14 @@ export default async function DostawcyPage({ searchParams }: PageProps) {
     page: params.page ? Number(params.page) : 1,
   };
 
-  const result = await getDostawcy(filters);
+  const [result, stats] = await Promise.all([
+    getDostawcy(filters),
+    getDostawcyStats(),
+  ]);
 
   return (
     <div className="p-6">
-      <DostawcyView initialData={result} />
+      <DostawcyView initialData={result} stats={stats} />
     </div>
   );
 }

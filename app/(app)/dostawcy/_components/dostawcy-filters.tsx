@@ -37,6 +37,24 @@ export function DostawcyFilters() {
           className="pl-8"
         />
       </div>
+      <label className="flex items-center gap-2 text-sm text-white/50 whitespace-nowrap cursor-pointer">
+        <input
+          type="checkbox"
+          checked={searchParams.get('showInactive') === 'true'}
+          onChange={(e) => {
+            const params = new URLSearchParams(searchParams.toString());
+            if (e.target.checked) {
+              params.set('showInactive', 'true');
+            } else {
+              params.delete('showInactive');
+            }
+            params.delete('page');
+            router.push(`/dostawcy?${params.toString()}`);
+          }}
+          className="rounded border-white/20 bg-transparent"
+        />
+        Nieaktywne
+      </label>
     </div>
   );
 }

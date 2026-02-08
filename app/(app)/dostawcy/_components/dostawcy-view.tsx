@@ -1,12 +1,15 @@
 'use client';
 
 import { useState, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
 import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { StatsBar } from '@/components/stats-bar';
 import {
   type DostawcyResult,
   type DostawcaWithCount,
+  type DostawcyStats,
   type CennikEntry,
   deleteDostawca,
   deleteCena,
@@ -21,6 +24,7 @@ import { DeleteConfirmPanel } from '../../kategorie/_components/panels/delete-co
 
 interface DostawcyViewProps {
   initialData: DostawcyResult;
+  stats: DostawcyStats;
 }
 
 interface FormPanelState {
@@ -28,7 +32,9 @@ interface FormPanelState {
   mode: 'add' | 'edit';
 }
 
-function DostawcyViewContent({ initialData }: DostawcyViewProps) {
+function DostawcyViewContent({ initialData, stats }: DostawcyViewProps) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [detailPanel, setDetailPanel] = useState<{ open: boolean; dostawcaId: string | null }>({
     open: false,
     dostawcaId: null,
@@ -110,12 +116,33 @@ function DostawcyViewContent({ initialData }: DostawcyViewProps) {
     }
   };
 
+  const handleSortChange = (newSort: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    const currentSort = params.get('sort') || 'nazwa';
+    const currentOrder = params.get('order') || 'asc';
+
+    if (currentSort === newSort) {
+      params.set('order', currentOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      params.set('sort', newSort);
+      params.set('order', 'asc');
+    }
+    params.delete('page');
+    router.push(`/dostawcy?${params.toString()}`);
+  };
+
+  const statsItems = [
+    { label: 'Dostawcy', value: String(stats.total) },
+    { label: 'Pozycji w cennikach', value: String(stats.totalProducts) },
+    { label: 'Śr. produktów/dostawca', value: String(stats.avgProducts) },
+  ];
+
   return (
     <div className="flex flex-col gap-4">
       {/* Breadcrumb row */}
       <div className="flex items-center justify-between">
         <nav className="text-sm">
-          <span className="text-foreground">Dostawcy</span>
+          <span className="text-foreground">Dostawcy ({initialData.totalCount})</span>
         </nav>
         <Button onClick={handleAddClick} className="bg-amber-500 hover:bg-amber-600 text-black">
           <Plus className="h-4 w-4 mr-2" />
@@ -123,16 +150,24 @@ function DostawcyViewContent({ initialData }: DostawcyViewProps) {
         </Button>
       </div>
 
+      <StatsBar items={statsItems} />
+
       <DostawcyFilters />
 
       {initialData.data.length === 0 ? (
-        <div className="flex items-center justify-center" style={{ height: 'calc(100vh - 280px)' }}>
+        <div className="flex items-center justify-center" style={{ height: 'calc(100vh - 380px)' }}>
           <p className="text-muted-foreground text-sm">Brak dostawców</p>
         </div>
       ) : (
         <>
-          <div className="overflow-auto" style={{ height: 'calc(100vh - 280px)' }}>
-            <DostawcyTable data={initialData.data} onRowClick={handleRowClick} />
+          <div className="overflow-auto" style={{ height: 'calc(100vh - 380px)' }}>
+            <DostawcyTable
+              data={initialData.data}
+              onRowClick={handleRowClick}
+              sort={searchParams.get('sort') || undefined}
+              order={(searchParams.get('order') as 'asc' | 'desc') || undefined}
+              onSortChange={handleSortChange}
+            />
           </div>
           <DostawcyPagination
             totalCount={initialData.totalCount}
