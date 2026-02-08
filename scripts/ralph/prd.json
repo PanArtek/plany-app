@@ -41,8 +41,8 @@
         "Typecheck passes"
       ],
       "priority": 2,
-      "passes": false,
-      "notes": "Key insight: cena_domyslna in biblioteka_skladowe is a SNAPSHOT, not a live reference. ceny_dostawcow is the live price list. Tests verify both.",
+      "passes": true,
+      "notes": "Done. 3 tests pass. Snapshot vs live price verified.",
       "dependsOn": ["US-001"]
     },
     {
@@ -61,8 +61,8 @@
         "Typecheck passes"
       ],
       "priority": 3,
-      "passes": false,
-      "notes": "stawki_podwykonawcow has UNIQUE(podwykonawca_id, pozycja_biblioteka_id). Different podwykonawcy can have different stawki for the same pozycja.",
+      "passes": true,
+      "notes": "Done. 3 tests pass. UNIQUE constraint verified.",
       "dependsOn": ["US-001"]
     },
     {
@@ -84,8 +84,8 @@
         "Typecheck passes"
       ],
       "priority": 4,
-      "passes": false,
-      "notes": "View calculation: auto = SUM(price×norma) per unit, then ×quantity. Manual = SUM(price×ilosc) flat. Total = (auto_per_unit × qty + manual) × (1 + narzut/100). Use kosztorys_pozycje_view for assertions.",
+      "passes": true,
+      "notes": "Done. 3 tests pass. View calculations verified: auto + manual + quantity change + markup.",
       "dependsOn": ["US-001"]
     },
     {
@@ -105,8 +105,8 @@
         "Typecheck passes"
       ],
       "priority": 5,
-      "passes": false,
-      "notes": "generate_umowy_draft RPC requires is_accepted=true on the rewizja. State machine: draft→ofertowanie→realizacja. The RPC groups by (pozycja_biblioteka_id, stawka) — different stawki = different umowa_pozycje. umowa_wykonanie is a log, doesn't auto-update procent.",
+      "passes": true,
+      "notes": "Done. 5 tests pass. State machine, RPC generation, status transitions, execution tracking all verified.",
       "dependsOn": ["US-004"]
     },
     {
@@ -126,8 +126,8 @@
         "Typecheck passes"
       ],
       "priority": 6,
-      "passes": false,
-      "notes": "generate_zamowienia_draft groups by (produkt_id, cena). Uses COALESCE(p.nazwa, ksm.nazwa) for product name. Deliveries: zamowienie_dostawy is the header, zamowienie_dostawy_pozycje is per-item. ilosc_dostarczona on zamowienie_pozycje must be updated manually (no trigger).",
+      "passes": true,
+      "notes": "Done. 5 tests pass. RPC generation, deliveries, partial/full delivery tracking verified.",
       "dependsOn": ["US-004"]
     },
     {
@@ -145,8 +145,8 @@
         "Typecheck passes"
       ],
       "priority": 7,
-      "passes": false,
-      "notes": "realizacja_wpisy is simple — just insert + verify. The interesting part is FK links to zamowienie or umowa. typ ENUM: material|robocizna|inny.",
+      "passes": true,
+      "notes": "Done. 5 tests pass. Material, labor, other types, payment marking, aggregates verified.",
       "dependsOn": ["US-005", "US-006"]
     },
     {
@@ -166,8 +166,8 @@
         "Typecheck passes"
       ],
       "priority": 8,
-      "passes": false,
-      "notes": "This is the ultimate integration test. Budget consistency: kosztorys totals (no markup) should match umowy+zamowienia totals. The markup is profit — it's NOT included in procurement costs.",
+      "passes": true,
+      "notes": "Done. 5 tests pass. Full E2E: 2 pozycje, 2 dostawcy, 2 podwykonawcy. Budget consistency verified across kosztorys/umowy/zamowienia layers.",
       "dependsOn": ["US-002", "US-003", "US-004", "US-005", "US-006", "US-007"]
     },
     {
@@ -182,8 +182,8 @@
         "Typecheck passes"
       ],
       "priority": 9,
-      "passes": false,
-      "notes": "Common fixes: decimal precision (toBeCloseTo), unique slugs with timestamps, proper state machine transitions. Tests should be deterministic — no shared state between test files.",
+      "passes": true,
+      "notes": "Done. All 8 test files (31 tests) pass. Build passes. Lint clean on test files (pre-existing warnings in app code unchanged). Ran twice — deterministic, no flaky tests.",
       "dependsOn": ["US-008"]
     }
   ]

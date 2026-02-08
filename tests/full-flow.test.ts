@@ -3,7 +3,6 @@ import {
   supabase,
   createTestOrganization,
   cleanupOrganization,
-  createKategoriaHierarchy,
   createKategoria,
   createPozycjaBiblioteka,
   createDostawca,
