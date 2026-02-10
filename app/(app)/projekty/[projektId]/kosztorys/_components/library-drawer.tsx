@@ -297,23 +297,25 @@ export function LibraryDrawer({
                     <span className="font-mono text-xs text-white/50 w-[110px] shrink-0 truncate">
                       {pos.kod}
                     </span>
-                    <span className="text-sm text-white/80 flex-1 truncate font-medium">
-                      {pos.nazwa}
-                    </span>
-                    <span className="text-[11px] text-white/40 bg-white/[0.05] px-1.5 py-0.5 rounded shrink-0">
-                      {pos.jednostka}
-                    </span>
-                    <span className="text-[11px] text-blue-400/70 bg-blue-500/[0.08] px-1.5 py-0.5 rounded shrink-0">
-                      R:{pos.skladoweRCount}
-                    </span>
-                    <span className="text-[11px] text-emerald-400/70 bg-emerald-500/[0.08] px-1.5 py-0.5 rounded shrink-0">
-                      M:{pos.skladoweMCount}
-                    </span>
-                    {isExisting && (
-                      <span className="text-[11px] text-amber-400/80 bg-amber-500/[0.1] px-1.5 py-0.5 rounded shrink-0">
-                        Dodano
+                    <span className="flex-1 flex items-center gap-1.5 min-w-0">
+                      <span className="text-sm text-white/80 truncate font-medium">
+                        {pos.nazwa}
                       </span>
-                    )}
+                      <span className="text-[11px] text-white/40 bg-white/[0.05] px-1.5 py-0.5 rounded shrink-0">
+                        {pos.jednostka}
+                      </span>
+                      <span className="text-[11px] text-blue-400/70 bg-blue-500/[0.08] px-1.5 py-0.5 rounded shrink-0">
+                        R:{pos.skladoweRCount}
+                      </span>
+                      <span className="text-[11px] text-emerald-400/70 bg-emerald-500/[0.08] px-1.5 py-0.5 rounded shrink-0">
+                        M:{pos.skladoweMCount}
+                      </span>
+                      {isExisting && (
+                        <span className="text-[11px] text-amber-400/80 bg-amber-500/[0.1] px-1.5 py-0.5 rounded shrink-0">
+                          Dodano
+                        </span>
+                      )}
+                    </span>
                   </label>
                 );
               })}
