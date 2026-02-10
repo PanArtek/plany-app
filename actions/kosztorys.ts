@@ -996,7 +996,7 @@ export async function getKategorieForFilter(
   if (parentId) {
     query = query.eq('parent_id', parentId);
   } else {
-    query = query.eq('poziom', 0);
+    query = query.eq('poziom', 1);
   }
 
   const { data, error } = await query;
