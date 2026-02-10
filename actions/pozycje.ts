@@ -75,9 +75,26 @@ export async function createPozycja(input: unknown): Promise<ActionResult<Pozycj
 
   const supabase = await createClient();
 
+  const { data: userData } = await supabase.auth.getUser();
+  if (!userData?.user) {
+    return { success: false, error: 'Brak autoryzacji' };
+  }
+
+  const { data: orgData } = await supabase
+    .from('organization_members')
+    .select('organization_id')
+    .eq('user_id', userData.user.id)
+    .limit(1)
+    .single();
+
+  if (!orgData) {
+    return { success: false, error: 'Brak przypisanej organizacji' };
+  }
+
   const { data, error } = await supabase
     .from('pozycje_biblioteka')
     .insert({
+      organization_id: orgData.organization_id,
       kod: parsed.data.kod,
       nazwa: parsed.data.nazwa,
       jednostka: parsed.data.jednostka,

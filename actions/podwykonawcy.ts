@@ -259,9 +259,26 @@ export async function createPodwykonawca(input: unknown): Promise<ActionResult<P
 
   const supabase = await createClient();
 
+  const { data: userData } = await supabase.auth.getUser();
+  if (!userData?.user) {
+    return { success: false, error: 'Brak autoryzacji' };
+  }
+
+  const { data: orgData } = await supabase
+    .from('organization_members')
+    .select('organization_id')
+    .eq('user_id', userData.user.id)
+    .limit(1)
+    .single();
+
+  if (!orgData) {
+    return { success: false, error: 'Brak przypisanej organizacji' };
+  }
+
   const { data, error } = await supabase
     .from('podwykonawcy')
     .insert({
+      organization_id: orgData.organization_id,
       nazwa: parsed.data.nazwa,
       specjalizacja: parsed.data.specjalizacja,
       kontakt: parsed.data.kontakt,

@@ -220,9 +220,26 @@ export async function createDostawca(input: unknown): Promise<ActionResult<Dosta
 
   const supabase = await createClient();
 
+  const { data: userData } = await supabase.auth.getUser();
+  if (!userData?.user) {
+    return { success: false, error: 'Brak autoryzacji' };
+  }
+
+  const { data: orgData } = await supabase
+    .from('organization_members')
+    .select('organization_id')
+    .eq('user_id', userData.user.id)
+    .limit(1)
+    .single();
+
+  if (!orgData) {
+    return { success: false, error: 'Brak przypisanej organizacji' };
+  }
+
   const { data, error } = await supabase
     .from('dostawcy')
     .insert({
+      organization_id: orgData.organization_id,
       nazwa: parsed.data.nazwa,
       kod: parsed.data.kod,
       kontakt: parsed.data.kontakt,
