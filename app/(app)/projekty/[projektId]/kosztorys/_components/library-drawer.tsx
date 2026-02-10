@@ -286,32 +286,33 @@ export function LibraryDrawer({
                 return (
                   <label
                     key={pos.id}
-                    className={`flex items-center gap-3 px-2 py-1.5 rounded cursor-pointer transition-colors hover:bg-white/[0.05] ${
+                    className={`grid items-center px-2 py-1.5 rounded cursor-pointer transition-colors hover:bg-white/[0.05] ${
                       index % 2 === 1 ? 'bg-white/[0.02]' : ''
                     }`}
+                    style={{ gridTemplateColumns: '1.25rem 6.875rem minmax(0,32rem) 2rem 2.5rem 2.5rem 3.5rem' }}
                   >
                     <Checkbox
                       checked={selected.has(pos.id)}
                       onCheckedChange={() => toggleSelect(pos.id)}
                     />
-                    <span className="font-mono text-xs text-white/50 w-[110px] shrink-0 truncate">
+                    <span className="font-mono text-xs text-white/50 truncate">
                       {pos.kod}
                     </span>
-                    <span className="flex-1 flex items-center gap-1.5 min-w-0">
-                      <span className="text-sm text-white/80 truncate font-medium">
-                        {pos.nazwa}
-                      </span>
-                      <span className="text-[11px] text-white/40 bg-white/[0.05] px-1.5 py-0.5 rounded shrink-0">
-                        {pos.jednostka}
-                      </span>
-                      <span className="text-[11px] text-blue-400/70 bg-blue-500/[0.08] px-1.5 py-0.5 rounded shrink-0">
-                        R:{pos.skladoweRCount}
-                      </span>
-                      <span className="text-[11px] text-emerald-400/70 bg-emerald-500/[0.08] px-1.5 py-0.5 rounded shrink-0">
-                        M:{pos.skladoweMCount}
-                      </span>
+                    <span className="text-sm text-white/80 truncate font-medium">
+                      {pos.nazwa}
+                    </span>
+                    <span className="text-[11px] text-white/40 bg-white/[0.05] px-1.5 py-0.5 rounded text-center">
+                      {pos.jednostka}
+                    </span>
+                    <span className="text-[11px] text-blue-400/70 bg-blue-500/[0.08] px-1.5 py-0.5 rounded text-center">
+                      R:{pos.skladoweRCount}
+                    </span>
+                    <span className="text-[11px] text-emerald-400/70 bg-emerald-500/[0.08] px-1.5 py-0.5 rounded text-center">
+                      M:{pos.skladoweMCount}
+                    </span>
+                    <span className="text-center">
                       {isExisting && (
-                        <span className="text-[11px] text-amber-400/80 bg-amber-500/[0.1] px-1.5 py-0.5 rounded shrink-0">
+                        <span className="text-[11px] text-amber-400/80 bg-amber-500/[0.1] px-1.5 py-0.5 rounded">
                           Dodano
                         </span>
                       )}
