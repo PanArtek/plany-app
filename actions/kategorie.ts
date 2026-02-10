@@ -1,7 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache';
-import { createClient } from '@/lib/supabase/server';
+import { createClient, getOrganizationId } from '@/lib/supabase/server';
 import { createKategoriaSchema, updateKategoriaSchema } from '@/lib/validations/kategorie';
 import type { BranzaKod } from '@/stores/kategorie-ui-store';
 
@@ -34,22 +34,7 @@ export async function createKategoria(input: unknown): Promise<ActionResult<Kate
 
   console.log('[createKategoria] Validated data:', parsed.data);
   const supabase = await createClient();
-
-  const { data: userData } = await supabase.auth.getUser();
-  if (!userData?.user) {
-    return { success: false, error: 'Brak autoryzacji' };
-  }
-
-  const { data: orgData } = await supabase
-    .from('organization_members')
-    .select('organization_id')
-    .eq('user_id', userData.user.id)
-    .limit(1)
-    .single();
-
-  if (!orgData) {
-    return { success: false, error: 'Brak przypisanej organizacji' };
-  }
+  const organizationId = await getOrganizationId(supabase);
 
   // Determine poziom from parent
   let poziom = 1;
@@ -68,7 +53,7 @@ export async function createKategoria(input: unknown): Promise<ActionResult<Kate
   const { data, error } = await supabase
     .from('kategorie')
     .insert({
-      organization_id: orgData.organization_id,
+      organization_id: organizationId,
       parent_id: parsed.data.parentId,
       kod: parsed.data.kod,
       nazwa: parsed.data.nazwa,

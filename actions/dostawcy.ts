@@ -1,7 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache';
-import { createClient } from '@/lib/supabase/server';
+import { createClient, getOrganizationId } from '@/lib/supabase/server';
 import {
   createDostawcaSchema,
   updateDostawcaSchema,
@@ -219,27 +219,12 @@ export async function createDostawca(input: unknown): Promise<ActionResult<Dosta
   }
 
   const supabase = await createClient();
-
-  const { data: userData } = await supabase.auth.getUser();
-  if (!userData?.user) {
-    return { success: false, error: 'Brak autoryzacji' };
-  }
-
-  const { data: orgData } = await supabase
-    .from('organization_members')
-    .select('organization_id')
-    .eq('user_id', userData.user.id)
-    .limit(1)
-    .single();
-
-  if (!orgData) {
-    return { success: false, error: 'Brak przypisanej organizacji' };
-  }
+  const organizationId = await getOrganizationId(supabase);
 
   const { data, error } = await supabase
     .from('dostawcy')
     .insert({
-      organization_id: orgData.organization_id,
+      organization_id: organizationId,
       nazwa: parsed.data.nazwa,
       kod: parsed.data.kod,
       kontakt: parsed.data.kontakt,
