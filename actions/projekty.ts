@@ -173,11 +173,29 @@ export async function createProjekt(input: unknown): Promise<ActionResult<Projek
   }
 
   const supabase = await createClient();
+
+  const { data: userData } = await supabase.auth.getUser();
+  if (!userData?.user) {
+    return { success: false, error: 'Brak autoryzacji' };
+  }
+
+  const { data: orgData } = await supabase
+    .from('organization_members')
+    .select('organization_id')
+    .eq('user_id', userData.user.id)
+    .limit(1)
+    .single();
+
+  if (!orgData) {
+    return { success: false, error: 'Brak przypisanej organizacji' };
+  }
+
   const slug = generateSlug(parsed.data.nazwa);
 
   const { data, error } = await supabase
     .from('projekty')
     .insert({
+      organization_id: orgData.organization_id,
       nazwa: parsed.data.nazwa,
       slug,
       klient: parsed.data.klient || null,
