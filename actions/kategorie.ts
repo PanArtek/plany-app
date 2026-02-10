@@ -35,6 +35,22 @@ export async function createKategoria(input: unknown): Promise<ActionResult<Kate
   console.log('[createKategoria] Validated data:', parsed.data);
   const supabase = await createClient();
 
+  const { data: userData } = await supabase.auth.getUser();
+  if (!userData?.user) {
+    return { success: false, error: 'Brak autoryzacji' };
+  }
+
+  const { data: orgData } = await supabase
+    .from('organization_members')
+    .select('organization_id')
+    .eq('user_id', userData.user.id)
+    .limit(1)
+    .single();
+
+  if (!orgData) {
+    return { success: false, error: 'Brak przypisanej organizacji' };
+  }
+
   // Determine poziom from parent
   let poziom = 1;
   if (parsed.data.parentId) {
@@ -52,6 +68,7 @@ export async function createKategoria(input: unknown): Promise<ActionResult<Kate
   const { data, error } = await supabase
     .from('kategorie')
     .insert({
+      organization_id: orgData.organization_id,
       parent_id: parsed.data.parentId,
       kod: parsed.data.kod,
       nazwa: parsed.data.nazwa,

@@ -25,6 +25,7 @@ export interface ProduktWithAggregation {
   pozycjeCount: number;
   dostawcyCount: number;
   najlepszaCena: number | null;
+  najgorszaCena: number | null;
 }
 
 export interface MaterialyResult {
@@ -73,6 +74,10 @@ export async function getMaterialy(filters: MaterialyFilters): Promise<Materialy
     p_kategoria: filters.kategoria || null,
     p_podkategoria: filters.podkategoria || null,
     p_search: filters.search || null,
+    p_status_cenowy: filters.statusCenowy || null,
+    p_show_inactive: filters.showInactive || false,
+    p_sort: filters.sort || 'nazwa',
+    p_order: filters.order || 'asc',
     p_limit: PAGE_SIZE,
     p_offset: offset,
   });
@@ -88,6 +93,7 @@ export async function getMaterialy(filters: MaterialyFilters): Promise<Materialy
     pozycje_count: number;
     dostawcy_count: number;
     najlepsza_cena: number | null;
+    najgorsza_cena: number | null;
     total_count: number;
   }>;
 
@@ -103,6 +109,7 @@ export async function getMaterialy(filters: MaterialyFilters): Promise<Materialy
       pozycjeCount: Number(r.pozycje_count),
       dostawcyCount: Number(r.dostawcy_count),
       najlepszaCena: r.najlepsza_cena !== null ? Number(r.najlepsza_cena) : null,
+      najgorszaCena: r.najgorsza_cena !== null ? Number(r.najgorsza_cena) : null,
     })),
     totalCount,
     page,
@@ -208,9 +215,26 @@ export async function createProdukt(input: unknown): Promise<ActionResult<Produk
 
   const supabase = await createClient();
 
+  const { data: userData } = await supabase.auth.getUser();
+  if (!userData?.user) {
+    return { success: false, error: 'Brak autoryzacji' };
+  }
+
+  const { data: orgData } = await supabase
+    .from('organization_members')
+    .select('organization_id')
+    .eq('user_id', userData.user.id)
+    .limit(1)
+    .single();
+
+  if (!orgData) {
+    return { success: false, error: 'Brak przypisanej organizacji' };
+  }
+
   const { data, error } = await supabase
     .from('produkty')
     .insert({
+      organization_id: orgData.organization_id,
       sku: parsed.data.sku,
       nazwa: parsed.data.nazwa,
       jednostka: parsed.data.jednostka,
@@ -262,6 +286,28 @@ export async function updateProdukt(id: string, input: unknown): Promise<ActionR
 
   revalidatePath('/materialy');
   return { success: true, data: data as ProduktBase };
+}
+
+// --- STATS ---
+
+export interface MaterialyStats {
+  total: number;
+  withSuppliers: number;
+  withoutSuppliers: number;
+  avgPrice: number | null;
+}
+
+export async function getMaterialyStats(): Promise<MaterialyStats> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc('get_materialy_stats');
+  if (error) throw error;
+  const row = (data as Array<Record<string, unknown>>)?.[0];
+  return {
+    total: Number(row?.total ?? 0),
+    withSuppliers: Number(row?.with_suppliers ?? 0),
+    withoutSuppliers: Number(row?.without_suppliers ?? 0),
+    avgPrice: row?.avg_price != null ? Number(row.avg_price) : null,
+  };
 }
 
 // --- DELETE ---

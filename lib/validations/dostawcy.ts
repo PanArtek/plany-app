@@ -34,6 +34,8 @@ export const updateCenaSchema = z.object({
 export const dostawcyFiltersSchema = z.object({
   search: z.string().optional(),
   showInactive: z.coerce.boolean().optional().default(false),
+  sort: z.string().optional(),
+  order: z.enum(['asc', 'desc']).optional(),
   page: z.coerce.number().optional().default(1),
 });
 

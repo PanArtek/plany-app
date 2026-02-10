@@ -33,6 +33,10 @@ export const materialyFiltersSchema = z.object({
   kategoria: z.string().optional(),
   podkategoria: z.string().optional(),
   search: z.string().optional(),
+  statusCenowy: z.enum(['with_suppliers', 'without_suppliers']).optional(),
+  showInactive: z.coerce.boolean().optional().default(false),
+  sort: z.string().optional(),
+  order: z.enum(['asc', 'desc']).optional(),
   page: z.coerce.number().optional().default(1),
 });
 

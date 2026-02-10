@@ -1,4 +1,4 @@
-import { getMaterialy } from '@/actions/materialy';
+import { getMaterialy, getMaterialyStats } from '@/actions/materialy';
 import { MaterialyView } from './_components/materialy-view';
 import { type MaterialyFilters } from '@/lib/validations/materialy';
 
@@ -16,6 +16,10 @@ interface PageProps {
     kategoria?: string;
     podkategoria?: string;
     search?: string;
+    statusCenowy?: string;
+    showInactive?: string;
+    sort?: string;
+    order?: string;
     page?: string;
   }>;
 }
@@ -28,10 +32,17 @@ export default async function MaterialyPage({ searchParams }: PageProps) {
     kategoria: params.kategoria,
     podkategoria: params.podkategoria,
     search: params.search,
+    statusCenowy: params.statusCenowy as 'with_suppliers' | 'without_suppliers' | undefined,
+    showInactive: params.showInactive === 'true',
+    sort: params.sort,
+    order: params.order as 'asc' | 'desc' | undefined,
     page: params.page ? Number(params.page) : 1,
   };
 
-  const result = await getMaterialy(filters);
+  const [result, stats] = await Promise.all([
+    getMaterialy(filters),
+    getMaterialyStats(),
+  ]);
 
   const branzaLabel = params.branza ? BRANZE_NAMES[params.branza] : undefined;
 
@@ -39,6 +50,7 @@ export default async function MaterialyPage({ searchParams }: PageProps) {
     <div className="p-6">
       <MaterialyView
         initialData={result}
+        stats={stats}
         initialBranza={params.branza}
         branzaLabel={branzaLabel}
       />

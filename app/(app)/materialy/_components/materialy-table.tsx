@@ -6,20 +6,26 @@ import {
   createColumnHelper,
   flexRender,
 } from '@tanstack/react-table';
+import { ArrowUp } from 'lucide-react';
 import { type ProduktWithAggregation } from '@/actions/materialy';
 import { cn } from '@/lib/utils';
 
 interface MaterialyTableProps {
   data: ProduktWithAggregation[];
   onRowClick: (produkt: ProduktWithAggregation) => void;
+  sort?: string;
+  order?: 'asc' | 'desc';
+  onSortChange: (sort: string) => void;
 }
 
 const columnHelper = createColumnHelper<ProduktWithAggregation>();
 
-function formatPrice(value: number | null): string {
-  if (value === null) return '—';
-  return value.toFixed(2).replace('.', ',') + ' zł';
-}
+const SORT_KEYS: Record<string, string> = {
+  nazwa: 'nazwa',
+  pozycjeCount: 'pozycje',
+  dostawcyCount: 'dostawcy',
+  najlepszaCena: 'cena',
+};
 
 const columns = [
   columnHelper.accessor('nazwa', {
@@ -52,14 +58,23 @@ const columns = [
     ),
   }),
   columnHelper.accessor('najlepszaCena', {
-    header: 'Najlepsza cena',
-    cell: (info) => (
-      <span className="font-mono text-amber-500">{formatPrice(info.getValue())}</span>
-    ),
+    id: 'cena',
+    header: 'Cena',
+    cell: (info) => {
+      const min = info.getValue();
+      const max = info.row.original.najgorszaCena;
+      if (min === null) return <span className="text-white/30">—</span>;
+      const fmtMin = min.toFixed(2).replace('.', ',');
+      if (max === null || max === min) {
+        return <span className="font-mono text-amber-500">{fmtMin} zł</span>;
+      }
+      const fmtMax = max.toFixed(2).replace('.', ',');
+      return <span className="font-mono text-amber-500">{fmtMin} – {fmtMax} zł</span>;
+    },
   }),
 ];
 
-export function MaterialyTable({ data, onRowClick }: MaterialyTableProps) {
+export function MaterialyTable({ data, onRowClick, sort, order, onSortChange }: MaterialyTableProps) {
   const table = useReactTable({
     data,
     columns,
@@ -79,14 +94,30 @@ export function MaterialyTable({ data, onRowClick }: MaterialyTableProps) {
       <thead className="sticky top-0 bg-[#0A0A0F] z-10">
         {table.getHeaderGroups().map((hg) => (
           <tr key={hg.id}>
-            {hg.headers.map((header) => (
-              <th
-                key={header.id}
-                className="text-left px-4 py-3 text-white/50 text-xs uppercase tracking-wider font-medium border-b border-white/[0.06]"
-              >
-                {flexRender(header.column.columnDef.header, header.getContext())}
-              </th>
-            ))}
+            {hg.headers.map((header) => {
+              const columnId = header.column.id;
+              const sortKey = SORT_KEYS[columnId];
+              const isSortable = !!sortKey;
+              const isActive = sort === sortKey;
+
+              return (
+                <th
+                  key={header.id}
+                  onClick={isSortable ? () => onSortChange(sortKey) : undefined}
+                  className={cn(
+                    "text-left px-4 py-3 text-white/50 text-xs uppercase tracking-wider font-medium border-b border-white/[0.06]",
+                    isSortable && "cursor-pointer select-none hover:text-white/70"
+                  )}
+                >
+                  <span className="inline-flex items-center gap-1">
+                    {flexRender(header.column.columnDef.header, header.getContext())}
+                    {isActive && (
+                      <ArrowUp className={cn("h-3 w-3", order === 'desc' && "rotate-180")} />
+                    )}
+                  </span>
+                </th>
+              );
+            })}
           </tr>
         ))}
       </thead>
@@ -96,7 +127,8 @@ export function MaterialyTable({ data, onRowClick }: MaterialyTableProps) {
             key={row.id}
             onClick={() => onRowClick(row.original)}
             className={cn(
-              "hover:bg-white/5 border-b border-white/[0.06] cursor-pointer transition-colors"
+              "hover:bg-white/5 border-b border-white/[0.06] cursor-pointer transition-colors",
+              !row.original.aktywny && "opacity-50"
             )}
           >
             {row.getVisibleCells().map((cell) => (

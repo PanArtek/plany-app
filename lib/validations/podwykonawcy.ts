@@ -31,7 +31,10 @@ export const updateStawkaSchema = z.object({
 // Schema dla filtrów URL
 export const podwykonawcyFiltersSchema = z.object({
   search: z.string().optional(),
+  specjalizacja: z.string().optional(),
   showInactive: z.coerce.boolean().optional().default(false),
+  sort: z.string().optional(),
+  order: z.enum(['asc', 'desc']).optional(),
   page: z.coerce.number().optional().default(1),
 });
 

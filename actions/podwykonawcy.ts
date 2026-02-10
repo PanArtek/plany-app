@@ -25,6 +25,8 @@ export interface PodwykonawcaWithCount {
   kontakt: string | null;
   aktywny: boolean;
   stawkiCount: number;
+  minStawka: number | null;
+  maxStawka: number | null;
 }
 
 export interface PodwykonawcyResult {
@@ -70,52 +72,44 @@ export async function getPodwykonawcy(filters: PodwykonawcyFilters): Promise<Pod
   const page = filters.page ?? 1;
   const offset = (page - 1) * PAGE_SIZE;
 
-  let query = supabase
-    .from('podwykonawcy')
-    .select('id, nazwa, specjalizacja, kontakt, aktywny', { count: 'exact' })
-    .order('nazwa')
-    .range(offset, offset + PAGE_SIZE - 1);
-
-  if (!filters.showInactive) {
-    query = query.eq('aktywny', true);
-  }
-
-  if (filters.search) {
-    query = query.or(`nazwa.ilike.%${filters.search}%,specjalizacja.ilike.%${filters.search}%`);
-  }
-
-  const { data, error, count } = await query;
+  const { data, error } = await supabase.rpc('get_podwykonawcy_aggregated', {
+    p_search: filters.search || null,
+    p_specjalizacja: filters.specjalizacja || null,
+    p_show_inactive: filters.showInactive || false,
+    p_sort: filters.sort || 'nazwa',
+    p_order: filters.order || 'asc',
+    p_limit: PAGE_SIZE,
+    p_offset: offset,
+  });
 
   if (error) throw error;
 
-  // Fetch stawki counts for these subcontractors
-  const ids = (data || []).map((d: { id: string }) => d.id);
+  const rows = (data || []) as Array<{
+    id: string;
+    nazwa: string;
+    specjalizacja: string | null;
+    kontakt: string | null;
+    aktywny: boolean;
+    stawki_count: number;
+    min_stawka: number | null;
+    max_stawka: number | null;
+    total_count: number;
+  }>;
 
-  let countsMap: Record<string, number> = {};
-  if (ids.length > 0) {
-    const { data: countData, error: countError } = await supabase
-      .from('stawki_podwykonawcow')
-      .select('podwykonawca_id')
-      .in('podwykonawca_id', ids);
-
-    if (!countError && countData) {
-      countsMap = (countData as { podwykonawca_id: string }[]).reduce<Record<string, number>>((acc, row) => {
-        acc[row.podwykonawca_id] = (acc[row.podwykonawca_id] || 0) + 1;
-        return acc;
-      }, {});
-    }
-  }
+  const totalCount = rows.length > 0 ? Number(rows[0].total_count) : 0;
 
   return {
-    data: (data || []).map((d: Record<string, unknown>) => ({
-      id: d.id as string,
-      nazwa: d.nazwa as string,
-      specjalizacja: d.specjalizacja as string | null,
-      kontakt: d.kontakt as string | null,
-      aktywny: d.aktywny as boolean,
-      stawkiCount: countsMap[d.id as string] || 0,
+    data: rows.map(r => ({
+      id: r.id,
+      nazwa: r.nazwa,
+      specjalizacja: r.specjalizacja,
+      kontakt: r.kontakt,
+      aktywny: r.aktywny,
+      stawkiCount: Number(r.stawki_count),
+      minStawka: r.min_stawka !== null ? Number(r.min_stawka) : null,
+      maxStawka: r.max_stawka !== null ? Number(r.max_stawka) : null,
     })),
-    totalCount: count ?? 0,
+    totalCount,
     page,
     pageSize: PAGE_SIZE,
   };
@@ -219,6 +213,42 @@ export async function getAllPozycjeBiblioteka(): Promise<{ id: string; kod: stri
   return (data || []) as { id: string; kod: string; nazwa: string; jednostka: string }[];
 }
 
+// --- STATS ---
+
+export interface PodwykonawcyStats {
+  total: number;
+  totalStawki: number;
+  avgStawka: number | null;
+}
+
+export async function getPodwykonawcyStats(): Promise<PodwykonawcyStats> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc('get_podwykonawcy_stats');
+  if (error) throw error;
+  const row = (data as Array<Record<string, unknown>>)?.[0];
+  return {
+    total: Number(row?.total ?? 0),
+    totalStawki: Number(row?.total_stawki ?? 0),
+    avgStawka: row?.avg_stawka != null ? Number(row.avg_stawka) : null,
+  };
+}
+
+// --- DISTINCT SPECJALIZACJE ---
+
+export async function getDistinctSpecjalizacje(): Promise<string[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('podwykonawcy')
+    .select('specjalizacja')
+    .eq('aktywny', true)
+    .not('specjalizacja', 'is', null)
+    .order('specjalizacja');
+
+  if (error) throw error;
+  const unique = [...new Set((data || []).map((d: { specjalizacja: string }) => d.specjalizacja))];
+  return unique;
+}
+
 // --- CREATE podwykonawca ---
 
 export async function createPodwykonawca(input: unknown): Promise<ActionResult<PodwykonawcaBase>> {
@@ -229,9 +259,26 @@ export async function createPodwykonawca(input: unknown): Promise<ActionResult<P
 
   const supabase = await createClient();
 
+  const { data: userData } = await supabase.auth.getUser();
+  if (!userData?.user) {
+    return { success: false, error: 'Brak autoryzacji' };
+  }
+
+  const { data: orgData } = await supabase
+    .from('organization_members')
+    .select('organization_id')
+    .eq('user_id', userData.user.id)
+    .limit(1)
+    .single();
+
+  if (!orgData) {
+    return { success: false, error: 'Brak przypisanej organizacji' };
+  }
+
   const { data, error } = await supabase
     .from('podwykonawcy')
     .insert({
+      organization_id: orgData.organization_id,
       nazwa: parsed.data.nazwa,
       specjalizacja: parsed.data.specjalizacja,
       kontakt: parsed.data.kontakt,

@@ -1,12 +1,15 @@
 'use client';
 
 import { useState, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
 import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { StatsBar } from '@/components/stats-bar';
 import {
   type PodwykonawcyResult,
   type PodwykonawcaWithCount,
+  type PodwykonawcyStats,
   type StawkaEntry,
   deletePodwykonawca,
   deleteStawka,
@@ -21,6 +24,8 @@ import { DeleteConfirmPanel } from '../../kategorie/_components/panels/delete-co
 
 interface PodwykonawcyViewProps {
   initialData: PodwykonawcyResult;
+  stats: PodwykonawcyStats;
+  specjalizacje: string[];
 }
 
 interface FormPanelState {
@@ -28,7 +33,9 @@ interface FormPanelState {
   mode: 'add' | 'edit';
 }
 
-function PodwykonawcyViewContent({ initialData }: PodwykonawcyViewProps) {
+function PodwykonawcyViewContent({ initialData, stats, specjalizacje }: PodwykonawcyViewProps) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [detailPanel, setDetailPanel] = useState<{ open: boolean; podwykonawcaId: string | null }>({
     open: false,
     podwykonawcaId: null,
@@ -110,12 +117,33 @@ function PodwykonawcyViewContent({ initialData }: PodwykonawcyViewProps) {
     }
   };
 
+  const handleSortChange = (newSort: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    const currentSort = params.get('sort') || 'nazwa';
+    const currentOrder = params.get('order') || 'asc';
+
+    if (currentSort === newSort) {
+      params.set('order', currentOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      params.set('sort', newSort);
+      params.set('order', 'asc');
+    }
+    params.delete('page');
+    router.push(`/podwykonawcy?${params.toString()}`);
+  };
+
+  const statsItems = [
+    { label: 'Podwykonawcy', value: String(stats.total) },
+    { label: 'Stawek ogółem', value: String(stats.totalStawki) },
+    { label: 'Śr. stawka', value: stats.avgStawka != null ? `${stats.avgStawka.toFixed(2).replace('.', ',')} zł` : '—' },
+  ];
+
   return (
     <div className="flex flex-col gap-4">
       {/* Breadcrumb row */}
       <div className="flex items-center justify-between">
         <nav className="text-sm">
-          <span className="text-foreground">Podwykonawcy</span>
+          <span className="text-foreground">Podwykonawcy ({initialData.totalCount})</span>
         </nav>
         <Button onClick={handleAddClick} className="bg-amber-500 hover:bg-amber-600 text-black">
           <Plus className="h-4 w-4 mr-2" />
@@ -123,16 +151,24 @@ function PodwykonawcyViewContent({ initialData }: PodwykonawcyViewProps) {
         </Button>
       </div>
 
-      <PodwykonawcyFilters />
+      <StatsBar items={statsItems} />
+
+      <PodwykonawcyFilters specjalizacje={specjalizacje} />
 
       {initialData.data.length === 0 ? (
-        <div className="flex items-center justify-center" style={{ height: 'calc(100vh - 280px)' }}>
+        <div className="flex items-center justify-center" style={{ height: 'calc(100vh - 380px)' }}>
           <p className="text-muted-foreground text-sm">Brak podwykonawców</p>
         </div>
       ) : (
         <>
-          <div className="overflow-auto" style={{ height: 'calc(100vh - 280px)' }}>
-            <PodwykonawcyTable data={initialData.data} onRowClick={handleRowClick} />
+          <div className="overflow-auto" style={{ height: 'calc(100vh - 380px)' }}>
+            <PodwykonawcyTable
+              data={initialData.data}
+              onRowClick={handleRowClick}
+              sort={searchParams.get('sort') || undefined}
+              order={(searchParams.get('order') as 'asc' | 'desc') || undefined}
+              onSortChange={handleSortChange}
+            />
           </div>
           <PodwykonawcyPagination
             totalCount={initialData.totalCount}

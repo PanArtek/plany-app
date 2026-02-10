@@ -1,10 +1,12 @@
 'use client';
 
 import { useState, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
 import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { type MaterialyResult, type ProduktWithAggregation, deleteProdukt } from '@/actions/materialy';
+import { StatsBar } from '@/components/stats-bar';
+import { type MaterialyResult, type ProduktWithAggregation, type MaterialyStats, deleteProdukt } from '@/actions/materialy';
 import { MaterialyFilters } from './materialy-filters';
 import { MaterialyTable } from './materialy-table';
 import { MaterialyPagination } from './materialy-pagination';
@@ -14,6 +16,7 @@ import { DeleteConfirmPanel } from '../../kategorie/_components/panels/delete-co
 
 interface MaterialyViewProps {
   initialData: MaterialyResult;
+  stats: MaterialyStats;
   initialBranza?: string;
   branzaLabel?: string;
 }
@@ -23,7 +26,9 @@ interface FormPanelState {
   mode: 'add' | 'edit';
 }
 
-function MaterialyViewContent({ initialData, branzaLabel }: MaterialyViewProps) {
+function MaterialyViewContent({ initialData, stats, branzaLabel }: MaterialyViewProps) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [detailPanel, setDetailPanel] = useState<{ open: boolean; produktId: string | null }>({
     open: false,
     produktId: null,
@@ -75,9 +80,31 @@ function MaterialyViewContent({ initialData, branzaLabel }: MaterialyViewProps) 
     }
   };
 
+  const handleSortChange = (newSort: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    const currentSort = params.get('sort') || 'nazwa';
+    const currentOrder = params.get('order') || 'asc';
+
+    if (currentSort === newSort) {
+      params.set('order', currentOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      params.set('sort', newSort);
+      params.set('order', 'asc');
+    }
+    params.delete('page');
+    router.push(`/materialy?${params.toString()}`);
+  };
+
+  const statsItems = [
+    { label: 'Produkty', value: String(stats.total) },
+    { label: 'Z dostawcami', value: String(stats.withSuppliers) },
+    { label: 'Bez dostawców', value: String(stats.withoutSuppliers) },
+    { label: 'Śr. cena', value: stats.avgPrice != null ? `${stats.avgPrice.toFixed(2).replace('.', ',')} zł` : '—' },
+  ];
+
   // Build breadcrumb
   const breadcrumbSegments: { label: string; isLast: boolean }[] = [
-    { label: 'Materiały', isLast: !branzaLabel },
+    { label: `Materiały (${initialData.totalCount})`, isLast: !branzaLabel },
   ];
   if (branzaLabel) {
     breadcrumbSegments[0].isLast = false;
@@ -104,16 +131,24 @@ function MaterialyViewContent({ initialData, branzaLabel }: MaterialyViewProps) 
         </Button>
       </div>
 
+      <StatsBar items={statsItems} />
+
       <MaterialyFilters />
 
       {initialData.data.length === 0 ? (
-        <div className="flex items-center justify-center" style={{ height: 'calc(100vh - 330px)' }}>
+        <div className="flex items-center justify-center" style={{ height: 'calc(100vh - 430px)' }}>
           <p className="text-muted-foreground text-sm">Brak materiałów</p>
         </div>
       ) : (
         <>
-          <div className="overflow-auto" style={{ height: 'calc(100vh - 330px)' }}>
-            <MaterialyTable data={initialData.data} onRowClick={handleRowClick} />
+          <div className="overflow-auto" style={{ height: 'calc(100vh - 430px)' }}>
+            <MaterialyTable
+              data={initialData.data}
+              onRowClick={handleRowClick}
+              sort={searchParams.get('sort') || undefined}
+              order={(searchParams.get('order') as 'asc' | 'desc') || undefined}
+              onSortChange={handleSortChange}
+            />
           </div>
           <MaterialyPagination
             totalCount={initialData.totalCount}
