@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import {
   updateKosztorysPozycjaSchema,
-  updateSkladowaRSchema,
+  updateCenaRobociznySchema,
   updateSkladowaMSchema,
   type LibraryFilters,
 } from '@/lib/validations/kosztorys';
@@ -65,18 +65,6 @@ export interface KosztorysData {
   pozycje: KosztorysPozycjaView[];
 }
 
-export interface SkladowaR {
-  id: string;
-  lp: number;
-  opis: string;
-  podwykonawca_id: string | null;
-  stawka: number;
-  norma: number;
-  ilosc: number | null;
-  jednostka: string;
-  is_manual: boolean;
-}
-
 export interface SkladowaM {
   id: string;
   lp: number;
@@ -93,15 +81,6 @@ export interface SkladowaM {
 export interface NameIdPair {
   id: string;
   nazwa: string;
-}
-
-export interface BibliotekaSkladowaR {
-  id: string;
-  lp: number;
-  opis: string;
-  stawka_domyslna: number;
-  norma_domyslna: number;
-  jednostka: string;
 }
 
 export interface BibliotekaSkladowaM {
@@ -124,10 +103,12 @@ export interface KosztorysPozycjaDetail {
     notatki: string | null;
     pozycja_biblioteka_id: string | null;
     kod: string | null;
+    cena_robocizny: number;
+    cena_robocizny_zrodlowa: number | null;
+    cena_robocizny_zrodlo: string | null;
+    podwykonawca_id: string | null;
   };
-  skladoweR: SkladowaR[];
   skladoweM: SkladowaM[];
-  bibliotekaSkladoweR: BibliotekaSkladowaR[];
   bibliotekaSkladoweM: BibliotekaSkladowaM[];
   podwykonawcy: NameIdPair[];
   dostawcy: NameIdPair[];
@@ -138,7 +119,7 @@ export interface LibraryPosition {
   kod: string;
   nazwa: string;
   jednostka: string;
-  skladoweRCount: number;
+  cenaRobocizny: number | null;
   skladoweMCount: number;
 }
 
@@ -284,11 +265,12 @@ export async function getKosztorysPozycjaDetail(
 ): Promise<ActionResult<KosztorysPozycjaDetail>> {
   const supabase = await createClient();
 
-  // 1. Fetch pozycja
+  // 1. Fetch pozycja with flat cena_robocizny fields
   const { data: pozycja, error: pozycjaError } = await supabase
     .from('kosztorys_pozycje')
     .select(`
       id, lp, nazwa, ilosc, jednostka, narzut_percent, notatki, pozycja_biblioteka_id,
+      cena_robocizny, cena_robocizny_zrodlowa, cena_robocizny_zrodlo, podwykonawca_id,
       pozycje_biblioteka!pozycja_biblioteka_id(kod)
     `)
     .eq('id', pozycjaId)
@@ -303,18 +285,7 @@ export async function getKosztorysPozycjaDetail(
 
   const pb = (pozycja as Record<string, unknown>).pozycje_biblioteka as { kod: string } | null;
 
-  // 2. Fetch składowe robocizna
-  const { data: skladoweR, error: rError } = await supabase
-    .from('kosztorys_skladowe_robocizna')
-    .select('id, lp, opis, podwykonawca_id, stawka, norma, ilosc, jednostka, is_manual')
-    .eq('kosztorys_pozycja_id', pozycjaId)
-    .order('lp', { ascending: true });
-
-  if (rError) {
-    return { success: false, error: rError.message };
-  }
-
-  // 3. Fetch składowe materiały
+  // 2. Fetch składowe materiały
   const { data: skladoweM, error: mError } = await supabase
     .from('kosztorys_skladowe_materialy')
     .select('id, lp, nazwa, produkt_id, dostawca_id, cena, norma, ilosc, jednostka, is_manual')
@@ -325,10 +296,10 @@ export async function getKosztorysPozycjaDetail(
     return { success: false, error: mError.message };
   }
 
-  // 4. Fetch dropdown lists + library skladowe in parallel
+  // 3. Fetch dropdown lists + library skladowe materialy in parallel
   const pozycjaBibliotekaId = pozycja.pozycja_biblioteka_id as string | null;
 
-  const [podwykonawcyResult, dostawcyResult, libRResult, libMResult] = await Promise.all([
+  const [podwykonawcyResult, dostawcyResult, libMResult] = await Promise.all([
     supabase
       .from('podwykonawcy')
       .select('id, nazwa')
@@ -339,15 +310,7 @@ export async function getKosztorysPozycjaDetail(
       .select('id, nazwa')
       .eq('aktywny', true)
       .order('nazwa'),
-    // 5. Fetch library skladowe robocizna (for override indicators)
-    pozycjaBibliotekaId
-      ? supabase
-          .from('biblioteka_skladowe_robocizna')
-          .select('id, lp, opis, stawka_domyslna, norma_domyslna, jednostka')
-          .eq('pozycja_biblioteka_id', pozycjaBibliotekaId)
-          .order('lp', { ascending: true })
-      : Promise.resolve({ data: null, error: null }),
-    // 6. Fetch library skladowe materialy (for override indicators)
+    // Fetch library skladowe materialy (for override indicators)
     pozycjaBibliotekaId
       ? supabase
           .from('biblioteka_skladowe_materialy')
@@ -370,18 +333,11 @@ export async function getKosztorysPozycjaDetail(
         notatki: pozycja.notatki as string | null,
         pozycja_biblioteka_id: pozycja.pozycja_biblioteka_id as string | null,
         kod: pb?.kod ?? null,
+        cena_robocizny: Number(pozycja.cena_robocizny ?? 0),
+        cena_robocizny_zrodlowa: pozycja.cena_robocizny_zrodlowa != null ? Number(pozycja.cena_robocizny_zrodlowa) : null,
+        cena_robocizny_zrodlo: pozycja.cena_robocizny_zrodlo as string | null,
+        podwykonawca_id: pozycja.podwykonawca_id as string | null,
       },
-      skladoweR: (skladoweR || []).map((r: Record<string, unknown>) => ({
-        id: r.id as string,
-        lp: Number(r.lp),
-        opis: r.opis as string,
-        podwykonawca_id: r.podwykonawca_id as string | null,
-        stawka: Number(r.stawka),
-        norma: Number(r.norma),
-        ilosc: r.ilosc != null ? Number(r.ilosc) : null,
-        jednostka: r.jednostka as string,
-        is_manual: r.is_manual as boolean,
-      })),
       skladoweM: (skladoweM || []).map((m: Record<string, unknown>) => ({
         id: m.id as string,
         lp: Number(m.lp),
@@ -393,14 +349,6 @@ export async function getKosztorysPozycjaDetail(
         ilosc: m.ilosc != null ? Number(m.ilosc) : null,
         jednostka: m.jednostka as string | null,
         is_manual: m.is_manual as boolean,
-      })),
-      bibliotekaSkladoweR: (libRResult.data || []).map((r: Record<string, unknown>) => ({
-        id: r.id as string,
-        lp: Number(r.lp),
-        opis: r.opis as string,
-        stawka_domyslna: Number(r.stawka_domyslna ?? 0),
-        norma_domyslna: Number(r.norma_domyslna ?? 1),
-        jednostka: (r.jednostka as string) || 'h',
       })),
       bibliotekaSkladoweM: (libMResult.data || []).map((m: Record<string, unknown>) => ({
         id: m.id as string,
@@ -428,7 +376,7 @@ export async function getLibraryPositions(
 
   let query = supabase
     .from('pozycje_biblioteka')
-    .select('id, kod, nazwa, jednostka', { count: 'exact' })
+    .select('id, kod, nazwa, jednostka, cena_robocizny', { count: 'exact' })
     .eq('aktywny', true)
     .order('kod')
     .range(offset, offset + LIBRARY_PAGE_SIZE - 1);
@@ -442,7 +390,6 @@ export async function getLibraryPositions(
     query = query.eq('kategoria_id', filters.podkategoriaId);
   } else if (filters.kategoriaId) {
     // Positions in kategoria OR any of its podkategorie
-    // Fetch child kategoria IDs first
     const { data: children } = await supabase
       .from('kategorie')
       .select('id')
@@ -464,35 +411,18 @@ export async function getLibraryPositions(
     return { success: false, error: error.message };
   }
 
-  // Fetch składowe counts for these positions
+  // Fetch składowe materialy counts for these positions
   const ids = (data || []).map((d: { id: string }) => d.id);
-  let rCounts: Record<string, number> = {};
   let mCounts: Record<string, number> = {};
 
   if (ids.length > 0) {
-    const [rResult, mResult] = await Promise.all([
-      supabase
-        .from('biblioteka_skladowe_robocizna')
-        .select('pozycja_biblioteka_id')
-        .in('pozycja_biblioteka_id', ids),
-      supabase
-        .from('biblioteka_skladowe_materialy')
-        .select('pozycja_biblioteka_id')
-        .in('pozycja_biblioteka_id', ids),
-    ]);
+    const { data: mResult } = await supabase
+      .from('biblioteka_skladowe_materialy')
+      .select('pozycja_biblioteka_id')
+      .in('pozycja_biblioteka_id', ids);
 
-    if (rResult.data) {
-      rCounts = (rResult.data as { pozycja_biblioteka_id: string }[]).reduce<Record<string, number>>(
-        (acc, row) => {
-          acc[row.pozycja_biblioteka_id] = (acc[row.pozycja_biblioteka_id] || 0) + 1;
-          return acc;
-        },
-        {}
-      );
-    }
-
-    if (mResult.data) {
-      mCounts = (mResult.data as { pozycja_biblioteka_id: string }[]).reduce<Record<string, number>>(
+    if (mResult) {
+      mCounts = (mResult as { pozycja_biblioteka_id: string }[]).reduce<Record<string, number>>(
         (acc, row) => {
           acc[row.pozycja_biblioteka_id] = (acc[row.pozycja_biblioteka_id] || 0) + 1;
           return acc;
@@ -510,7 +440,7 @@ export async function getLibraryPositions(
         kod: d.kod as string,
         nazwa: d.nazwa as string,
         jednostka: d.jednostka as string,
-        skladoweRCount: rCounts[d.id as string] || 0,
+        cenaRobocizny: d.cena_robocizny != null ? Number(d.cena_robocizny) : null,
         skladoweMCount: mCounts[d.id as string] || 0,
       })),
       totalCount: count ?? 0,
@@ -528,10 +458,10 @@ export async function addPositionFromLibrary(
 ): Promise<ActionResult> {
   const supabase = await createClient();
 
-  // 1. Fetch library position
+  // 1. Fetch library position with cena_robocizny
   const { data: libPozycja, error: libError } = await supabase
     .from('pozycje_biblioteka')
-    .select('id, nazwa, jednostka')
+    .select('id, nazwa, jednostka, cena_robocizny')
     .eq('id', pozycjaBibliotekaId)
     .single();
 
@@ -566,7 +496,30 @@ export async function addPositionFromLibrary(
     (rewizja as Record<string, unknown>).projekty as { organization_id: string }
   ).organization_id;
 
-  // 4. Insert kosztorys position
+  // 4. Determine cena_robocizny with priority: cheapest subcontractor > library > 0
+  let cenaRobocizny = 0;
+  let cenaRobociznyZrodlo: 'biblioteka' | 'podwykonawca' | 'reczna' = 'reczna';
+  let podwykonawcaId: string | null = null;
+
+  // Check cheapest active subcontractor rate
+  const { data: stawki } = await supabase
+    .from('stawki_podwykonawcow')
+    .select('podwykonawca_id, stawka')
+    .eq('pozycja_biblioteka_id', pozycjaBibliotekaId)
+    .eq('aktywny', true)
+    .order('stawka', { ascending: true })
+    .limit(1);
+
+  if (stawki && stawki.length > 0) {
+    cenaRobocizny = Number((stawki[0] as Record<string, unknown>).stawka);
+    cenaRobociznyZrodlo = 'podwykonawca';
+    podwykonawcaId = (stawki[0] as Record<string, unknown>).podwykonawca_id as string;
+  } else if (libPozycja.cena_robocizny != null) {
+    cenaRobocizny = Number(libPozycja.cena_robocizny);
+    cenaRobociznyZrodlo = 'biblioteka';
+  }
+
+  // 5. Insert kosztorys position with flat cena_robocizny
   const { data: newPozycja, error: insertError } = await supabase
     .from('kosztorys_pozycje')
     .insert({
@@ -578,6 +531,10 @@ export async function addPositionFromLibrary(
       jednostka: libPozycja.jednostka as string,
       ilosc: 1,
       narzut_percent: 30,
+      cena_robocizny: cenaRobocizny,
+      cena_robocizny_zrodlowa: cenaRobocizny,
+      cena_robocizny_zrodlo: cenaRobociznyZrodlo,
+      podwykonawca_id: podwykonawcaId,
     })
     .select('id')
     .single();
@@ -587,38 +544,6 @@ export async function addPositionFromLibrary(
   }
 
   const pozycjaId = (newPozycja as { id: string }).id;
-
-  // 5. Copy składowe robocizna from library
-  const { data: libRobocizna } = await supabase
-    .from('biblioteka_skladowe_robocizna')
-    .select('lp, opis, norma_domyslna, stawka_domyslna, jednostka')
-    .eq('pozycja_biblioteka_id', pozycjaBibliotekaId)
-    .order('lp');
-
-  if (libRobocizna && libRobocizna.length > 0) {
-    // Find cheapest subcontractor rates for this library position
-    const { data: stawki } = await supabase
-      .from('stawki_podwykonawcow')
-      .select('pozycja_biblioteka_id, podwykonawca_id, cena_netto')
-      .eq('pozycja_biblioteka_id', pozycjaBibliotekaId)
-      .order('cena_netto', { ascending: true });
-
-    const cheapestStawka = stawki && stawki.length > 0
-      ? { stawka: Number((stawki[0] as Record<string, unknown>).cena_netto), podwykonawca_id: (stawki[0] as Record<string, unknown>).podwykonawca_id as string }
-      : null;
-
-    const robociznaInserts = (libRobocizna as Record<string, unknown>[]).map((r) => ({
-      kosztorys_pozycja_id: pozycjaId,
-      lp: Number(r.lp),
-      opis: r.opis as string,
-      norma: Number(r.norma_domyslna ?? 1),
-      jednostka: (r.jednostka as string) || 'h',
-      stawka: cheapestStawka?.stawka ?? Number(r.stawka_domyslna ?? 0),
-      podwykonawca_id: cheapestStawka?.podwykonawca_id ?? null,
-    }));
-
-    await supabase.from('kosztorys_skladowe_robocizna').insert(robociznaInserts);
-  }
 
   // 6. Copy składowe materiały from library
   const { data: libMaterialy } = await supabase
@@ -702,13 +627,13 @@ export async function updateKosztorysPozycja(
   return { success: true };
 }
 
-// --- WRITE: Update składowa robocizna ---
+// --- WRITE: Update flat cena robocizny ---
 
-export async function updateKosztorysSkladowaR(
-  id: string,
+export async function updateCenaRobocizny(
+  pozycjaId: string,
   input: unknown
 ): Promise<ActionResult> {
-  const parsed = updateSkladowaRSchema.safeParse(input);
+  const parsed = updateCenaRobociznySchema.safeParse(input);
   if (!parsed.success) {
     return { success: false, error: parsed.error.issues[0].message };
   }
@@ -716,17 +641,17 @@ export async function updateKosztorysSkladowaR(
   const supabase = await createClient();
 
   const updateData: Record<string, unknown> = {
-    stawka: parsed.data.stawka,
-    is_manual: true,
+    cena_robocizny: parsed.data.cena_robocizny,
+    cena_robocizny_zrodlo: parsed.data.podwykonawca_id ? 'podwykonawca' : 'reczna',
   };
   if (parsed.data.podwykonawca_id !== undefined) {
     updateData.podwykonawca_id = parsed.data.podwykonawca_id;
   }
 
   const { error } = await supabase
-    .from('kosztorys_skladowe_robocizna')
+    .from('kosztorys_pozycje')
     .update(updateData)
-    .eq('id', id);
+    .eq('id', pozycjaId);
 
   if (error) {
     return { success: false, error: error.message };
@@ -760,27 +685,6 @@ export async function updateKosztorysSkladowaM(
   const { error } = await supabase
     .from('kosztorys_skladowe_materialy')
     .update(updateData)
-    .eq('id', id);
-
-  if (error) {
-    return { success: false, error: error.message };
-  }
-
-  revalidatePath('/projekty');
-  return { success: true };
-}
-
-// --- WRITE: Reset składowa R to library value ---
-
-export async function resetSkladowaR(
-  id: string,
-  libraryStawka: number
-): Promise<ActionResult> {
-  const supabase = await createClient();
-
-  const { error } = await supabase
-    .from('kosztorys_skladowe_robocizna')
-    .update({ stawka: libraryStawka, is_manual: false })
     .eq('id', id);
 
   if (error) {
@@ -835,22 +739,52 @@ export async function resetPozycjaToLibrary(
     return { success: false, error: 'Pozycja nie ma powiązania z biblioteką' };
   }
 
-  // 2. Fetch library and kosztorys skladowe in parallel
-  const [libRResult, libMResult, koszRResult, koszMResult] = await Promise.all([
+  // 2. Determine new cena_robocizny with priority: cheapest subcontractor > library > 0
+  let cenaRobocizny = 0;
+  let cenaRobociznyZrodlo: 'biblioteka' | 'podwykonawca' | 'reczna' = 'reczna';
+  let podwykonawcaId: string | null = null;
+
+  const [stawkiResult, libPozycjaResult] = await Promise.all([
     supabase
-      .from('biblioteka_skladowe_robocizna')
-      .select('lp, stawka_domyslna, norma_domyslna')
+      .from('stawki_podwykonawcow')
+      .select('podwykonawca_id, stawka')
       .eq('pozycja_biblioteka_id', bibId)
-      .order('lp', { ascending: true }),
+      .eq('aktywny', true)
+      .order('stawka', { ascending: true })
+      .limit(1),
+    supabase
+      .from('pozycje_biblioteka')
+      .select('cena_robocizny')
+      .eq('id', bibId)
+      .single(),
+  ]);
+
+  if (stawkiResult.data && stawkiResult.data.length > 0) {
+    cenaRobocizny = Number((stawkiResult.data[0] as Record<string, unknown>).stawka);
+    cenaRobociznyZrodlo = 'podwykonawca';
+    podwykonawcaId = (stawkiResult.data[0] as Record<string, unknown>).podwykonawca_id as string;
+  } else if (libPozycjaResult.data?.cena_robocizny != null) {
+    cenaRobocizny = Number(libPozycjaResult.data.cena_robocizny);
+    cenaRobociznyZrodlo = 'biblioteka';
+  }
+
+  // 3. Reset cena_robocizny on kosztorys_pozycje
+  await supabase
+    .from('kosztorys_pozycje')
+    .update({
+      cena_robocizny: cenaRobocizny,
+      cena_robocizny_zrodlowa: cenaRobocizny,
+      cena_robocizny_zrodlo: cenaRobociznyZrodlo,
+      podwykonawca_id: podwykonawcaId,
+    })
+    .eq('id', pozycjaId);
+
+  // 4. Reset materialy by lp matching (with price discovery)
+  const [libMResult, koszMResult] = await Promise.all([
     supabase
       .from('biblioteka_skladowe_materialy')
       .select('lp, cena_domyslna, norma_domyslna, produkt_id')
       .eq('pozycja_biblioteka_id', bibId)
-      .order('lp', { ascending: true }),
-    supabase
-      .from('kosztorys_skladowe_robocizna')
-      .select('id, lp')
-      .eq('kosztorys_pozycja_id', pozycjaId)
       .order('lp', { ascending: true }),
     supabase
       .from('kosztorys_skladowe_materialy')
@@ -859,28 +793,9 @@ export async function resetPozycjaToLibrary(
       .order('lp', { ascending: true }),
   ]);
 
-  const libR = (libRResult.data || []) as { lp: number; stawka_domyslna: number; norma_domyslna: number }[];
   const libM = (libMResult.data || []) as { lp: number; cena_domyslna: number; norma_domyslna: number; produkt_id: string | null }[];
-  const koszR = (koszRResult.data || []) as { id: string; lp: number }[];
   const koszM = (koszMResult.data || []) as { id: string; lp: number }[];
 
-  // 3. Reset robocizna by lp matching
-  const rUpdates = koszR
-    .map((kr) => {
-      const lib = libR.find((l) => l.lp === kr.lp);
-      if (!lib) return null;
-      return supabase
-        .from('kosztorys_skladowe_robocizna')
-        .update({
-          stawka: lib.stawka_domyslna,
-          norma: lib.norma_domyslna,
-          is_manual: false,
-        })
-        .eq('id', kr.id);
-    })
-    .filter(Boolean);
-
-  // 4. Reset materialy by lp matching (with price discovery)
   const mUpdates = await Promise.all(
     koszM.map(async (km) => {
       const lib = libM.find((l) => l.lp === km.lp);
@@ -914,8 +829,7 @@ export async function resetPozycjaToLibrary(
     })
   );
 
-  // Execute all updates
-  await Promise.all([...rUpdates, ...mUpdates.filter(Boolean)]);
+  await Promise.all(mUpdates.filter(Boolean));
 
   revalidatePath('/projekty');
   return { success: true };

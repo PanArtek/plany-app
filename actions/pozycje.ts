@@ -17,16 +17,6 @@ export type ActionResult<T = unknown> = {
 };
 
 // Typy dla pozycji z bazy
-export interface SkladowaRobocizna {
-  id: string;
-  lp: number;
-  opis: string;
-  podwykonawca_id: string | null;
-  stawka_domyslna: number | null;
-  norma_domyslna: number | null;
-  jednostka: string | null;
-}
-
 export interface SkladowaMaterial {
   id: string;
   lp: number;
@@ -61,7 +51,7 @@ export interface Pozycja {
   aktywny: boolean;
   created_at: string;
   updated_at: string;
-  biblioteka_skladowe_robocizna: SkladowaRobocizna[];
+  cena_robocizny: number | null;
   biblioteka_skladowe_materialy: SkladowaMaterial[];
   kategoria: KategoriaInfo | null;
 }
@@ -89,7 +79,6 @@ export async function createPozycja(input: unknown): Promise<ActionResult<Pozycj
     })
     .select(`
       *,
-      biblioteka_skladowe_robocizna(*),
       biblioteka_skladowe_materialy(*)
     `)
     .single();
@@ -129,7 +118,6 @@ export async function updatePozycja(id: string, input: unknown): Promise<ActionR
     .eq('id', id)
     .select(`
       *,
-      biblioteka_skladowe_robocizna(*),
       biblioteka_skladowe_materialy(*)
     `)
     .single();
@@ -197,7 +185,6 @@ export async function getPozycje(filters: PozycjeFilters): Promise<PozycjeResult
     .from('pozycje_biblioteka')
     .select(`
       *,
-      biblioteka_skladowe_robocizna(*),
       biblioteka_skladowe_materialy(*),
       kategoria:kategorie!kategoria_id(
         id,
@@ -239,6 +226,30 @@ export async function getPozycje(filters: PozycjeFilters): Promise<PozycjeResult
   };
 }
 
+// UPDATE cena_robocizny (flat labor price on library position)
+export async function updatePozycjaCenaRobocizny(
+  id: string,
+  cenaRobocizny: number | null
+): Promise<ActionResult> {
+  if (cenaRobocizny !== null && cenaRobocizny < 0) {
+    return { success: false, error: 'Cena nie może być ujemna' };
+  }
+
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from('pozycje_biblioteka')
+    .update({ cena_robocizny: cenaRobocizny })
+    .eq('id', id);
+
+  if (error) {
+    return { success: false, error: error.message };
+  }
+
+  revalidatePath('/pozycje');
+  return { success: true };
+}
+
 // READ - pojedyncza pozycja
 export async function getPozycja(id: string): Promise<Pozycja | null> {
   const supabase = await createClient();
@@ -247,7 +258,6 @@ export async function getPozycja(id: string): Promise<Pozycja | null> {
     .from('pozycje_biblioteka')
     .select(`
       *,
-      biblioteka_skladowe_robocizna(*),
       biblioteka_skladowe_materialy(*)
     `)
     .eq('id', id)
