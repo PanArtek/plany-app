@@ -10,12 +10,11 @@ import {
   createCenaDostawcy,
   createPodwykonawca,
   createBibliotekaSkladowaM,
-  createBibliotekaSkladowaR,
+  updatePozycjaCenaRobocizny,
   createProjekt,
   createRewizja,
   createKosztorysPozycja,
   createKosztorysSkladowaM,
-  createKosztorysSkladowaR,
 } from './helpers/setup';
 
 describe('Biblioteka -> Kosztorys with calculations', () => {
@@ -57,8 +56,9 @@ describe('Biblioteka -> Kosztorys with calculations', () => {
     // Biblioteka templates (for reference only — kosztorys copies values)
     await createBibliotekaSkladowaM({ pozycja_biblioteka_id: pozycja.id, lp: 1, nazwa: 'Profil C50', produkt_id: profilProdukt.id as string, dostawca_id: bricoman.id as string, cena_domyslna: 8.5, norma_domyslna: 0.9, jednostka: 'mb' });
     await createBibliotekaSkladowaM({ pozycja_biblioteka_id: pozycja.id, lp: 2, nazwa: 'Płyta GK 12.5', produkt_id: plytaProdukt.id as string, dostawca_id: bricoman.id as string, cena_domyslna: 22.0, norma_domyslna: 1.1, jednostka: 'm2' });
-    await createBibliotekaSkladowaR({ pozycja_biblioteka_id: pozycja.id, lp: 1, opis: 'Montaż profili', podwykonawca_id: kowalski.id as string, stawka_domyslna: 15.0, norma_domyslna: 0.3, jednostka: 'rbh' });
-    await createBibliotekaSkladowaR({ pozycja_biblioteka_id: pozycja.id, lp: 2, opis: 'Szpachlowanie', podwykonawca_id: kowalski.id as string, stawka_domyslna: 12.0, norma_domyslna: 0.2, jednostka: 'rbh' });
+
+    // Flat labor price: 15.0*0.3 + 12.0*0.2 = 4.50 + 2.40 = 6.90
+    await updatePozycjaCenaRobocizny(pozycja.id, 6.90);
 
     // Projekt + Rewizja
     const projekt = await createProjekt(orgId, { nazwa: 'Biuro Centrum', powierzchnia: 1000 });
@@ -76,11 +76,12 @@ describe('Biblioteka -> Kosztorys with calculations', () => {
     });
     kpId = kp.id;
 
-    // Copy składowe from library to kosztorys
+    // Copy składowe from library to kosztorys (materials only)
     await createKosztorysSkladowaM({ kosztorys_pozycja_id: kpId, lp: 1, nazwa: 'Profil C50', produkt_id: profilProdukt.id as string, dostawca_id: bricoman.id as string, cena: 8.5, norma: 0.9 });
     await createKosztorysSkladowaM({ kosztorys_pozycja_id: kpId, lp: 2, nazwa: 'Płyta GK 12.5', produkt_id: plytaProdukt.id as string, dostawca_id: bricoman.id as string, cena: 22.0, norma: 1.1 });
-    await createKosztorysSkladowaR({ kosztorys_pozycja_id: kpId, lp: 1, opis: 'Montaż profili', podwykonawca_id: kowalski.id as string, stawka: 15.0, norma: 0.3 });
-    await createKosztorysSkladowaR({ kosztorys_pozycja_id: kpId, lp: 2, opis: 'Szpachlowanie', podwykonawca_id: kowalski.id as string, stawka: 12.0, norma: 0.2 });
+
+    // Set flat labor price on kosztorys_pozycje: 6.90
+    await supabase.from('kosztorys_pozycje').update({ cena_robocizny: 6.90 }).eq('id', kpId);
   });
 
   afterAll(async () => {
@@ -100,7 +101,7 @@ describe('Biblioteka -> Kosztorys with calculations', () => {
     // m_jednostkowy = (8.50×0.9) + (22.00×1.1) = 7.65 + 24.20 = 31.85
     expect(Number(data!.m_jednostkowy)).toBeCloseTo(31.85, 1);
 
-    // r_jednostkowy = (15.00×0.3) + (12.00×0.2) = 4.50 + 2.40 = 6.90
+    // r_jednostkowy = 6.90 (flat)
     expect(Number(data!.r_jednostkowy)).toBeCloseTo(6.9, 1);
 
     // m_materialy = 31.85 × 320 = 10192.00

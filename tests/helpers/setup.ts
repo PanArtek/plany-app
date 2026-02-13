@@ -253,32 +253,14 @@ export async function createBibliotekaSkladowaM(opts: {
   return data;
 }
 
-// --- Biblioteka składowe robocizna ---
+// --- Update pozycja cena_robocizny (flat labor price) ---
 
-export async function createBibliotekaSkladowaR(opts: {
-  pozycja_biblioteka_id: string;
-  lp: number;
-  opis: string;
-  podwykonawca_id?: string;
-  stawka_domyslna?: number;
-  norma_domyslna?: number;
-  jednostka?: string;
-}) {
-  const { data, error } = await supabase
-    .from('biblioteka_skladowe_robocizna')
-    .insert({
-      pozycja_biblioteka_id: opts.pozycja_biblioteka_id,
-      lp: opts.lp,
-      opis: opts.opis,
-      podwykonawca_id: opts.podwykonawca_id || null,
-      stawka_domyslna: opts.stawka_domyslna ?? null,
-      norma_domyslna: opts.norma_domyslna ?? 1,
-      jednostka: opts.jednostka || 'h',
-    })
-    .select()
-    .single();
-  if (error) throw new Error(`createBibliotekaSkladowaR: ${error.message}`);
-  return data;
+export async function updatePozycjaCenaRobocizny(pozycjaId: string, cenaRobocizny: number) {
+  const { error } = await supabase
+    .from('pozycje_biblioteka')
+    .update({ cena_robocizny: cenaRobocizny })
+    .eq('id', pozycjaId);
+  if (error) throw new Error(`updatePozycjaCenaRobocizny: ${error.message}`);
 }
 
 // --- Projekt ---
@@ -348,39 +330,6 @@ export async function createKosztorysPozycja(
     .select()
     .single();
   if (error) throw new Error(`createKosztorysPozycja: ${error.message}`);
-  return data;
-}
-
-// --- Kosztorys składowe robocizna ---
-
-export async function createKosztorysSkladowaR(opts: {
-  kosztorys_pozycja_id: string;
-  lp: number;
-  opis: string;
-  podwykonawca_id?: string;
-  stawka: number;
-  norma: number;
-  is_manual?: boolean;
-  ilosc?: number;
-  jednostka?: string;
-}) {
-  const record: Record<string, unknown> = {
-    kosztorys_pozycja_id: opts.kosztorys_pozycja_id,
-    lp: opts.lp,
-    opis: opts.opis,
-    podwykonawca_id: opts.podwykonawca_id || null,
-    stawka: opts.stawka,
-    norma: opts.norma,
-    is_manual: opts.is_manual ?? false,
-    jednostka: opts.jednostka || 'h',
-  };
-  if (opts.ilosc !== undefined) record.ilosc = opts.ilosc;
-  const { data, error } = await supabase
-    .from('kosztorys_skladowe_robocizna')
-    .insert(record)
-    .select()
-    .single();
-  if (error) throw new Error(`createKosztorysSkladowaR: ${error.message}`);
   return data;
 }
 

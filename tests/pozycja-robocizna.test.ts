@@ -7,7 +7,7 @@ import {
   createPozycjaBiblioteka,
   createPodwykonawca,
   createStawkaPodwykonawcy,
-  createBibliotekaSkladowaR,
+  updatePozycjaCenaRobocizny,
 } from './helpers/setup';
 
 describe('Pozycja <-> Robocizna <-> Podwykonawcy', () => {
@@ -45,54 +45,23 @@ describe('Pozycja <-> Robocizna <-> Podwykonawcy', () => {
       stawka: 45.0,
     });
 
-    await createBibliotekaSkladowaR({
-      pozycja_biblioteka_id: pozycja.id as string,
-      lp: 1,
-      opis: 'Montaż profili',
-      podwykonawca_id: kowalski.id as string,
-      stawka_domyslna: 15.0,
-      norma_domyslna: 0.3,
-      jednostka: 'rbh',
-    });
-    await createBibliotekaSkladowaR({
-      pozycja_biblioteka_id: pozycja.id as string,
-      lp: 2,
-      opis: 'Montaż płyt GK',
-      podwykonawca_id: kowalski.id as string,
-      stawka_domyslna: 18.0,
-      norma_domyslna: 0.25,
-      jednostka: 'rbh',
-    });
-    await createBibliotekaSkladowaR({
-      pozycja_biblioteka_id: pozycja.id as string,
-      lp: 3,
-      opis: 'Szpachlowanie',
-      podwykonawca_id: kowalski.id as string,
-      stawka_domyslna: 12.0,
-      norma_domyslna: 0.2,
-      jednostka: 'rbh',
-    });
+    // Set flat labor price: 6.90 PLN/m2
+    await updatePozycjaCenaRobocizny(pozycja.id as string, 6.90);
   });
 
   afterAll(async () => {
     if (orgId) await cleanupOrganization(orgId);
   });
 
-  it('pozycja has 3 labor components linked to subcontractor', async () => {
+  it('pozycja_biblioteka has cena_robocizny set correctly', async () => {
     const { data, error } = await supabase
-      .from('biblioteka_skladowe_robocizna')
-      .select('*')
-      .eq('pozycja_biblioteka_id', pozycja.id as string)
-      .order('lp');
+      .from('pozycje_biblioteka')
+      .select('cena_robocizny')
+      .eq('id', pozycja.id as string)
+      .single();
 
     expect(error).toBeNull();
-    expect(data).toHaveLength(3);
-
-    for (const row of data!) {
-      expect(row.podwykonawca_id).toBe(kowalski.id);
-    }
-
-    expect(data!.map((r) => r.lp)).toEqual([1, 2, 3]);
+    expect(Number(data!.cena_robocizny)).toBeCloseTo(6.90, 2);
   });
 
   it('stawki_podwykonawcow links subcontractor to pozycja', async () => {

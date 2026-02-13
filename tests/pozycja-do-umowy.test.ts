@@ -11,12 +11,11 @@ import {
   createPodwykonawca,
   createStawkaPodwykonawcy,
   createBibliotekaSkladowaM,
-  createBibliotekaSkladowaR,
+  updatePozycjaCenaRobocizny,
   createProjekt,
   createRewizja,
   createKosztorysPozycja,
   createKosztorysSkladowaM,
-  createKosztorysSkladowaR,
 } from './helpers/setup';
 
 describe('Kosztorys -> Umowy via generate_umowy_draft', () => {
@@ -53,10 +52,11 @@ describe('Kosztorys -> Umowy via generate_umowy_draft', () => {
     kowalskiId = kowalski.id;
     await createStawkaPodwykonawcy({ podwykonawca_id: kowalski.id, pozycja_biblioteka_id: pozycja.id, stawka: 45.0 });
 
-    // Library templates
+    // Library templates (materials only)
     await createBibliotekaSkladowaM({ pozycja_biblioteka_id: pozycja.id, lp: 1, nazwa: 'Profil C50', produkt_id: profil.id, dostawca_id: bricoman.id, cena_domyslna: 8.5, norma_domyslna: 0.9, jednostka: 'mb' });
-    await createBibliotekaSkladowaR({ pozycja_biblioteka_id: pozycja.id, lp: 1, opis: 'Montaż profili', podwykonawca_id: kowalski.id, stawka_domyslna: 15.0, norma_domyslna: 0.3, jednostka: 'rbh' });
-    await createBibliotekaSkladowaR({ pozycja_biblioteka_id: pozycja.id, lp: 2, opis: 'Szpachlowanie', podwykonawca_id: kowalski.id, stawka_domyslna: 12.0, norma_domyslna: 0.2, jednostka: 'rbh' });
+
+    // Flat labor price: 15.0*0.3 + 12.0*0.2 = 6.90
+    await updatePozycjaCenaRobocizny(pozycja.id, 6.90);
 
     // Projekt + Rewizja
     const projekt = await createProjekt(orgId, { nazwa: 'Biuro Test', powierzchnia: 500 });
@@ -75,10 +75,15 @@ describe('Kosztorys -> Umowy via generate_umowy_draft', () => {
       narzut_percent: 30,
     });
 
-    // Copy składowe to kosztorys
+    // Copy składowe to kosztorys (materials only)
     await createKosztorysSkladowaM({ kosztorys_pozycja_id: kp.id, lp: 1, nazwa: 'Profil C50', produkt_id: profil.id, dostawca_id: bricoman.id, cena: 8.5, norma: 0.9 });
-    await createKosztorysSkladowaR({ kosztorys_pozycja_id: kp.id, lp: 1, opis: 'Montaż profili', podwykonawca_id: kowalski.id, stawka: 15.0, norma: 0.3 });
-    await createKosztorysSkladowaR({ kosztorys_pozycja_id: kp.id, lp: 2, opis: 'Szpachlowanie', podwykonawca_id: kowalski.id, stawka: 12.0, norma: 0.2 });
+
+    // Set flat labor price + podwykonawca on kosztorys_pozycje
+    await supabase.from('kosztorys_pozycje').update({
+      cena_robocizny: 6.90,
+      cena_robocizny_zrodlo: 'podwykonawca',
+      podwykonawca_id: kowalski.id,
+    }).eq('id', kp.id);
 
     // Lock revision
     await supabase
@@ -132,8 +137,6 @@ describe('Kosztorys -> Umowy via generate_umowy_draft', () => {
       .order('stawka', { ascending: false });
 
     expect(error).toBeNull();
-    // RPC groups by (pozycja_biblioteka_id, stawka)
-    // We have 2 składowe with different stawki (15 and 12), so 2 umowa_pozycje
     expect(data!.length).toBeGreaterThanOrEqual(1);
 
     // Verify each has correct data
@@ -141,36 +144,6 @@ describe('Kosztorys -> Umowy via generate_umowy_draft', () => {
       expect(up.nazwa).toBeDefined();
       expect(Number(up.ilosc)).toBeGreaterThan(0);
       expect(Number(up.stawka)).toBeGreaterThan(0);
-    }
-
-    // Check calculated quantities: norma × kp.ilosc
-    // Montaż: 0.3 × 320 = 96, Szpachlowanie: 0.2 × 320 = 64
-    const ilosciSorted = data!.map((r) => Number(r.ilosc)).sort((a, b) => b - a);
-    if (data!.length === 2) {
-      expect(ilosciSorted[0]).toBeCloseTo(96, 0);
-      expect(ilosciSorted[1]).toBeCloseTo(64, 0);
-    }
-  });
-
-  it('umowa_pozycje_zrodla links back to kosztorys_skladowe_robocizna', async () => {
-    const { data: pozycje } = await supabase
-      .from('umowa_pozycje')
-      .select('id')
-      .eq('umowa_id', umowaId);
-
-    for (const up of pozycje || []) {
-      const { data: zrodla, error } = await supabase
-        .from('umowa_pozycje_zrodla')
-        .select('*')
-        .eq('umowa_pozycja_id', up.id);
-
-      expect(error).toBeNull();
-      expect(zrodla!.length).toBeGreaterThanOrEqual(1);
-
-      for (const z of zrodla!) {
-        expect(z.kosztorys_skladowa_r_id).toBeDefined();
-        expect(Number(z.ilosc)).toBeGreaterThan(0);
-      }
     }
   });
 

@@ -11,12 +11,11 @@ import {
   createPodwykonawca,
   createStawkaPodwykonawcy,
   createBibliotekaSkladowaM,
-  createBibliotekaSkladowaR,
+  updatePozycjaCenaRobocizny,
   createProjekt,
   createRewizja,
   createKosztorysPozycja,
   createKosztorysSkladowaM,
-  createKosztorysSkladowaR,
 } from './helpers/setup';
 
 describe('Umowy/Zamówienia -> Realizacja wpisy', () => {
@@ -52,7 +51,9 @@ describe('Umowy/Zamówienia -> Realizacja wpisy', () => {
     await createStawkaPodwykonawcy({ podwykonawca_id: kowalski.id, pozycja_biblioteka_id: pozycja.id, stawka: 45.0 });
 
     await createBibliotekaSkladowaM({ pozycja_biblioteka_id: pozycja.id, lp: 1, nazwa: 'Profil C50', produkt_id: profil.id, dostawca_id: bricoman.id, cena_domyslna: 8.5, norma_domyslna: 0.9, jednostka: 'mb' });
-    await createBibliotekaSkladowaR({ pozycja_biblioteka_id: pozycja.id, lp: 1, opis: 'Montaż', podwykonawca_id: kowalski.id, stawka_domyslna: 15.0, norma_domyslna: 0.3 });
+
+    // Flat labor price: 15.0*0.3 = 4.50
+    await updatePozycjaCenaRobocizny(pozycja.id, 4.50);
 
     const projekt = await createProjekt(orgId, { nazwa: 'Biuro Real', powierzchnia: 500 });
     projektId = projekt.id;
@@ -69,7 +70,13 @@ describe('Umowy/Zamówienia -> Realizacja wpisy', () => {
     });
 
     await createKosztorysSkladowaM({ kosztorys_pozycja_id: kp.id, lp: 1, nazwa: 'Profil C50', produkt_id: profil.id, dostawca_id: bricoman.id, cena: 8.5, norma: 0.9 });
-    await createKosztorysSkladowaR({ kosztorys_pozycja_id: kp.id, lp: 1, opis: 'Montaż', podwykonawca_id: kowalski.id, stawka: 15.0, norma: 0.3 });
+
+    // Set flat labor price + podwykonawca on kosztorys_pozycje
+    await supabase.from('kosztorys_pozycje').update({
+      cena_robocizny: 4.50,
+      cena_robocizny_zrodlo: 'podwykonawca',
+      podwykonawca_id: kowalski.id,
+    }).eq('id', kp.id);
 
     // Lock + accept + generate
     await supabase.from('rewizje').update({ is_locked: true, locked_at: new Date().toISOString() }).eq('id', rewizja.id);
