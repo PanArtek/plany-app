@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Pencil, Trash2 } from 'lucide-react';
 import { type Pozycja } from '@/actions/pozycje';
-import { type SkladowaRobocizna, type SkladowaMaterial, deleteSkladowaRobocizna, deleteSkladowaMaterial } from '@/actions/skladowe';
+import { type SkladowaMaterial, type SkladowaRobocizna, deleteSkladowaMaterial, deleteSkladowaRobocizna } from '@/actions/skladowe';
 import { obliczCenePozycji } from '@/lib/utils/pozycje';
 import { SkladoweSection, type SkladowaItem } from './skladowe-section';
 import { SkladowaPanel } from './panels/skladowa-panel';
@@ -19,8 +19,6 @@ import {
   SlidePanelContent,
   SlidePanelFooter,
 } from '@/components/ui/slide-panel';
-
-type SkladowaType = 'robocizna' | 'material';
 
 interface PozycjaDetailPanelProps {
   pozycja: Pozycja;
@@ -41,42 +39,19 @@ function formatCena(value: number): string {
 export function PozycjaDetailPanel({ pozycja, open, onOpenChange, onEdit, onDelete }: PozycjaDetailPanelProps) {
   const { robocizna, material, cena } = obliczCenePozycji(pozycja);
 
-  // Składowe panel state
-  const [panelType, setPanelType] = useState<'robocizna' | 'material' | null>(null);
+  // Skladowe panel state
+  const [panelType, setPanelType] = useState<'material' | 'robocizna' | null>(null);
   const [panelMode, setPanelMode] = useState<'add' | 'edit'>('add');
-  const [editingRobocizna, setEditingRobocizna] = useState<SkladowaRobocizna | undefined>();
   const [editingMaterial, setEditingMaterial] = useState<SkladowaMaterial | undefined>();
+  const [editingRobocizna, setEditingRobocizna] = useState<SkladowaRobocizna | undefined>();
 
   // Delete panel state
   const [deletePanelOpen, setDeletePanelOpen] = useState(false);
-  const [deletingSkladowa, setDeletingSkladowa] = useState<{ id: string; nazwa: string } | null>(null);
-  const [deletingSkladowaType, setDeletingSkladowaType] = useState<SkladowaType>('robocizna');
+  const [deletingSkladowa, setDeletingSkladowa] = useState<{ id: string; nazwa: string; type: 'material' | 'robocizna' } | null>(null);
 
   // Extract branza.kategoria.podkategoria from kod
   const kodParts = pozycja.kod.split('.');
   const breadcrumb = kodParts.slice(0, -1).join('.');
-
-  // Robocizna handlers
-  const handleAddRobocizna = () => {
-    setPanelType('robocizna');
-    setPanelMode('add');
-    setEditingRobocizna(undefined);
-  };
-
-  const handleEditRobocizna = (item: SkladowaItem) => {
-    const skladowa = pozycja.biblioteka_skladowe_robocizna?.find(s => s.id === item.id);
-    if (skladowa) {
-      setPanelType('robocizna');
-      setPanelMode('edit');
-      setEditingRobocizna(skladowa as SkladowaRobocizna);
-    }
-  };
-
-  const handleDeleteRobocizna = (item: SkladowaItem) => {
-    setDeletingSkladowa({ id: item.id, nazwa: item.opis || '—' });
-    setDeletingSkladowaType('robocizna');
-    setDeletePanelOpen(true);
-  };
 
   // Material handlers
   const handleAddMaterial = () => {
@@ -95,15 +70,35 @@ export function PozycjaDetailPanel({ pozycja, open, onOpenChange, onEdit, onDele
   };
 
   const handleDeleteMaterial = (item: SkladowaItem) => {
-    setDeletingSkladowa({ id: item.id, nazwa: item.nazwa || '—' });
-    setDeletingSkladowaType('material');
+    setDeletingSkladowa({ id: item.id, nazwa: item.nazwa || '—', type: 'material' });
+    setDeletePanelOpen(true);
+  };
+
+  // Robocizna handlers
+  const handleAddRobocizna = () => {
+    setPanelType('robocizna');
+    setPanelMode('add');
+    setEditingRobocizna(undefined);
+  };
+
+  const handleEditRobocizna = (item: SkladowaItem) => {
+    const skladowa = pozycja.biblioteka_skladowe_robocizna?.find(s => s.id === item.id);
+    if (skladowa) {
+      setPanelType('robocizna');
+      setPanelMode('edit');
+      setEditingRobocizna(skladowa as SkladowaRobocizna);
+    }
+  };
+
+  const handleDeleteRobocizna = (item: SkladowaItem) => {
+    setDeletingSkladowa({ id: item.id, nazwa: item.opis || '—', type: 'robocizna' });
     setDeletePanelOpen(true);
   };
 
   const handleConfirmDeleteSkladowa = async () => {
     if (!deletingSkladowa) return;
 
-    const result = deletingSkladowaType === 'robocizna'
+    const result = deletingSkladowa.type === 'robocizna'
       ? await deleteSkladowaRobocizna(deletingSkladowa.id)
       : await deleteSkladowaMaterial(deletingSkladowa.id);
 
@@ -115,7 +110,7 @@ export function PozycjaDetailPanel({ pozycja, open, onOpenChange, onEdit, onDele
     }
   };
 
-  const typeLabel = deletingSkladowaType === 'robocizna' ? 'składową robocizny' : 'składową materiałową';
+  const typeLabel = deletingSkladowa?.type === 'robocizna' ? 'składową robociznową' : 'składową materiałową';
 
   return (
     <>
@@ -144,11 +139,16 @@ export function PozycjaDetailPanel({ pozycja, open, onOpenChange, onEdit, onDele
             </div>
           )}
 
-          {/* Składowe list */}
+          {/* Robocizna — lista składowych */}
           <SkladoweSection
             title="Robocizna"
-            items={pozycja.biblioteka_skladowe_robocizna || []}
+            items={(pozycja.biblioteka_skladowe_robocizna || []).map(r => ({
+              id: r.id,
+              opis: r.opis,
+              cena: r.cena,
+            }))}
             suma={robocizna}
+            type="robocizna"
             variant="primary"
             editable
             onAdd={handleAddRobocizna}
@@ -160,6 +160,7 @@ export function PozycjaDetailPanel({ pozycja, open, onOpenChange, onEdit, onDele
             title="Materiały"
             items={pozycja.biblioteka_skladowe_materialy || []}
             suma={material}
+            type="material"
             variant="secondary"
             editable
             onAdd={handleAddMaterial}
@@ -201,17 +202,6 @@ export function PozycjaDetailPanel({ pozycja, open, onOpenChange, onEdit, onDele
       </SlidePanel>
 
       {/* Panels */}
-      {panelType === 'robocizna' && (
-        <SkladowaPanel
-          type="robocizna"
-          open={panelType === 'robocizna'}
-          onOpenChange={(open) => !open && setPanelType(null)}
-          mode={panelMode}
-          pozycjaId={pozycja.id}
-          skladowa={editingRobocizna}
-        />
-      )}
-
       {panelType === 'material' && (
         <SkladowaPanel
           type="material"
@@ -220,6 +210,17 @@ export function PozycjaDetailPanel({ pozycja, open, onOpenChange, onEdit, onDele
           mode={panelMode}
           pozycjaId={pozycja.id}
           skladowa={editingMaterial}
+        />
+      )}
+
+      {panelType === 'robocizna' && (
+        <SkladowaPanel
+          type="robocizna"
+          open={panelType === 'robocizna'}
+          onOpenChange={(open) => !open && setPanelType(null)}
+          mode={panelMode}
+          pozycjaId={pozycja.id}
+          skladowa={editingRobocizna}
         />
       )}
 

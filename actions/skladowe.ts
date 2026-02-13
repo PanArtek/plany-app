@@ -3,10 +3,10 @@
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import {
-  createSkladowaRobociznaSchema,
   createSkladowaMaterialSchema,
-  type CreateSkladowaRobociznaInput,
+  createSkladowaRobociznaSchema,
   type CreateSkladowaMaterialInput,
+  type CreateSkladowaRobociznaInput,
 } from '@/lib/validations/skladowe';
 
 export type ActionResult<T = unknown> = {
@@ -16,18 +16,6 @@ export type ActionResult<T = unknown> = {
 };
 
 // Types matching database schema
-export interface SkladowaRobocizna {
-  id: string;
-  lp: number;
-  opis: string;
-  pozycja_biblioteka_id: string;
-  podwykonawca_id: string | null;
-  stawka_domyslna: number | null;
-  norma_domyslna: number | null;
-  jednostka: string | null;
-  created_at: string | null;
-}
-
 export interface SkladowaMaterial {
   id: string;
   lp: number;
@@ -38,6 +26,16 @@ export interface SkladowaMaterial {
   cena_domyslna: number | null;
   norma_domyslna: number | null;
   jednostka: string | null;
+  created_at: string | null;
+}
+
+export interface SkladowaRobocizna {
+  id: string;
+  lp: number;
+  opis: string;
+  pozycja_biblioteka_id: string;
+  cena: number;
+  podwykonawca_id: string | null;
   created_at: string | null;
 }
 
@@ -54,7 +52,7 @@ export async function createSkladowaRobocizna(
 
   const supabase = await createClient();
 
-  // Get next lp for this pozycja
+  // Get next lp
   const { data: maxLpData } = await supabase
     .from('biblioteka_skladowe_robocizna')
     .select('lp')
@@ -71,9 +69,8 @@ export async function createSkladowaRobocizna(
       pozycja_biblioteka_id: pozycjaId,
       lp: nextLp,
       opis: parsed.data.opis,
-      norma_domyslna: parsed.data.norma_domyslna,
-      jednostka: parsed.data.jednostka,
-      stawka_domyslna: parsed.data.stawka_domyslna ?? null,
+      cena: parsed.data.cena,
+      podwykonawca_id: parsed.data.podwykonawca_id ?? null,
     })
     .select()
     .single();
@@ -81,6 +78,9 @@ export async function createSkladowaRobocizna(
   if (error) {
     return { success: false, error: error.message };
   }
+
+  // Update cached cena_robocizny on pozycja
+  await recalcPozycjaCenaRobocizny(supabase, pozycjaId);
 
   revalidatePath('/pozycje');
   return { success: true, data: data as SkladowaRobocizna };
@@ -101,9 +101,8 @@ export async function updateSkladowaRobocizna(
     .from('biblioteka_skladowe_robocizna')
     .update({
       opis: parsed.data.opis,
-      norma_domyslna: parsed.data.norma_domyslna,
-      jednostka: parsed.data.jednostka,
-      stawka_domyslna: parsed.data.stawka_domyslna ?? null,
+      cena: parsed.data.cena,
+      podwykonawca_id: parsed.data.podwykonawca_id ?? null,
     })
     .eq('id', id)
     .select()
@@ -112,6 +111,9 @@ export async function updateSkladowaRobocizna(
   if (error) {
     return { success: false, error: error.message };
   }
+
+  // Update cached cena_robocizny on pozycja
+  await recalcPozycjaCenaRobocizny(supabase, data.pozycja_biblioteka_id as string);
 
   revalidatePath('/pozycje');
   return { success: true, data: data as SkladowaRobocizna };
@@ -122,6 +124,13 @@ export async function deleteSkladowaRobocizna(
 ): Promise<ActionResult> {
   const supabase = await createClient();
 
+  // Get pozycja_id before deleting
+  const { data: skladowa } = await supabase
+    .from('biblioteka_skladowe_robocizna')
+    .select('pozycja_biblioteka_id')
+    .eq('id', id)
+    .single();
+
   const { error } = await supabase
     .from('biblioteka_skladowe_robocizna')
     .delete()
@@ -131,8 +140,31 @@ export async function deleteSkladowaRobocizna(
     return { success: false, error: error.message };
   }
 
+  // Update cached cena_robocizny on pozycja
+  if (skladowa) {
+    await recalcPozycjaCenaRobocizny(supabase, skladowa.pozycja_biblioteka_id as string);
+  }
+
   revalidatePath('/pozycje');
   return { success: true };
+}
+
+// Recalculate cached cena_robocizny = SUM(skladowe.cena)
+async function recalcPozycjaCenaRobocizny(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  pozycjaId: string
+) {
+  const { data: skladowe } = await supabase
+    .from('biblioteka_skladowe_robocizna')
+    .select('cena')
+    .eq('pozycja_biblioteka_id', pozycjaId);
+
+  const sum = (skladowe || []).reduce((acc, s) => acc + Number(s.cena ?? 0), 0);
+
+  await supabase
+    .from('pozycje_biblioteka')
+    .update({ cena_robocizny: sum })
+    .eq('id', pozycjaId);
 }
 
 // ==================== MATERIAŁY ====================

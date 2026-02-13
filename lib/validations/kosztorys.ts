@@ -9,9 +9,9 @@ export const updateKosztorysPozycjaSchema = z.object({
   notatki: z.string().optional(),
 });
 
-// Schema for updating labor component
-export const updateSkladowaRSchema = z.object({
-  stawka: z.number().min(0, "Stawka nie może być ujemna"),
+// Schema for updating flat labor price
+export const updateCenaRobociznySchema = z.object({
+  cena_robocizny: z.number().min(0, 'Cena nie może być ujemna'),
   podwykonawca_id: z.string().uuid().nullable().optional(),
 });
 
@@ -19,6 +19,12 @@ export const updateSkladowaRSchema = z.object({
 export const updateSkladowaMSchema = z.object({
   cena: z.number().min(0, "Cena nie może być ujemna"),
   dostawca_id: z.string().uuid().nullable().optional(),
+});
+
+// Schema for updating labor component in kosztorys
+export const updateSkladowaRSchema = z.object({
+  cena: z.number().min(0, "Cena nie może być ujemna"),
+  podwykonawca_id: z.string().uuid().nullable().optional(),
 });
 
 // Schema for library position filters
@@ -33,6 +39,7 @@ export const libraryFiltersSchema = z.object({
 
 // TypeScript types
 export type UpdateKosztorysPozycjaInput = z.infer<typeof updateKosztorysPozycjaSchema>;
-export type UpdateSkladowaRInput = z.infer<typeof updateSkladowaRSchema>;
+export type UpdateCenaRobociznyInput = z.infer<typeof updateCenaRobociznySchema>;
 export type UpdateSkladowaMInput = z.infer<typeof updateSkladowaMSchema>;
+export type UpdateSkladowaRInput = z.infer<typeof updateSkladowaRSchema>;
 export type LibraryFilters = z.infer<typeof libraryFiltersSchema>;

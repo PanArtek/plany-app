@@ -176,7 +176,7 @@ export async function getPodwykonawcaPozycje(podwykonawcaId: string): Promise<Po
   const supabase = await createClient();
 
   const { data, error } = await supabase
-    .from('biblioteka_skladowe_robocizna')
+    .from('stawki_podwykonawcow')
     .select(`
       pozycje_biblioteka!pozycja_biblioteka_id(id, kod, nazwa)
     `)
@@ -329,16 +329,16 @@ export async function deletePodwykonawca(id: string): Promise<ActionResult> {
     };
   }
 
-  // Check usage in pozycje
+  // Check usage in kosztorys pozycje
   const { count: pozycjeCount } = await supabase
-    .from('biblioteka_skladowe_robocizna')
+    .from('kosztorys_pozycje')
     .select('*', { count: 'exact', head: true })
     .eq('podwykonawca_id', id);
 
   if (pozycjeCount && pozycjeCount > 0) {
     return {
       success: false,
-      error: `Nie można usunąć - podwykonawca jest używany w ${pozycjeCount} pozycjach`,
+      error: `Nie można usunąć - podwykonawca jest używany w ${pozycjeCount} pozycjach kosztorysu`,
     };
   }
 

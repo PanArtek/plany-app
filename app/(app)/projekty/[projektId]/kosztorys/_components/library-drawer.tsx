@@ -305,7 +305,7 @@ export function LibraryDrawer({
                       {pos.jednostka}
                     </span>
                     <span className="text-[11px] text-blue-400/70 bg-blue-500/[0.08] px-1.5 py-0.5 rounded text-center">
-                      R:{pos.skladoweRCount}
+                      R:{pos.skladoweRCount || '—'}
                     </span>
                     <span className="text-[11px] text-emerald-400/70 bg-emerald-500/[0.08] px-1.5 py-0.5 rounded text-center">
                       M:{pos.skladoweMCount}

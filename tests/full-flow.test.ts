@@ -12,6 +12,7 @@ import {
   createStawkaPodwykonawcy,
   createBibliotekaSkladowaM,
   createBibliotekaSkladowaR,
+  updatePozycjaCenaRobocizny,
   createProjekt,
   createRewizja,
   createKosztorysPozycja,
@@ -74,15 +75,21 @@ describe('Full end-to-end chain: library → kosztorys → accept → umowy + za
     await createStawkaPodwykonawcy({ podwykonawca_id: kowalski.id, pozycja_biblioteka_id: pSciana.id, stawka: 45.0 });
     await createStawkaPodwykonawcy({ podwykonawca_id: malarz.id, pozycja_biblioteka_id: pMalowanie.id, stawka: 20.0 });
 
-    // Biblioteka składowe — Ściana GK
+    // Biblioteka składowe materiały — Ściana GK
     await createBibliotekaSkladowaM({ pozycja_biblioteka_id: pSciana.id, lp: 1, nazwa: 'Profil C50', produkt_id: profil.id, dostawca_id: bricoman.id, cena_domyslna: 8.5, norma_domyslna: 0.9, jednostka: 'mb' });
     await createBibliotekaSkladowaM({ pozycja_biblioteka_id: pSciana.id, lp: 2, nazwa: 'Płyta GK 12.5', produkt_id: plyta.id, dostawca_id: bricoman.id, cena_domyslna: 22.0, norma_domyslna: 1.1, jednostka: 'm2' });
-    await createBibliotekaSkladowaR({ pozycja_biblioteka_id: pSciana.id, lp: 1, opis: 'Montaż profili', podwykonawca_id: kowalski.id, stawka_domyslna: 15.0, norma_domyslna: 0.3, jednostka: 'rbh' });
-    await createBibliotekaSkladowaR({ pozycja_biblioteka_id: pSciana.id, lp: 2, opis: 'Szpachlowanie', podwykonawca_id: kowalski.id, stawka_domyslna: 12.0, norma_domyslna: 0.2, jednostka: 'rbh' });
 
-    // Biblioteka składowe — Malowanie
+    // Biblioteka labor components for Ściana GK: 4.50 + 2.40 = 6.90
+    await createBibliotekaSkladowaR({ pozycja_biblioteka_id: pSciana.id, lp: 1, opis: 'Montaż profili', cena: 4.50 });
+    await createBibliotekaSkladowaR({ pozycja_biblioteka_id: pSciana.id, lp: 2, opis: 'Szpachlowanie', cena: 2.40 });
+    await updatePozycjaCenaRobocizny(pSciana.id, 6.90);
+
+    // Biblioteka składowe materiały — Malowanie
     await createBibliotekaSkladowaM({ pozycja_biblioteka_id: pMalowanie.id, lp: 1, nazwa: 'Farba', produkt_id: farba.id, dostawca_id: sig.id, cena_domyslna: 35.0, norma_domyslna: 0.15, jednostka: 'l' });
-    await createBibliotekaSkladowaR({ pozycja_biblioteka_id: pMalowanie.id, lp: 1, opis: 'Malowanie', podwykonawca_id: malarz.id, stawka_domyslna: 20.0, norma_domyslna: 0.1, jednostka: 'rbh' });
+
+    // Biblioteka labor components for Malowanie: 2.00
+    await createBibliotekaSkladowaR({ pozycja_biblioteka_id: pMalowanie.id, lp: 1, opis: 'Malowanie', cena: 2.00 });
+    await updatePozycjaCenaRobocizny(pMalowanie.id, 2.00);
 
     // Projekt + Rewizja
     const projekt = await createProjekt(orgId, { nazwa: 'Biuro Centrum', powierzchnia: 1000 });
@@ -104,8 +111,17 @@ describe('Full end-to-end chain: library → kosztorys → accept → umowy + za
 
     await createKosztorysSkladowaM({ kosztorys_pozycja_id: kpScianaId, lp: 1, nazwa: 'Profil C50', produkt_id: profil.id, dostawca_id: bricoman.id, cena: 8.5, norma: 0.9 });
     await createKosztorysSkladowaM({ kosztorys_pozycja_id: kpScianaId, lp: 2, nazwa: 'Płyta GK 12.5', produkt_id: plyta.id, dostawca_id: bricoman.id, cena: 22.0, norma: 1.1 });
-    await createKosztorysSkladowaR({ kosztorys_pozycja_id: kpScianaId, lp: 1, opis: 'Montaż profili', podwykonawca_id: kowalski.id, stawka: 15.0, norma: 0.3 });
-    await createKosztorysSkladowaR({ kosztorys_pozycja_id: kpScianaId, lp: 2, opis: 'Szpachlowanie', podwykonawca_id: kowalski.id, stawka: 12.0, norma: 0.2 });
+
+    // Kosztorys labor components for Ściana GK: 4.50 + 2.40 = 6.90
+    await createKosztorysSkladowaR({ kosztorys_pozycja_id: kpScianaId, lp: 1, opis: 'Montaż profili', cena: 4.50, cena_zrodlowa: 4.50 });
+    await createKosztorysSkladowaR({ kosztorys_pozycja_id: kpScianaId, lp: 2, opis: 'Szpachlowanie', cena: 2.40, cena_zrodlowa: 2.40 });
+
+    // Set podwykonawca + source tracking on kosztorys_pozycje
+    await supabase.from('kosztorys_pozycje').update({
+      cena_robocizny: 6.90,
+      cena_robocizny_zrodlo: 'podwykonawca',
+      podwykonawca_id: kowalski.id,
+    }).eq('id', kpScianaId);
 
     // Kosztorys — Malowanie (500 m2, 25%)
     const kpMal = await createKosztorysPozycja(orgId, {
@@ -120,7 +136,16 @@ describe('Full end-to-end chain: library → kosztorys → accept → umowy + za
     kpMalowanieId = kpMal.id;
 
     await createKosztorysSkladowaM({ kosztorys_pozycja_id: kpMalowanieId, lp: 1, nazwa: 'Farba', produkt_id: farba.id, dostawca_id: sig.id, cena: 35.0, norma: 0.15 });
-    await createKosztorysSkladowaR({ kosztorys_pozycja_id: kpMalowanieId, lp: 1, opis: 'Malowanie', podwykonawca_id: malarz.id, stawka: 20.0, norma: 0.1 });
+
+    // Kosztorys labor components for Malowanie: 2.00
+    await createKosztorysSkladowaR({ kosztorys_pozycja_id: kpMalowanieId, lp: 1, opis: 'Malowanie', cena: 2.00, cena_zrodlowa: 2.00 });
+
+    // Set podwykonawca + source tracking on kosztorys_pozycje
+    await supabase.from('kosztorys_pozycje').update({
+      cena_robocizny: 2.00,
+      cena_robocizny_zrodlo: 'podwykonawca',
+      podwykonawca_id: malarz.id,
+    }).eq('id', kpMalowanieId);
 
     // Lock + transition + generate
     await supabase.from('rewizje').update({ is_locked: true, locked_at: new Date().toISOString() }).eq('id', rewizjaId);
@@ -139,7 +164,7 @@ describe('Full end-to-end chain: library → kosztorys → accept → umowy + za
     const { data: sciana } = await supabase.from('kosztorys_pozycje_view').select('*').eq('id', kpScianaId).single();
     // m_jedn = 0.9×8.50 + 1.1×22.00 = 7.65 + 24.20 = 31.85
     expect(Number(sciana!.m_jednostkowy)).toBeCloseTo(31.85, 1);
-    // r_jedn = 0.3×15 + 0.2×12 = 4.50 + 2.40 = 6.90
+    // r_jedn = 6.90 (flat)
     expect(Number(sciana!.r_jednostkowy)).toBeCloseTo(6.9, 1);
     // razem = (31.85 + 6.90) × 320 × 1.30 = 16120
     expect(Number(sciana!.razem)).toBeCloseTo(16120.0, 0);
@@ -148,7 +173,7 @@ describe('Full end-to-end chain: library → kosztorys → accept → umowy + za
     const { data: malowanie } = await supabase.from('kosztorys_pozycje_view').select('*').eq('id', kpMalowanieId).single();
     // m_jedn = 0.15 × 35 = 5.25
     expect(Number(malowanie!.m_jednostkowy)).toBeCloseTo(5.25, 1);
-    // r_jedn = 0.1 × 20 = 2.00
+    // r_jedn = 2.00 (flat)
     expect(Number(malowanie!.r_jednostkowy)).toBeCloseTo(2.0, 1);
     // razem = (5.25 + 2.00) × 500 × 1.25 = 4531.25
     expect(Number(malowanie!.razem)).toBeCloseTo(4531.25, 0);
@@ -220,8 +245,8 @@ describe('Full end-to-end chain: library → kosztorys → accept → umowy + za
 
   it('budget consistency across layers', async () => {
     // Kosztorys labor total (no markup)
-    // Ściana: (0.3×15 + 0.2×12) × 320 = 6.90 × 320 = 2208
-    // Malowanie: (0.1×20) × 500 = 2.00 × 500 = 1000
+    // Ściana: 6.90 × 320 = 2208
+    // Malowanie: 2.00 × 500 = 1000
     const expectedLaborTotal = 2208 + 1000; // 3208
 
     // Sum umowa_pozycje values (ilosc × stawka)

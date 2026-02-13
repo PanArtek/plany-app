@@ -5,7 +5,7 @@
  * - Additional products (construction materials)
  * - Additional suppliers with prices
  * - Additional subcontractors with rates
- * - Library position components (biblioteka_skladowe_materialy + robocizna)
+ * - Library position components (biblioteka_skladowe_materialy + cena_robocizny)
  *   This is the CRITICAL missing piece - without these, kosztorys has no cost breakdown.
  *
  * Usage:
@@ -100,12 +100,10 @@ async function cleanup() {
     'umowa_pozycje_zrodla',
     'umowa_pozycje',
     'umowy',
-    'kosztorys_skladowe_robocizna',
     'kosztorys_skladowe_materialy',
     'kosztorys_pozycje',
     'rewizje',
     'projekty',
-    'biblioteka_skladowe_robocizna',
     'biblioteka_skladowe_materialy',
     'stawki_podwykonawcow',
     'ceny_dostawcow',
@@ -444,18 +442,10 @@ interface SkladowaMSeed {
   jednostka: string;
 }
 
-interface SkladowaRSeed {
-  opis: string;
-  norma_domyslna: number; // rbh per unit
-  stawka_domyslna: number; // PLN/rbh
-  jednostka: string;
-  podwykonawca_nazwa?: string;
-}
-
 interface PozycjaSkladoweSeed {
   kod: string; // pozycja_biblioteka.kod
   materialy: SkladowaMSeed[];
-  robocizna: SkladowaRSeed[];
+  cena_robocizny: number; // flat labor cost per unit (PLN)
 }
 
 const SKLADOWE_SEED: PozycjaSkladoweSeed[] = [
@@ -471,11 +461,7 @@ const SKLADOWE_SEED: PozycjaSkladoweSeed[] = [
       { nazwa: 'Masa szpachlowa', sku: 'GK-MASA-SZPACHL', norma_domyslna: 0.3, cena_domyslna: 1.85, jednostka: 'kg' },
       { nazwa: 'Wełna mineralna 50mm', sku: 'GK-WELNA-50', norma_domyslna: 1.0, cena_domyslna: 12.50, jednostka: 'm²' },
     ],
-    robocizna: [
-      { opis: 'Montaż profili CW+UW', norma_domyslna: 0.25, stawka_domyslna: 45.00, jednostka: 'rbh', podwykonawca_nazwa: 'Ekipa GK "Budmont"' },
-      { opis: 'Montaż płyt GK', norma_domyslna: 0.20, stawka_domyslna: 45.00, jednostka: 'rbh', podwykonawca_nazwa: 'Ekipa GK "Budmont"' },
-      { opis: 'Szpachlowanie i szlifowanie', norma_domyslna: 0.15, stawka_domyslna: 45.00, jednostka: 'rbh', podwykonawca_nazwa: 'Ekipa GK "Budmont"' },
-    ],
+    cena_robocizny: 27.00, // (45×0.25) + (45×0.20) + (45×0.15)
   },
 
   // ---------- BUD.02.01.003 - Ścianka GK podwójna CW75 2x12.5mm (m²) ----------
@@ -490,11 +476,7 @@ const SKLADOWE_SEED: PozycjaSkladoweSeed[] = [
       { nazwa: 'Masa szpachlowa', sku: 'GK-MASA-SZPACHL', norma_domyslna: 0.3, cena_domyslna: 1.85, jednostka: 'kg' },
       { nazwa: 'Wełna mineralna 100mm', sku: 'GK-WELNA-100', norma_domyslna: 1.0, cena_domyslna: 22.00, jednostka: 'm²' },
     ],
-    robocizna: [
-      { opis: 'Montaż profili CW+UW', norma_domyslna: 0.25, stawka_domyslna: 45.00, jednostka: 'rbh', podwykonawca_nazwa: 'Ekipa GK "Budmont"' },
-      { opis: 'Montaż podwójnych płyt GK', norma_domyslna: 0.35, stawka_domyslna: 45.00, jednostka: 'rbh', podwykonawca_nazwa: 'Ekipa GK "Budmont"' },
-      { opis: 'Szpachlowanie i szlifowanie', norma_domyslna: 0.15, stawka_domyslna: 45.00, jednostka: 'rbh', podwykonawca_nazwa: 'Ekipa GK "Budmont"' },
-    ],
+    cena_robocizny: 33.75, // (45×0.25) + (45×0.35) + (45×0.15)
   },
 
   // ---------- BUD.05.01.001 - Sufit podwieszany kasetonowy mineralny 60x60 (m²) ----------
@@ -507,10 +489,7 @@ const SKLADOWE_SEED: PozycjaSkladoweSeed[] = [
       { nazwa: 'Zawieszka sufitowa', sku: 'SUF-ZAWIESZKA', norma_domyslna: 1.2, cena_domyslna: 1.40, jednostka: 'szt' },
       { nazwa: 'Profil UD 28 obwodowy', sku: 'GK-UD28', norma_domyslna: 0.4, cena_domyslna: 5.80, jednostka: 'mb' },
     ],
-    robocizna: [
-      { opis: 'Montaż rusztu sufitowego', norma_domyslna: 0.25, stawka_domyslna: 50.00, jednostka: 'rbh', podwykonawca_nazwa: 'Ekipa GK "Budmont"' },
-      { opis: 'Montaż kasetonów', norma_domyslna: 0.10, stawka_domyslna: 50.00, jednostka: 'rbh', podwykonawca_nazwa: 'Ekipa GK "Budmont"' },
-    ],
+    cena_robocizny: 17.50, // (50×0.25) + (50×0.10)
   },
 
   // ---------- BUD.05.02.001 - Sufit z płyt GK na ruszcie pojedynczym CD60 (m²) ----------
@@ -524,11 +503,7 @@ const SKLADOWE_SEED: PozycjaSkladoweSeed[] = [
       { nazwa: 'Wkręty do GK', sku: 'GK-WKRETY-KPL', norma_domyslna: 0.02, cena_domyslna: 32.00, jednostka: 'op' },
       { nazwa: 'Masa szpachlowa', sku: 'GK-MASA-SZPACHL', norma_domyslna: 0.5, cena_domyslna: 1.85, jednostka: 'kg' },
     ],
-    robocizna: [
-      { opis: 'Montaż rusztu CD60', norma_domyslna: 0.30, stawka_domyslna: 50.00, jednostka: 'rbh', podwykonawca_nazwa: 'Ekipa GK "Budmont"' },
-      { opis: 'Montaż płyt GK sufit', norma_domyslna: 0.25, stawka_domyslna: 50.00, jednostka: 'rbh', podwykonawca_nazwa: 'Ekipa GK "Budmont"' },
-      { opis: 'Szpachlowanie sufitu', norma_domyslna: 0.20, stawka_domyslna: 50.00, jednostka: 'rbh', podwykonawca_nazwa: 'Ekipa GK "Budmont"' },
-    ],
+    cena_robocizny: 37.50, // (50×0.30) + (50×0.25) + (50×0.20)
   },
 
   // ---------- BUD.04.01.001 - Wylewka samopoziomująca gr. 3-5mm (m²) ----------
@@ -538,10 +513,7 @@ const SKLADOWE_SEED: PozycjaSkladoweSeed[] = [
       { nazwa: 'Wylewka samopoziomująca', sku: 'POD-WYLEWKA-25', norma_domyslna: 6.0, cena_domyslna: 1.60, jednostka: 'kg' },
       { nazwa: 'Grunt pod wylewkę', sku: 'POD-GRUNT', norma_domyslna: 0.15, cena_domyslna: 4.20, jednostka: 'l' },
     ],
-    robocizna: [
-      { opis: 'Przygotowanie podłoża + gruntowanie', norma_domyslna: 0.10, stawka_domyslna: 40.00, jednostka: 'rbh', podwykonawca_nazwa: 'Tynki-Expres' },
-      { opis: 'Wykonanie wylewki samopoziomującej', norma_domyslna: 0.15, stawka_domyslna: 40.00, jednostka: 'rbh', podwykonawca_nazwa: 'Tynki-Expres' },
-    ],
+    cena_robocizny: 10.00, // (40×0.10) + (40×0.15)
   },
 
   // ---------- BUD.04.02.001 - Wykładzina dywanowa płytkowa 50x50cm (m²) ----------
@@ -551,9 +523,7 @@ const SKLADOWE_SEED: PozycjaSkladoweSeed[] = [
       { nazwa: 'Wykładzina dywanowa płytkowa', sku: 'POD-WYKLADZINA', norma_domyslna: 1.05, cena_domyslna: 42.00, jednostka: 'm²' },
       { nazwa: 'Klej do wykładzin', sku: 'POD-KLEJ-WYKL', norma_domyslna: 0.4, cena_domyslna: 5.60, jednostka: 'kg' },
     ],
-    robocizna: [
-      { opis: 'Układanie wykładziny płytkowej', norma_domyslna: 0.20, stawka_domyslna: 38.00, jednostka: 'rbh', podwykonawca_nazwa: 'Płytkarze OK' },
-    ],
+    cena_robocizny: 7.60, // (38×0.20)
   },
 
   // ---------- BUD.04.03.001 - Posadzka z gresu technicznego 60x60 (m²) ----------
@@ -564,10 +534,7 @@ const SKLADOWE_SEED: PozycjaSkladoweSeed[] = [
       { nazwa: 'Klej Atlas Plus', sku: 'PLT-KLEJ-25KG', norma_domyslna: 5.0, cena_domyslna: 1.40, jednostka: 'kg' },
       { nazwa: 'Fuga Mapei', sku: 'PLT-FUGA-5KG', norma_domyslna: 0.5, cena_domyslna: 6.80, jednostka: 'kg' },
     ],
-    robocizna: [
-      { opis: 'Układanie gresu 60x60', norma_domyslna: 0.40, stawka_domyslna: 55.00, jednostka: 'rbh', podwykonawca_nazwa: 'Płytkarze OK' },
-      { opis: 'Fugowanie', norma_domyslna: 0.10, stawka_domyslna: 55.00, jednostka: 'rbh', podwykonawca_nazwa: 'Płytkarze OK' },
-    ],
+    cena_robocizny: 27.50, // (55×0.40) + (55×0.10)
   },
 
   // ---------- ELE.03.01.001 → find first ELE.03.01 position: gniazdo ----------
@@ -579,11 +546,7 @@ const SKLADOWE_SEED: PozycjaSkladoweSeed[] = [
       { nazwa: 'Przewód YDYp 3x2.5', sku: 'ELE-YDYP-3X25', norma_domyslna: 8.0, cena_domyslna: 3.40, jednostka: 'mb' },
       { nazwa: 'Peszel fi25', sku: 'ELE-PESZEL-25', norma_domyslna: 8.0, cena_domyslna: 1.10, jednostka: 'mb' },
     ],
-    robocizna: [
-      { opis: 'Wykucie bruzd i montaż puszki', norma_domyslna: 0.40, stawka_domyslna: 55.00, jednostka: 'rbh', podwykonawca_nazwa: 'Elektro-Mont' },
-      { opis: 'Ułożenie przewodów', norma_domyslna: 0.30, stawka_domyslna: 55.00, jednostka: 'rbh', podwykonawca_nazwa: 'Elektro-Mont' },
-      { opis: 'Podłączenie osprzętu', norma_domyslna: 0.20, stawka_domyslna: 55.00, jednostka: 'rbh', podwykonawca_nazwa: 'Elektro-Mont' },
-    ],
+    cena_robocizny: 49.50, // (55×0.40) + (55×0.30) + (55×0.20)
   },
 
   // ---------- ELE.02.01.001 → oprawa LED ----------
@@ -593,10 +556,7 @@ const SKLADOWE_SEED: PozycjaSkladoweSeed[] = [
       { nazwa: 'Panel LED 60x60 40W', sku: 'ELE-LED-60X60', norma_domyslna: 1.0, cena_domyslna: 89.00, jednostka: 'szt' },
       { nazwa: 'Przewód YDYp 3x1.5', sku: 'ELE-YDYP-3X15', norma_domyslna: 5.0, cena_domyslna: 2.10, jednostka: 'mb' },
     ],
-    robocizna: [
-      { opis: 'Montaż oprawy LED w suficie', norma_domyslna: 0.30, stawka_domyslna: 55.00, jednostka: 'rbh', podwykonawca_nazwa: 'Elektro-Mont' },
-      { opis: 'Podłączenie i test', norma_domyslna: 0.15, stawka_domyslna: 55.00, jednostka: 'rbh', podwykonawca_nazwa: 'Elektro-Mont' },
-    ],
+    cena_robocizny: 24.75, // (55×0.30) + (55×0.15)
   },
 
   // ---------- ELE.01.01.001 → korytka kablowe H100 ----------
@@ -605,27 +565,21 @@ const SKLADOWE_SEED: PozycjaSkladoweSeed[] = [
     materialy: [
       { nazwa: 'Korytko kablowe H100', sku: 'ELE-KORYTKO-H100', norma_domyslna: 1.0, cena_domyslna: 18.50, jednostka: 'mb' },
     ],
-    robocizna: [
-      { opis: 'Montaż korytka kablowego', norma_domyslna: 0.25, stawka_domyslna: 55.00, jednostka: 'rbh', podwykonawca_nazwa: 'Elektro-Mont' },
-    ],
+    cena_robocizny: 13.75, // (55×0.25)
   },
 
   // ---------- BUD.01.01.001 - Rozbiórka ścian GK (m²) ----------
   {
     kod: 'BUD.01.01.001',
     materialy: [],
-    robocizna: [
-      { opis: 'Demontaż ścian GK z utylizacją', norma_domyslna: 0.20, stawka_domyslna: 35.00, jednostka: 'rbh', podwykonawca_nazwa: 'Ekipa GK "Budmont"' },
-    ],
+    cena_robocizny: 7.00, // (35×0.20)
   },
 
   // ---------- BUD.01.03.001 - Demontaż sufitu kasetonowego (m²) ----------
   {
     kod: 'BUD.01.03.001',
     materialy: [],
-    robocizna: [
-      { opis: 'Demontaż sufitu z utylizacją', norma_domyslna: 0.15, stawka_domyslna: 35.00, jednostka: 'rbh', podwykonawca_nazwa: 'Ekipa GK "Budmont"' },
-    ],
+    cena_robocizny: 5.25, // (35×0.15)
   },
 
   // ---------- SAN.01.01.001 - Rura PP-R fi20 wody zimnej (mb) ----------
@@ -634,9 +588,7 @@ const SKLADOWE_SEED: PozycjaSkladoweSeed[] = [
     materialy: [
       { nazwa: 'Rura PP-R fi20', sku: 'SAN-RURA-PP20', norma_domyslna: 1.1, cena_domyslna: 5.20, jednostka: 'mb' },
     ],
-    robocizna: [
-      { opis: 'Montaż rury PP-R fi20 z uchwytami', norma_domyslna: 0.20, stawka_domyslna: 50.00, jednostka: 'rbh', podwykonawca_nazwa: 'SanTech Instalacje' },
-    ],
+    cena_robocizny: 10.00, // (50×0.20)
   },
 
   // ---------- SAN.02.01.001 - Rura kanalizacyjna PVC fi50 (mb) ----------
@@ -645,9 +597,7 @@ const SKLADOWE_SEED: PozycjaSkladoweSeed[] = [
     materialy: [
       { nazwa: 'Rura PVC fi50', sku: 'SAN-RURA-PVC50', norma_domyslna: 1.1, cena_domyslna: 8.90, jednostka: 'mb' },
     ],
-    robocizna: [
-      { opis: 'Montaż rury kanalizacyjnej fi50', norma_domyslna: 0.18, stawka_domyslna: 50.00, jednostka: 'rbh', podwykonawca_nazwa: 'SanTech Instalacje' },
-    ],
+    cena_robocizny: 9.00, // (50×0.18)
   },
 
   // ---------- TEL (first position - we need to find it) ----------
@@ -698,12 +648,10 @@ async function seedSkladowe() {
     }
   }
 
-  // Cache product IDs and subcontractor IDs
+  // Cache product IDs
   const produktIdCache: Record<string, string> = {};
-  const podwykonawcaIdCache: Record<string, string> = {};
 
   let mCount = 0;
-  let rCount = 0;
 
   for (const seed of SKLADOWE_SEED) {
     // Find pozycja_biblioteka by kod
@@ -721,15 +669,20 @@ async function seedSkladowe() {
 
     const pozycjaId = pozycja.id;
 
-    // Clear existing składowe for this position
+    // Clear existing składowe materiały for this position
     await supabase
       .from('biblioteka_skladowe_materialy')
       .delete()
       .eq('pozycja_biblioteka_id', pozycjaId);
-    await supabase
-      .from('biblioteka_skladowe_robocizna')
-      .delete()
-      .eq('pozycja_biblioteka_id', pozycjaId);
+
+    // Set flat cena_robocizny on pozycja_biblioteka
+    if (seed.cena_robocizny > 0) {
+      const { error: robErr } = await supabase
+        .from('pozycje_biblioteka')
+        .update({ cena_robocizny: seed.cena_robocizny })
+        .eq('id', pozycjaId);
+      if (robErr) log(`  ⚠ cena_robocizny ${seed.kod}: ${robErr.message}`);
+    }
 
     // Insert materiały
     for (let i = 0; i < seed.materialy.length; i++) {
@@ -773,45 +726,10 @@ async function seedSkladowe() {
       else mCount++;
     }
 
-    // Insert robocizna
-    for (let i = 0; i < seed.robocizna.length; i++) {
-      const r = seed.robocizna[i];
-
-      // Resolve podwykonawca_id
-      let podwykonawcaId: string | null = null;
-      if (r.podwykonawca_nazwa) {
-        if (!podwykonawcaIdCache[r.podwykonawca_nazwa]) {
-          const { data } = await supabase
-            .from('podwykonawcy')
-            .select('id')
-            .eq('nazwa', r.podwykonawca_nazwa)
-            .eq('organization_id', ORG_ID)
-            .single();
-          if (data) podwykonawcaIdCache[r.podwykonawca_nazwa] = data.id;
-        }
-        podwykonawcaId = podwykonawcaIdCache[r.podwykonawca_nazwa] || null;
-      }
-
-      const { error } = await supabase
-        .from('biblioteka_skladowe_robocizna')
-        .insert({
-          pozycja_biblioteka_id: pozycjaId,
-          lp: i + 1,
-          opis: r.opis,
-          norma_domyslna: r.norma_domyslna,
-          stawka_domyslna: r.stawka_domyslna,
-          jednostka: r.jednostka,
-          podwykonawca_id: podwykonawcaId,
-        });
-
-      if (error) log(`  ⚠ Robocizna ${seed.kod}/${r.opis}: ${error.message}`);
-      else rCount++;
-    }
-
-    log(`✓ ${seed.kod} → ${seed.materialy.length}M + ${seed.robocizna.length}R`);
+    log(`✓ ${seed.kod} → ${seed.materialy.length}M, cena_robocizny=${seed.cena_robocizny}`);
   }
 
-  log(`Total: ${mCount} material components, ${rCount} labor components`);
+  log(`Total: ${mCount} material components`);
 }
 
 // ---------------------------------------------------------------------------
@@ -938,7 +856,6 @@ async function main() {
     supabase.from('podwykonawcy').select('id', { count: 'exact', head: true }).eq('organization_id', ORG_ID),
     supabase.from('stawki_podwykonawcow').select('id', { count: 'exact', head: true }),
     supabase.from('biblioteka_skladowe_materialy').select('id', { count: 'exact', head: true }),
-    supabase.from('biblioteka_skladowe_robocizna').select('id', { count: 'exact', head: true }),
   ]);
 
   log(`Produkty:          ${counts[0].count}`);
@@ -947,7 +864,6 @@ async function main() {
   log(`Podwykonawcy:      ${counts[3].count}`);
   log(`Stawki:            ${counts[4].count}`);
   log(`Składowe materiały: ${counts[5].count}`);
-  log(`Składowe robocizna: ${counts[6].count}`);
 
   console.log('\n✅ Seed complete! Run `npm run simulate` to create a demo project.');
 }

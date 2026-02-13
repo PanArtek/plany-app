@@ -114,7 +114,7 @@ async function addPositionFromLibrary(
   // 1. Fetch library position
   const { data: libPozycja, error: libError } = await supabase
     .from('pozycje_biblioteka')
-    .select('id, nazwa, jednostka')
+    .select('id, nazwa, jednostka, cena_robocizny')
     .eq('id', pozycjaBibliotekaId)
     .single();
 
@@ -144,38 +144,30 @@ async function addPositionFromLibrary(
 
   const pozycjaId = newPozycja.id;
 
-  // 3. Copy składowe robocizna
-  const { data: libRobocizna } = await supabase
-    .from('biblioteka_skladowe_robocizna')
-    .select('lp, opis, norma_domyslna, stawka_domyslna, jednostka, podwykonawca_id')
+  // 3. Set flat cena_robocizny (priority: cheapest subcontractor > library > 0)
+  const { data: stawki } = await supabase
+    .from('stawki_podwykonawcow')
+    .select('podwykonawca_id, stawka')
     .eq('pozycja_biblioteka_id', pozycjaBibliotekaId)
-    .order('lp');
+    .eq('aktywny', true)
+    .order('stawka', { ascending: true });
 
-  if (libRobocizna && libRobocizna.length > 0) {
-    // Find cheapest subcontractor stawka for this position
-    const { data: stawki } = await supabase
-      .from('stawki_podwykonawcow')
-      .select('podwykonawca_id, stawka')
-      .eq('pozycja_biblioteka_id', pozycjaBibliotekaId)
-      .eq('aktywny', true)
-      .order('stawka', { ascending: true });
+  let cenaRobocizny = libPozycja.cena_robocizny ?? 0;
+  let cenaZrodlo = cenaRobocizny > 0 ? 'biblioteka' : 'reczna';
+  let podwykonawcaId: string | null = null;
 
-    const cheapestStawka = stawki && stawki.length > 0
-      ? { stawka: Number(stawki[0].stawka), podwykonawca_id: stawki[0].podwykonawca_id }
-      : null;
-
-    const robociznaInserts = libRobocizna.map((r) => ({
-      kosztorys_pozycja_id: pozycjaId,
-      lp: Number(r.lp),
-      opis: r.opis,
-      norma: Number(r.norma_domyslna ?? 1),
-      jednostka: r.jednostka || 'rbh',
-      stawka: cheapestStawka?.stawka ?? Number(r.stawka_domyslna ?? 0),
-      podwykonawca_id: cheapestStawka?.podwykonawca_id ?? r.podwykonawca_id ?? null,
-    }));
-
-    await supabase.from('kosztorys_skladowe_robocizna').insert(robociznaInserts);
+  if (stawki && stawki.length > 0) {
+    cenaRobocizny = Number(stawki[0].stawka);
+    cenaZrodlo = 'podwykonawca';
+    podwykonawcaId = stawki[0].podwykonawca_id;
   }
+
+  await supabase.from('kosztorys_pozycje').update({
+    cena_robocizny: cenaRobocizny,
+    cena_robocizny_zrodlowa: cenaRobocizny,
+    cena_robocizny_zrodlo: cenaZrodlo,
+    podwykonawca_id: podwykonawcaId,
+  }).eq('id', pozycjaId);
 
   // 4. Copy składowe materiały
   const { data: libMaterialy } = await supabase

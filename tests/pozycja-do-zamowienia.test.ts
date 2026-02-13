@@ -10,12 +10,11 @@ import {
   createCenaDostawcy,
   createPodwykonawca,
   createBibliotekaSkladowaM,
-  createBibliotekaSkladowaR,
+  updatePozycjaCenaRobocizny,
   createProjekt,
   createRewizja,
   createKosztorysPozycja,
   createKosztorysSkladowaM,
-  createKosztorysSkladowaR,
 } from './helpers/setup';
 
 describe('Kosztorys -> Zamówienia via generate_zamowienia_draft', () => {
@@ -57,13 +56,15 @@ describe('Kosztorys -> Zamówienia via generate_zamowienia_draft', () => {
     await createCenaDostawcy({ dostawca_id: bricoId, produkt_id: profilId, cena_netto: 8.5 });
     await createCenaDostawcy({ dostawca_id: bricoId, produkt_id: plytaId, cena_netto: 22.0 });
 
-    // Need at least one robocizna składowa (podwykonawca) for the test setup to be realistic
+    // Need at least one robocizna (podwykonawca) for the test setup to be realistic
     const kowalski = await createPodwykonawca(orgId, { nazwa: 'Kowalski', specjalizacja: 'gipskarton' });
 
-    // Library templates
+    // Library templates (materials only)
     await createBibliotekaSkladowaM({ pozycja_biblioteka_id: pozycja.id, lp: 1, nazwa: 'Profil C50', produkt_id: profilId, dostawca_id: bricoId, cena_domyslna: 8.5, norma_domyslna: 0.9, jednostka: 'mb' });
     await createBibliotekaSkladowaM({ pozycja_biblioteka_id: pozycja.id, lp: 2, nazwa: 'Płyta GK 12.5', produkt_id: plytaId, dostawca_id: bricoId, cena_domyslna: 22.0, norma_domyslna: 1.1, jednostka: 'm2' });
-    await createBibliotekaSkladowaR({ pozycja_biblioteka_id: pozycja.id, lp: 1, opis: 'Montaż', podwykonawca_id: kowalski.id, stawka_domyslna: 15.0, norma_domyslna: 0.3 });
+
+    // Flat labor price: 15.0*0.3 = 4.50
+    await updatePozycjaCenaRobocizny(pozycja.id, 4.50);
 
     // Projekt + Rewizja
     const projekt = await createProjekt(orgId, { nazwa: 'Biuro Zam', powierzchnia: 500 });
@@ -84,7 +85,9 @@ describe('Kosztorys -> Zamówienia via generate_zamowienia_draft', () => {
 
     await createKosztorysSkladowaM({ kosztorys_pozycja_id: kp.id, lp: 1, nazwa: 'Profil C50', produkt_id: profilId, dostawca_id: bricoId, cena: 8.5, norma: 0.9 });
     await createKosztorysSkladowaM({ kosztorys_pozycja_id: kp.id, lp: 2, nazwa: 'Płyta GK 12.5', produkt_id: plytaId, dostawca_id: bricoId, cena: 22.0, norma: 1.1 });
-    await createKosztorysSkladowaR({ kosztorys_pozycja_id: kp.id, lp: 1, opis: 'Montaż', podwykonawca_id: kowalski.id, stawka: 15.0, norma: 0.3 });
+
+    // Set flat labor price on kosztorys_pozycje: 4.50
+    await supabase.from('kosztorys_pozycje').update({ cena_robocizny: 4.50 }).eq('id', kp.id);
 
     // Lock + accept
     await supabase.from('rewizje').update({ is_locked: true, locked_at: new Date().toISOString() }).eq('id', rewizjaId);
