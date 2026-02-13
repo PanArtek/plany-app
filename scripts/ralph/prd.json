@@ -76,8 +76,8 @@
         "Typecheck passes"
       ],
       "priority": 4,
-      "passes": false,
-      "notes": "",
+      "passes": true,
+      "notes": "Removed robocizna schemas from skladowe.ts and kosztorys.ts. Added updateCenaRobociznySchema. Combined with US-005 for typecheck.",
       "dependsOn": ["US-003"]
     },
     {
@@ -100,8 +100,8 @@
         "Typecheck passes"
       ],
       "priority": 5,
-      "passes": false,
-      "notes": "",
+      "passes": true,
+      "notes": "All robocizna CRUD removed. Actions updated for flat pricing. getKosztorysPozycjaDetail returns cena_robocizny fields. addPositionFromLibrary uses priority pricing. updateCenaRobocizny added. podwykonawcy.ts fixed to use stawki_podwykonawcow.",
       "dependsOn": ["US-004"]
     },
     {
@@ -117,8 +117,8 @@
         "Typecheck passes"
       ],
       "priority": 6,
-      "passes": false,
-      "notes": "",
+      "passes": true,
+      "notes": "obliczCenePozycji uses flat cena_robocizny. PozycjaZeSkladowymi includes cena_robocizny field. Material calculation unchanged.",
       "dependsOn": ["US-005"]
     },
     {
@@ -137,8 +137,8 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 7,
-      "passes": false,
-      "notes": "",
+      "passes": true,
+      "notes": "Editable cena_robocizny field with on-blur save via updatePozycjaCenaRobocizny. skladowa-panel material-only. skladowe-section material-only.",
       "dependsOn": ["US-006"]
     },
     {
@@ -159,8 +159,8 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 8,
-      "passes": false,
-      "notes": "",
+      "passes": true,
+      "notes": "Editable cena_robocizny with source badge (blue/green/amber). Override indicator with crossed-out original + reset. Podwykonawca dropdown. Saves via updateCenaRobocizny.",
       "dependsOn": ["US-007"]
     },
     {
@@ -177,8 +177,8 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 9,
-      "passes": false,
-      "notes": "",
+      "passes": true,
+      "notes": "R badge shows formatted price (R:6.90) or R:— for null/0. Material M badge unchanged.",
       "dependsOn": ["US-008"]
     },
     {
@@ -195,8 +195,8 @@
         "Typecheck passes"
       ],
       "priority": 10,
-      "passes": false,
-      "notes": "",
+      "passes": true,
+      "notes": "All 30 tests pass. Helpers updated. generate_umowy_draft updated to use kosztorys_pozycje.podwykonawca_id (migration 020).",
       "dependsOn": ["US-005"]
     },
     {
@@ -214,8 +214,8 @@
         "Typecheck passes"
       ],
       "priority": 11,
-      "passes": false,
-      "notes": "",
+      "passes": true,
+      "notes": "All stale references removed from app code, scripts, and types. Build, lint, and all 30 tests pass.",
       "dependsOn": ["US-008", "US-009", "US-010"]
     }
   ]

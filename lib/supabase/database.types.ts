@@ -75,57 +75,6 @@ export type Database = {
           },
         ]
       }
-      biblioteka_skladowe_robocizna: {
-        Row: {
-          created_at: string | null
-          id: string
-          jednostka: string | null
-          lp: number
-          norma_domyslna: number | null
-          opis: string
-          podwykonawca_id: string | null
-          pozycja_biblioteka_id: string
-          stawka_domyslna: number | null
-        }
-        Insert: {
-          created_at?: string | null
-          id?: string
-          jednostka?: string | null
-          lp?: number
-          norma_domyslna?: number | null
-          opis: string
-          podwykonawca_id?: string | null
-          pozycja_biblioteka_id: string
-          stawka_domyslna?: number | null
-        }
-        Update: {
-          created_at?: string | null
-          id?: string
-          jednostka?: string | null
-          lp?: number
-          norma_domyslna?: number | null
-          opis?: string
-          podwykonawca_id?: string | null
-          pozycja_biblioteka_id?: string
-          stawka_domyslna?: number | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "biblioteka_skladowe_robocizna_podwykonawca_id_fkey"
-            columns: ["podwykonawca_id"]
-            isOneToOne: false
-            referencedRelation: "podwykonawcy"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "biblioteka_skladowe_robocizna_pozycja_biblioteka_id_fkey"
-            columns: ["pozycja_biblioteka_id"]
-            isOneToOne: false
-            referencedRelation: "pozycje_biblioteka"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       ceny_dostawcow: {
         Row: {
           aktywny: boolean | null
@@ -265,6 +214,11 @@ export type Database = {
       }
       kosztorys_pozycje: {
         Row: {
+          cena_robocizny: number
+          cena_robocizny_zrodlo:
+            | Database["public"]["Enums"]["cena_robocizny_zrodlo"]
+            | null
+          cena_robocizny_zrodlowa: number | null
           created_at: string | null
           id: string
           ilosc: number
@@ -274,11 +228,17 @@ export type Database = {
           nazwa: string
           notatki: string | null
           organization_id: string
+          podwykonawca_id: string | null
           pozycja_biblioteka_id: string | null
           rewizja_id: string
           updated_at: string | null
         }
         Insert: {
+          cena_robocizny?: number
+          cena_robocizny_zrodlo?:
+            | Database["public"]["Enums"]["cena_robocizny_zrodlo"]
+            | null
+          cena_robocizny_zrodlowa?: number | null
           created_at?: string | null
           id?: string
           ilosc?: number
@@ -288,11 +248,17 @@ export type Database = {
           nazwa: string
           notatki?: string | null
           organization_id: string
+          podwykonawca_id?: string | null
           pozycja_biblioteka_id?: string | null
           rewizja_id: string
           updated_at?: string | null
         }
         Update: {
+          cena_robocizny?: number
+          cena_robocizny_zrodlo?:
+            | Database["public"]["Enums"]["cena_robocizny_zrodlo"]
+            | null
+          cena_robocizny_zrodlowa?: number | null
           created_at?: string | null
           id?: string
           ilosc?: number
@@ -302,6 +268,7 @@ export type Database = {
           nazwa?: string
           notatki?: string | null
           organization_id?: string
+          podwykonawca_id?: string | null
           pozycja_biblioteka_id?: string | null
           rewizja_id?: string
           updated_at?: string | null
@@ -312,6 +279,13 @@ export type Database = {
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kosztorys_pozycje_podwykonawca_id_fkey"
+            columns: ["podwykonawca_id"]
+            isOneToOne: false
+            referencedRelation: "podwykonawcy"
             referencedColumns: ["id"]
           },
           {
@@ -410,73 +384,6 @@ export type Database = {
             columns: ["produkt_id"]
             isOneToOne: false
             referencedRelation: "produkty"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      kosztorys_skladowe_robocizna: {
-        Row: {
-          created_at: string | null
-          id: string
-          ilosc: number | null
-          is_manual: boolean
-          jednostka: string | null
-          kosztorys_pozycja_id: string
-          lp: number
-          norma: number
-          opis: string
-          podwykonawca_id: string | null
-          stawka: number
-          updated_at: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          id?: string
-          ilosc?: number | null
-          is_manual?: boolean
-          jednostka?: string | null
-          kosztorys_pozycja_id: string
-          lp?: number
-          norma?: number
-          opis: string
-          podwykonawca_id?: string | null
-          stawka: number
-          updated_at?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          id?: string
-          ilosc?: number | null
-          is_manual?: boolean
-          jednostka?: string | null
-          kosztorys_pozycja_id?: string
-          lp?: number
-          norma?: number
-          opis?: string
-          podwykonawca_id?: string | null
-          stawka?: number
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "kosztorys_skladowe_robocizna_kosztorys_pozycja_id_fkey"
-            columns: ["kosztorys_pozycja_id"]
-            isOneToOne: false
-            referencedRelation: "kosztorys_pozycje"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "kosztorys_skladowe_robocizna_kosztorys_pozycja_id_fkey"
-            columns: ["kosztorys_pozycja_id"]
-            isOneToOne: false
-            referencedRelation: "kosztorys_pozycje_view"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "kosztorys_skladowe_robocizna_podwykonawca_id_fkey"
-            columns: ["podwykonawca_id"]
-            isOneToOne: false
-            referencedRelation: "podwykonawcy"
             referencedColumns: ["id"]
           },
         ]
@@ -610,6 +517,7 @@ export type Database = {
       pozycje_biblioteka: {
         Row: {
           aktywny: boolean | null
+          cena_robocizny: number | null
           created_at: string | null
           id: string
           jednostka: string
@@ -623,6 +531,7 @@ export type Database = {
         }
         Insert: {
           aktywny?: boolean | null
+          cena_robocizny?: number | null
           created_at?: string | null
           id?: string
           jednostka?: string
@@ -636,6 +545,7 @@ export type Database = {
         }
         Update: {
           aktywny?: boolean | null
+          cena_robocizny?: number | null
           created_at?: string | null
           id?: string
           jednostka?: string
@@ -719,6 +629,7 @@ export type Database = {
           notatki: string | null
           organization_id: string
           powierzchnia: number | null
+          sent_at: string | null
           slug: string
           status: Database["public"]["Enums"]["project_status"] | null
           updated_at: string | null
@@ -733,6 +644,7 @@ export type Database = {
           notatki?: string | null
           organization_id: string
           powierzchnia?: number | null
+          sent_at?: string | null
           slug: string
           status?: Database["public"]["Enums"]["project_status"] | null
           updated_at?: string | null
@@ -747,6 +659,7 @@ export type Database = {
           notatki?: string | null
           organization_id?: string
           powierzchnia?: number | null
+          sent_at?: string | null
           slug?: string
           status?: Database["public"]["Enums"]["project_status"] | null
           updated_at?: string | null
@@ -1002,27 +915,34 @@ export type Database = {
         Row: {
           id: string
           ilosc: number
-          kosztorys_skladowa_r_id: string
+          kosztorys_pozycja_id: string
           umowa_pozycja_id: string
         }
         Insert: {
           id?: string
           ilosc: number
-          kosztorys_skladowa_r_id: string
+          kosztorys_pozycja_id: string
           umowa_pozycja_id: string
         }
         Update: {
           id?: string
           ilosc?: number
-          kosztorys_skladowa_r_id?: string
+          kosztorys_pozycja_id?: string
           umowa_pozycja_id?: string
         }
         Relationships: [
           {
-            foreignKeyName: "umowa_pozycje_zrodla_kosztorys_skladowa_r_id_fkey"
-            columns: ["kosztorys_skladowa_r_id"]
+            foreignKeyName: "umowa_pozycje_zrodla_kosztorys_pozycja_id_fkey"
+            columns: ["kosztorys_pozycja_id"]
             isOneToOne: false
-            referencedRelation: "kosztorys_skladowe_robocizna"
+            referencedRelation: "kosztorys_pozycje"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "umowa_pozycje_zrodla_kosztorys_pozycja_id_fkey"
+            columns: ["kosztorys_pozycja_id"]
+            isOneToOne: false
+            referencedRelation: "kosztorys_pozycje_view"
             referencedColumns: ["id"]
           },
           {
@@ -1396,6 +1316,10 @@ export type Database = {
     Views: {
       kosztorys_pozycje_view: {
         Row: {
+          cena_robocizny_zrodlo:
+            | Database["public"]["Enums"]["cena_robocizny_zrodlo"]
+            | null
+          cena_robocizny_zrodlowa: number | null
           created_at: string | null
           id: string | null
           ilosc: number | null
@@ -1408,7 +1332,9 @@ export type Database = {
           nazwa: string | null
           notatki: string | null
           organization_id: string | null
+          podwykonawca_id: string | null
           pozycja_biblioteka_id: string | null
+          r_is_override: boolean | null
           r_jednostkowy: number | null
           r_plus_m: number | null
           r_robocizna: number | null
@@ -1422,6 +1348,13 @@ export type Database = {
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kosztorys_pozycje_podwykonawca_id_fkey"
+            columns: ["podwykonawca_id"]
+            isOneToOne: false
+            referencedRelation: "podwykonawcy"
             referencedColumns: ["id"]
           },
           {
@@ -1449,8 +1382,10 @@ export type Database = {
       }
       rewizje_summary: {
         Row: {
+          accepted_at: string | null
           created_at: string | null
           id: string | null
+          is_accepted: boolean | null
           is_locked: boolean | null
           liczba_pozycji: number | null
           locked_at: string | null
@@ -1473,6 +1408,14 @@ export type Database = {
       }
     }
     Functions: {
+      change_project_status: {
+        Args: {
+          p_new_status: Database["public"]["Enums"]["project_status"]
+          p_projekt_id: string
+          p_rewizja_id?: string
+        }
+        Returns: Json
+      }
       copy_revision: {
         Args: { new_nazwa?: string; source_rewizja_id: string }
         Returns: string
@@ -1485,73 +1428,171 @@ export type Database = {
         Args: { p_projekt_id: string; p_rewizja_id: string }
         Returns: number
       }
-      get_dostawcy_aggregated: {
-        Args: {
-          p_branza?: string
-          p_kategoria?: string
-          p_limit?: number
-          p_offset?: number
-          p_podkategoria?: string
-          p_search?: string
-        }
+      get_dostawcy_aggregated:
+        | {
+            Args: {
+              p_branza?: string
+              p_kategoria?: string
+              p_limit?: number
+              p_offset?: number
+              p_podkategoria?: string
+              p_search?: string
+            }
+            Returns: {
+              aktywny: boolean
+              id: string
+              kod: string
+              kontakt: string
+              najnizsza_cena: number
+              nazwa: string
+              pozycje_count: number
+              produkty_count: number
+              total_count: number
+            }[]
+          }
+        | {
+            Args: {
+              p_limit?: number
+              p_offset?: number
+              p_order?: string
+              p_search?: string
+              p_show_inactive?: boolean
+              p_sort?: string
+            }
+            Returns: {
+              aktywny: boolean
+              id: string
+              kod: string
+              kontakt: string
+              nazwa: string
+              produkty_count: number
+              total_count: number
+              total_wartosc: number
+            }[]
+          }
+      get_dostawcy_stats: {
+        Args: never
         Returns: {
-          aktywny: boolean
-          id: string
-          kod: string
-          kontakt: string
-          najnizsza_cena: number
-          nazwa: string
-          pozycje_count: number
-          produkty_count: number
-          total_count: number
+          avg_products: number
+          total: number
+          total_products: number
         }[]
       }
-      get_materialy_aggregated: {
-        Args: {
-          p_branza?: string
-          p_kategoria?: string
-          p_limit?: number
-          p_offset?: number
-          p_podkategoria?: string
-          p_search?: string
-        }
+      get_materialy_aggregated:
+        | {
+            Args: {
+              p_branza?: string
+              p_kategoria?: string
+              p_limit?: number
+              p_offset?: number
+              p_podkategoria?: string
+              p_search?: string
+            }
+            Returns: {
+              aktywny: boolean
+              dostawcy_count: number
+              id: string
+              jednostka: string
+              najlepsza_cena: number
+              nazwa: string
+              pozycje_count: number
+              sku: string
+              total_count: number
+            }[]
+          }
+        | {
+            Args: {
+              p_branza?: string
+              p_kategoria?: string
+              p_limit?: number
+              p_offset?: number
+              p_order?: string
+              p_podkategoria?: string
+              p_search?: string
+              p_show_inactive?: boolean
+              p_sort?: string
+              p_status_cenowy?: string
+            }
+            Returns: {
+              aktywny: boolean
+              dostawcy_count: number
+              id: string
+              jednostka: string
+              najgorsza_cena: number
+              najlepsza_cena: number
+              nazwa: string
+              pozycje_count: number
+              sku: string
+              total_count: number
+            }[]
+          }
+      get_materialy_stats: {
+        Args: never
         Returns: {
-          aktywny: boolean
-          dostawcy_count: number
-          id: string
-          jednostka: string
-          najlepsza_cena: number
-          nazwa: string
-          pozycje_count: number
-          sku: string
-          total_count: number
+          avg_price: number
+          total: number
+          with_suppliers: number
+          without_suppliers: number
         }[]
       }
-      get_podwykonawcy_aggregated: {
-        Args: {
-          p_branza?: string
-          p_kategoria?: string
-          p_limit?: number
-          p_offset?: number
-          p_podkategoria?: string
-          p_search?: string
-        }
+      get_podwykonawcy_aggregated:
+        | {
+            Args: {
+              p_branza?: string
+              p_kategoria?: string
+              p_limit?: number
+              p_offset?: number
+              p_podkategoria?: string
+              p_search?: string
+            }
+            Returns: {
+              aktywny: boolean
+              id: string
+              kontakt: string
+              najnizsza_stawka: number
+              najwyzsza_stawka: number
+              nazwa: string
+              pozycje_count: number
+              specjalizacja: string
+              total_count: number
+            }[]
+          }
+        | {
+            Args: {
+              p_limit?: number
+              p_offset?: number
+              p_order?: string
+              p_search?: string
+              p_show_inactive?: boolean
+              p_sort?: string
+              p_specjalizacja?: string
+            }
+            Returns: {
+              aktywny: boolean
+              id: string
+              kontakt: string
+              max_stawka: number
+              min_stawka: number
+              nazwa: string
+              specjalizacja: string
+              stawki_count: number
+              total_count: number
+            }[]
+          }
+      get_podwykonawcy_stats: {
+        Args: never
         Returns: {
-          aktywny: boolean
-          id: string
-          kontakt: string
-          najnizsza_stawka: number
-          najwyzsza_stawka: number
-          nazwa: string
-          pozycje_count: number
-          specjalizacja: string
-          total_count: number
+          avg_stawka: number
+          total: number
+          total_stawki: number
         }[]
       }
+      get_realizacja_stats: { Args: { p_projekt_id: string }; Returns: Json }
       user_organizations: { Args: never; Returns: string[] }
     }
     Enums: {
       branza_kod: "BUD" | "ELE" | "SAN" | "TEL" | "HVC"
+      cena_robocizny_zrodlo: "biblioteka" | "podwykonawca" | "reczna"
       org_role: "owner" | "admin" | "member"
       position_type: "robocizna" | "material" | "komplet"
       project_status:
@@ -1701,6 +1742,7 @@ export const Constants = {
   public: {
     Enums: {
       branza_kod: ["BUD", "ELE", "SAN", "TEL", "HVC"],
+      cena_robocizny_zrodlo: ["biblioteka", "podwykonawca", "reczna"],
       org_role: ["owner", "admin", "member"],
       position_type: ["robocizna", "material", "komplet"],
       project_status: [
