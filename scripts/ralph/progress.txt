@@ -23,3 +23,12 @@ Started: Fri Feb 13 07:47:08 CET 2026
 - View calculations match pre-migration values
 - npm run build passes
 - Status: DONE
+
+## US-003: DB migration — drop robocizna tables, triggers, policies
+- Applied migration `019_drop_robocizna_tables` via Supabase
+- Dropped 2 triggers (ksz_skladowe_r_check_locked, kosztorys_skladowe_r_updated_at)
+- Dropped 8 RLS policies (4 bib_skladowe_r_*, 4 ksz_skladowe_r_*)
+- Dropped tables kosztorys_skladowe_robocizna and biblioteka_skladowe_robocizna (CASCADE)
+- Views still return correct data (63 view rows, 6 summary rows)
+- npm run build passes
+- Status: DONE

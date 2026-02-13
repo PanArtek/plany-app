@@ -58,8 +58,8 @@
         "Typecheck passes"
       ],
       "priority": 3,
-      "passes": false,
-      "notes": "",
+      "passes": true,
+      "notes": "Migration 019_drop_robocizna_tables applied. Both tables, 8 policies, 2 triggers dropped. Views still work.",
       "dependsOn": ["US-002"]
     },
     {
