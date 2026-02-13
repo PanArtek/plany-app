@@ -40,8 +40,8 @@
         "Typecheck passes"
       ],
       "priority": 2,
-      "passes": false,
-      "notes": "",
+      "passes": true,
+      "notes": "Migration 018_flatten_labor_views applied. Views recreated with flat R formula. copy_revision copies new columns, no robocizna copy.",
       "dependsOn": ["US-001"]
     },
     {

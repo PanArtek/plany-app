@@ -13,3 +13,13 @@ Started: Fri Feb 13 07:47:08 CET 2026
 - Old tables preserved (biblioteka_skladowe_robocizna, kosztorys_skladowe_robocizna)
 - npm run build passes
 - Status: DONE
+
+## US-002: DB migration — recreate views and copy_revision
+- Applied migration `018_flatten_labor_views` via Supabase
+- Dropped and recreated kosztorys_pozycje_view with flat R formula (r_jednostkowy = cena_robocizny)
+- View exposes cena_robocizny_zrodlowa, cena_robocizny_zrodlo, podwykonawca_id, r_is_override
+- Dropped and recreated rewizje_summary with flat R sum, includes is_accepted + accepted_at
+- Recreated private.copy_revision() — copies 4 new columns, no robocizna copy
+- View calculations match pre-migration values
+- npm run build passes
+- Status: DONE
