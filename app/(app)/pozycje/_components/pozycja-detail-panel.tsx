@@ -4,10 +4,9 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
 import { Pencil, Trash2 } from 'lucide-react';
-import { type Pozycja, updatePozycjaCenaRobocizny } from '@/actions/pozycje';
-import { type SkladowaMaterial, deleteSkladowaMaterial } from '@/actions/skladowe';
+import { type Pozycja } from '@/actions/pozycje';
+import { type SkladowaMaterial, type SkladowaRobocizna, deleteSkladowaMaterial, deleteSkladowaRobocizna } from '@/actions/skladowe';
 import { obliczCenePozycji } from '@/lib/utils/pozycje';
 import { SkladoweSection, type SkladowaItem } from './skladowe-section';
 import { SkladowaPanel } from './panels/skladowa-panel';
@@ -40,38 +39,15 @@ function formatCena(value: number): string {
 export function PozycjaDetailPanel({ pozycja, open, onOpenChange, onEdit, onDelete }: PozycjaDetailPanelProps) {
   const { robocizna, material, cena } = obliczCenePozycji(pozycja);
 
-  // Cena robocizny state
-  const [cenaRobociznyValue, setCenaRobociznyValue] = useState<string>(
-    pozycja.cena_robocizny != null ? String(pozycja.cena_robocizny) : ''
-  );
-  const [savingCena, setSavingCena] = useState(false);
-
-  const handleCenaRobociznyBlur = async () => {
-    const newValue = cenaRobociznyValue === '' ? null : parseFloat(cenaRobociznyValue);
-    if (newValue === pozycja.cena_robocizny) return;
-    if (newValue !== null && (isNaN(newValue) || newValue < 0)) {
-      setCenaRobociznyValue(pozycja.cena_robocizny != null ? String(pozycja.cena_robocizny) : '');
-      return;
-    }
-    setSavingCena(true);
-    const result = await updatePozycjaCenaRobocizny(pozycja.id, newValue);
-    if (result.success) {
-      toast.success('Zapisano cenę robocizny');
-    } else {
-      toast.error(result.error || 'Błąd zapisu');
-      setCenaRobociznyValue(pozycja.cena_robocizny != null ? String(pozycja.cena_robocizny) : '');
-    }
-    setSavingCena(false);
-  };
-
   // Skladowe panel state
-  const [panelType, setPanelType] = useState<'material' | null>(null);
+  const [panelType, setPanelType] = useState<'material' | 'robocizna' | null>(null);
   const [panelMode, setPanelMode] = useState<'add' | 'edit'>('add');
   const [editingMaterial, setEditingMaterial] = useState<SkladowaMaterial | undefined>();
+  const [editingRobocizna, setEditingRobocizna] = useState<SkladowaRobocizna | undefined>();
 
   // Delete panel state
   const [deletePanelOpen, setDeletePanelOpen] = useState(false);
-  const [deletingSkladowa, setDeletingSkladowa] = useState<{ id: string; nazwa: string } | null>(null);
+  const [deletingSkladowa, setDeletingSkladowa] = useState<{ id: string; nazwa: string; type: 'material' | 'robocizna' } | null>(null);
 
   // Extract branza.kategoria.podkategoria from kod
   const kodParts = pozycja.kod.split('.');
@@ -94,14 +70,37 @@ export function PozycjaDetailPanel({ pozycja, open, onOpenChange, onEdit, onDele
   };
 
   const handleDeleteMaterial = (item: SkladowaItem) => {
-    setDeletingSkladowa({ id: item.id, nazwa: item.nazwa || '—' });
+    setDeletingSkladowa({ id: item.id, nazwa: item.nazwa || '—', type: 'material' });
+    setDeletePanelOpen(true);
+  };
+
+  // Robocizna handlers
+  const handleAddRobocizna = () => {
+    setPanelType('robocizna');
+    setPanelMode('add');
+    setEditingRobocizna(undefined);
+  };
+
+  const handleEditRobocizna = (item: SkladowaItem) => {
+    const skladowa = pozycja.biblioteka_skladowe_robocizna?.find(s => s.id === item.id);
+    if (skladowa) {
+      setPanelType('robocizna');
+      setPanelMode('edit');
+      setEditingRobocizna(skladowa as SkladowaRobocizna);
+    }
+  };
+
+  const handleDeleteRobocizna = (item: SkladowaItem) => {
+    setDeletingSkladowa({ id: item.id, nazwa: item.opis || '—', type: 'robocizna' });
     setDeletePanelOpen(true);
   };
 
   const handleConfirmDeleteSkladowa = async () => {
     if (!deletingSkladowa) return;
 
-    const result = await deleteSkladowaMaterial(deletingSkladowa.id);
+    const result = deletingSkladowa.type === 'robocizna'
+      ? await deleteSkladowaRobocizna(deletingSkladowa.id)
+      : await deleteSkladowaMaterial(deletingSkladowa.id);
 
     if (result.success) {
       toast.success(`Usunięto "${deletingSkladowa.nazwa}"`);
@@ -111,7 +110,7 @@ export function PozycjaDetailPanel({ pozycja, open, onOpenChange, onEdit, onDele
     }
   };
 
-  const typeLabel = 'składową materiałową';
+  const typeLabel = deletingSkladowa?.type === 'robocizna' ? 'składową robociznową' : 'składową materiałową';
 
   return (
     <>
@@ -140,29 +139,28 @@ export function PozycjaDetailPanel({ pozycja, open, onOpenChange, onEdit, onDele
             </div>
           )}
 
-          {/* Robocizna (flat cena) — editable */}
-          <div className="space-y-2">
-            <h4 className="font-medium text-sm text-amber-400">Cena robocizny za jm</h4>
-            <div className="flex items-center gap-2">
-              <Input
-                type="number"
-                step="0.01"
-                min="0"
-                placeholder="—"
-                value={cenaRobociznyValue}
-                onChange={(e) => setCenaRobociznyValue(e.target.value)}
-                onBlur={handleCenaRobociznyBlur}
-                disabled={savingCena}
-                className="bg-white/5 border-white/10 text-white placeholder:text-white/30 max-w-[160px] font-mono"
-              />
-              <span className="text-sm text-white/50">zł/jm</span>
-            </div>
-          </div>
+          {/* Robocizna — lista składowych */}
+          <SkladoweSection
+            title="Robocizna"
+            items={(pozycja.biblioteka_skladowe_robocizna || []).map(r => ({
+              id: r.id,
+              opis: r.opis,
+              cena: r.cena,
+            }))}
+            suma={robocizna}
+            type="robocizna"
+            variant="primary"
+            editable
+            onAdd={handleAddRobocizna}
+            onEdit={handleEditRobocizna}
+            onDelete={handleDeleteRobocizna}
+          />
 
           <SkladoweSection
             title="Materiały"
             items={pozycja.biblioteka_skladowe_materialy || []}
             suma={material}
+            type="material"
             variant="secondary"
             editable
             onAdd={handleAddMaterial}
@@ -212,6 +210,17 @@ export function PozycjaDetailPanel({ pozycja, open, onOpenChange, onEdit, onDele
           mode={panelMode}
           pozycjaId={pozycja.id}
           skladowa={editingMaterial}
+        />
+      )}
+
+      {panelType === 'robocizna' && (
+        <SkladowaPanel
+          type="robocizna"
+          open={panelType === 'robocizna'}
+          onOpenChange={(open) => !open && setPanelType(null)}
+          mode={panelMode}
+          pozycjaId={pozycja.id}
+          skladowa={editingRobocizna}
         />
       )}
 

@@ -10,6 +10,7 @@ export interface SkladowaItem {
   nazwa?: string;
   stawka_domyslna?: number | null;
   cena_domyslna?: number | null;
+  cena?: number | null;
   norma_domyslna?: number | null;
   jednostka?: string | null;
 }
@@ -18,9 +19,9 @@ interface SkladoweSectionProps {
   title: string;
   items: SkladowaItem[];
   suma: number;
-  /** @deprecated Use amber styling internally */
-  colorClass?: string;
   variant?: 'primary' | 'secondary';
+  /** 'material' uses norma*cena, 'robocizna' uses flat cena */
+  type?: 'material' | 'robocizna';
   editable?: boolean;
   onAdd?: () => void;
   onEdit?: (item: SkladowaItem) => void;
@@ -51,12 +52,14 @@ export function SkladoweSection({
   items,
   suma,
   variant = 'primary',
+  type = 'material',
   editable = true,
   onAdd,
   onEdit,
   onDelete,
 }: SkladoweSectionProps) {
   const titleColorClass = variant === 'primary' ? 'text-amber-400' : 'text-amber-400/70';
+  const isRobocizna = type === 'robocizna';
 
   return (
     <div className="space-y-2">
@@ -84,8 +87,9 @@ export function SkladoweSection({
         <div className="space-y-1">
           {items.map((item) => {
             const label = item.opis || item.nazwa || '—';
-            const cena = (item.stawka_domyslna ?? item.cena_domyslna ?? 0) * (item.norma_domyslna ?? 0);
-            const normaInfo = formatNormaInfo(item);
+            const cena = isRobocizna
+              ? Number(item.cena ?? 0)
+              : (item.stawka_domyslna ?? item.cena_domyslna ?? 0) * (item.norma_domyslna ?? 0);
 
             return (
               <div
@@ -94,7 +98,9 @@ export function SkladoweSection({
               >
                 <div className="flex flex-col min-w-0 flex-1">
                   <span className="truncate">{label}</span>
-                  <span className="text-xs text-muted-foreground">{normaInfo}</span>
+                  {!isRobocizna && (
+                    <span className="text-xs text-muted-foreground">{formatNormaInfo(item)}</span>
+                  )}
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="font-mono text-muted-foreground">{formatCena(cena)}</span>

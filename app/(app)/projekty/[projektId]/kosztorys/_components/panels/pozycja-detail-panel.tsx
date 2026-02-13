@@ -34,12 +34,14 @@ import { Badge } from '@/components/ui/badge';
 import {
   getKosztorysPozycjaDetail,
   updateKosztorysPozycja,
-  updateCenaRobocizny,
   updateKosztorysSkladowaM,
+  updateKosztorysSkladowaR,
   resetSkladowaM,
+  resetSkladowaR,
   resetPozycjaToLibrary,
   type KosztorysPozycjaDetail as DetailType,
   type BibliotekaSkladowaM,
+  type BibliotekaSkladowaR,
 } from '@/actions/kosztorys';
 import { OverrideIndicator } from '../override-indicator';
 import { useRouter } from 'next/navigation';
@@ -77,17 +79,11 @@ export function PozycjaDetailPanel({
   const [jednostka, setJednostka] = useState('');
   const [narzut, setNarzut] = useState(0);
 
-  // Robocizna editing state
-  const [cenaR, setCenaR] = useState(0);
-  const [podwykonawcaId, setPodwykonawcaId] = useState<string>('_none');
-
   const refreshDetail = async () => {
     if (!pozycjaId) return;
     const result = await getKosztorysPozycjaDetail(pozycjaId);
     if (result.success && result.data) {
       setDetail(result.data);
-      setCenaR(result.data.pozycja.cena_robocizny);
-      setPodwykonawcaId(result.data.pozycja.podwykonawca_id || '_none');
     }
   };
 
@@ -105,8 +101,6 @@ export function PozycjaDetailPanel({
         setIlosc(result.data.pozycja.ilosc);
         setJednostka(result.data.pozycja.jednostka || '');
         setNarzut(result.data.pozycja.narzut_percent);
-        setCenaR(result.data.pozycja.cena_robocizny);
-        setPodwykonawcaId(result.data.pozycja.podwykonawca_id || '_none');
       }
     }).finally(() => setLoading(false));
   }, [pozycjaId, open]);
@@ -144,28 +138,10 @@ export function PozycjaDetailPanel({
     }
   };
 
-  const handleCenaRobociznyBlur = async () => {
-    if (!pozycjaId || !detail) return;
-    if (cenaR === detail.pozycja.cena_robocizny &&
-        (podwykonawcaId === '_none' ? null : podwykonawcaId) === detail.pozycja.podwykonawca_id) return;
-    const result = await updateCenaRobocizny(pozycjaId, {
-      cena_robocizny: cenaR,
-      podwykonawca_id: podwykonawcaId === '_none' ? null : podwykonawcaId,
-    });
-    if (result.success) {
-      router.refresh();
-      await refreshDetail();
-    } else {
-      toast.error(result.error || 'Błąd zapisu robocizny');
-    }
-  };
-
-  const handlePodwykonawcaChange = async (val: string) => {
-    setPodwykonawcaId(val);
-    if (!pozycjaId) return;
-    const result = await updateCenaRobocizny(pozycjaId, {
-      cena_robocizny: cenaR,
-      podwykonawca_id: val === '_none' ? null : val,
+  const handleSkladowaRBlur = async (id: string, cena: number, podwykonawcaId: string | null) => {
+    const result = await updateKosztorysSkladowaR(id, {
+      cena,
+      podwykonawca_id: podwykonawcaId,
     });
     if (result.success) {
       router.refresh();
@@ -175,9 +151,9 @@ export function PozycjaDetailPanel({
     }
   };
 
-  // Calculate totals
+  // Calculate totals from składowe
   const rJednostkowy = detail
-    ? cenaR
+    ? detail.skladoweR.reduce((sum, r) => sum + r.cena, 0)
     : 0;
   const mJednostkowy = detail
     ? detail.skladoweM
@@ -188,19 +164,15 @@ export function PozycjaDetailPanel({
   const narzutWartosc = rPlusM * (narzut / 100);
   const razem = rPlusM + narzutWartosc;
 
-  // Check if any skladowe have overrides (differ from library)
-  // For robocizna: check cena_robocizny vs cena_robocizny_zrodlowa
-  const hasRobociznaOverride = detail
-    ? (detail.pozycja.cena_robocizny_zrodlowa !== null &&
-       detail.pozycja.cena_robocizny !== detail.pozycja.cena_robocizny_zrodlowa)
-    : false;
-  const hasOverrides = detail ? (
-    hasRobociznaOverride ||
-    detail.skladoweM.some((m) => {
-      const lib = detail.bibliotekaSkladoweM.find((l) => l.lp === m.lp);
-      return lib && m.cena !== lib.cena_domyslna;
-    })
-  ) : false;
+  // Check overrides
+  const hasROverrides = detail ? detail.skladoweR.some((r) => {
+    return r.cena_zrodlowa !== null && r.cena !== r.cena_zrodlowa;
+  }) : false;
+  const hasMOverrides = detail ? detail.skladoweM.some((m) => {
+    const lib = detail.bibliotekaSkladoweM.find((l) => l.lp === m.lp);
+    return lib && m.cena !== lib.cena_domyslna;
+  }) : false;
+  const hasOverrides = hasROverrides || hasMOverrides;
 
   const [resetting, setResetting] = useState(false);
 
@@ -296,76 +268,51 @@ export function PozycjaDetailPanel({
               </div>
             </div>
 
-            {/* Robocizna (flat cena) — editable */}
+            {/* Robocizna — lista składowych */}
             <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <h4 className="text-sm font-medium text-white/50 uppercase tracking-wider">
-                  Robocizna
-                </h4>
-                {detail.pozycja.cena_robocizny_zrodlo && (
-                  <Badge
-                    variant="outline"
-                    className={
-                      detail.pozycja.cena_robocizny_zrodlo === 'biblioteka'
-                        ? 'bg-blue-500/10 text-blue-400 border-blue-500/20 text-[10px]'
-                        : detail.pozycja.cena_robocizny_zrodlo === 'podwykonawca'
-                          ? 'bg-green-500/10 text-green-400 border-green-500/20 text-[10px]'
-                          : 'bg-amber-500/10 text-amber-400 border-amber-500/20 text-[10px]'
-                    }
-                  >
-                    {{ biblioteka: 'Biblioteka', podwykonawca: 'Podwykonawca', reczna: 'Ręczna' }[detail.pozycja.cena_robocizny_zrodlo] || detail.pozycja.cena_robocizny_zrodlo}
-                  </Badge>
-                )}
-              </div>
-              <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-white/[0.02] border border-white/[0.05]">
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm text-white/70">Cena robocizny za jm</div>
-                  {hasRobociznaOverride && detail.pozycja.cena_robocizny_zrodlowa !== null && (
-                    <div className="text-xs text-white/30 line-through">
-                      {formatCurrency(detail.pozycja.cena_robocizny_zrodlowa)}
-                    </div>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <h4 className="text-sm font-medium text-white/50 uppercase tracking-wider">
+                    Robocizna ({detail.skladoweR.length})
+                  </h4>
+                  {detail.pozycja.cena_robocizny_zrodlo && (
+                    <Badge
+                      variant="outline"
+                      className={
+                        detail.pozycja.cena_robocizny_zrodlo === 'biblioteka'
+                          ? 'bg-blue-500/10 text-blue-400 border-blue-500/20 text-[10px]'
+                          : detail.pozycja.cena_robocizny_zrodlo === 'podwykonawca'
+                            ? 'bg-green-500/10 text-green-400 border-green-500/20 text-[10px]'
+                            : 'bg-amber-500/10 text-amber-400 border-amber-500/20 text-[10px]'
+                      }
+                    >
+                      {{ biblioteka: 'Biblioteka', podwykonawca: 'Podwykonawca', reczna: 'Ręczna' }[detail.pozycja.cena_robocizny_zrodlo] || detail.pozycja.cena_robocizny_zrodlo}
+                    </Badge>
                   )}
                 </div>
-                <div className="flex items-center">
-                  <Input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={cenaR}
-                    onChange={(e) => setCenaR(Number(e.target.value))}
-                    onBlur={handleCenaRobociznyBlur}
-                    disabled={isLocked}
-                    className="w-[100px] h-7 text-right bg-white/[0.03] border-white/[0.08] text-sm font-mono"
-                  />
-                  <OverrideIndicator
-                    isOverridden={hasRobociznaOverride}
-                    libraryValue={detail.pozycja.cena_robocizny_zrodlowa ?? 0}
-                    onReset={async () => {
-                      if (!pozycjaId) return;
-                      const result = await resetPozycjaToLibrary(pozycjaId);
-                      if (result.success) {
-                        router.refresh();
-                        await refreshDetail();
-                      }
-                    }}
-                    disabled={isLocked}
-                  />
+              </div>
+              {detail.skladoweR.length === 0 ? (
+                <p className="text-white/30 text-sm italic px-3">Brak składowych robociznowych</p>
+              ) : (
+                <div className="space-y-2">
+                  {detail.skladoweR.map((r) => {
+                    const libR = detail.bibliotekaSkladoweR.find((l) => l.lp === r.lp);
+                    return (
+                      <SkladowaRRow
+                        key={r.id}
+                        skladowa={r}
+                        podwykonawcy={detail.podwykonawcy}
+                        isLocked={isLocked}
+                        onSave={handleSkladowaRBlur}
+                        libSkladowa={libR}
+                        onRefresh={refreshDetail}
+                      />
+                    );
+                  })}
                 </div>
-                <Select
-                  value={podwykonawcaId}
-                  onValueChange={handlePodwykonawcaChange}
-                  disabled={isLocked}
-                >
-                  <SelectTrigger className="w-[140px] h-7 bg-white/[0.03] border-white/[0.08] text-xs">
-                    <SelectValue placeholder="Podwykonawca" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="_none">— Brak —</SelectItem>
-                    {detail.podwykonawcy.map((p) => (
-                      <SelectItem key={p.id} value={p.id}>{p.nazwa}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              )}
+              <div className="text-right text-sm text-white/60 pr-2">
+                Σ R jednostkowy: <span className="font-semibold text-white/80">{formatCurrency(rJednostkowy)}</span>
               </div>
             </div>
 
@@ -468,6 +415,94 @@ export function PozycjaDetailPanel({
         ) : null}
       </SlidePanelContent>
     </SlidePanel>
+  );
+}
+
+// --- Skladowa R inline row ---
+
+function SkladowaRRow({
+  skladowa,
+  podwykonawcy,
+  isLocked,
+  onSave,
+  libSkladowa,
+  onRefresh,
+}: {
+  skladowa: DetailType['skladoweR'][0];
+  podwykonawcy: { id: string; nazwa: string }[];
+  isLocked: boolean;
+  onSave: (id: string, cena: number, podwykonawcaId: string | null) => void;
+  libSkladowa?: BibliotekaSkladowaR;
+  onRefresh: () => Promise<void>;
+}) {
+  const [cena, setCena] = useState(skladowa.cena);
+  const [podwId, setPodwId] = useState(skladowa.podwykonawca_id || '_none');
+  const router = useRouter();
+
+  useEffect(() => {
+    setCena(skladowa.cena);
+    setPodwId(skladowa.podwykonawca_id || '_none');
+  }, [skladowa.cena, skladowa.podwykonawca_id]);
+
+  const isCenaOverridden = skladowa.cena_zrodlowa !== null && skladowa.cena !== skladowa.cena_zrodlowa;
+
+  const handleResetCena = async () => {
+    if (skladowa.cena_zrodlowa === null) return;
+    const result = await resetSkladowaR(skladowa.id, skladowa.cena_zrodlowa);
+    if (result.success) {
+      setCena(skladowa.cena_zrodlowa);
+      router.refresh();
+      await onRefresh();
+    }
+  };
+
+  return (
+    <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-white/[0.02] border border-white/[0.05]">
+      <div className="flex-1 min-w-0">
+        <div className="text-sm text-white/70 truncate">{skladowa.opis}</div>
+        {isCenaOverridden && skladowa.cena_zrodlowa !== null && (
+          <div className="text-xs text-white/30 line-through">
+            {formatCurrency(skladowa.cena_zrodlowa)}
+          </div>
+        )}
+      </div>
+      <div className="flex items-center">
+        <Input
+          type="number"
+          step="0.01"
+          min="0"
+          value={cena}
+          onChange={(e) => setCena(Number(e.target.value))}
+          onBlur={() => onSave(skladowa.id, cena, podwId === '_none' ? null : podwId)}
+          disabled={isLocked}
+          className="w-[100px] h-7 text-right bg-white/[0.03] border-white/[0.08] text-sm font-mono"
+        />
+        <OverrideIndicator
+          isOverridden={isCenaOverridden}
+          libraryValue={skladowa.cena_zrodlowa ?? 0}
+          onReset={handleResetCena}
+          disabled={isLocked}
+        />
+      </div>
+      <Select
+        value={podwId}
+        onValueChange={(val) => {
+          setPodwId(val);
+          onSave(skladowa.id, cena, val === '_none' ? null : val);
+        }}
+        disabled={isLocked}
+      >
+        <SelectTrigger className="w-[140px] h-7 bg-white/[0.03] border-white/[0.08] text-xs">
+          <SelectValue placeholder="Podwykonawca" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="_none">— Brak —</SelectItem>
+          {podwykonawcy.map((p) => (
+            <SelectItem key={p.id} value={p.id}>{p.nazwa}</SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
   );
 }
 

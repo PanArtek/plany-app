@@ -6,6 +6,7 @@ import {
   updateKosztorysPozycjaSchema,
   updateCenaRobociznySchema,
   updateSkladowaMSchema,
+  updateSkladowaRSchema,
   type LibraryFilters,
 } from '@/lib/validations/kosztorys';
 
@@ -78,6 +79,15 @@ export interface SkladowaM {
   is_manual: boolean;
 }
 
+export interface SkladowaR {
+  id: string;
+  lp: number;
+  opis: string;
+  cena: number;
+  cena_zrodlowa: number | null;
+  podwykonawca_id: string | null;
+}
+
 export interface NameIdPair {
   id: string;
   nazwa: string;
@@ -90,6 +100,13 @@ export interface BibliotekaSkladowaM {
   cena_domyslna: number;
   norma_domyslna: number;
   jednostka: string | null;
+}
+
+export interface BibliotekaSkladowaR {
+  id: string;
+  lp: number;
+  opis: string;
+  cena: number;
 }
 
 export interface KosztorysPozycjaDetail {
@@ -109,7 +126,9 @@ export interface KosztorysPozycjaDetail {
     podwykonawca_id: string | null;
   };
   skladoweM: SkladowaM[];
+  skladoweR: SkladowaR[];
   bibliotekaSkladoweM: BibliotekaSkladowaM[];
+  bibliotekaSkladoweR: BibliotekaSkladowaR[];
   podwykonawcy: NameIdPair[];
   dostawcy: NameIdPair[];
 }
@@ -121,6 +140,7 @@ export interface LibraryPosition {
   jednostka: string;
   cenaRobocizny: number | null;
   skladoweMCount: number;
+  skladoweRCount: number;
 }
 
 export interface LibraryPositionsResult {
@@ -285,21 +305,34 @@ export async function getKosztorysPozycjaDetail(
 
   const pb = (pozycja as Record<string, unknown>).pozycje_biblioteka as { kod: string } | null;
 
-  // 2. Fetch składowe materiały
-  const { data: skladoweM, error: mError } = await supabase
-    .from('kosztorys_skladowe_materialy')
-    .select('id, lp, nazwa, produkt_id, dostawca_id, cena, norma, ilosc, jednostka, is_manual')
-    .eq('kosztorys_pozycja_id', pozycjaId)
-    .order('lp', { ascending: true });
+  // 2. Fetch składowe materiały + robocizna
+  const [skladoweMResult, skladoweRResult] = await Promise.all([
+    supabase
+      .from('kosztorys_skladowe_materialy')
+      .select('id, lp, nazwa, produkt_id, dostawca_id, cena, norma, ilosc, jednostka, is_manual')
+      .eq('kosztorys_pozycja_id', pozycjaId)
+      .order('lp', { ascending: true }),
+    supabase
+      .from('kosztorys_skladowe_robocizna')
+      .select('id, lp, opis, cena, cena_zrodlowa, podwykonawca_id')
+      .eq('kosztorys_pozycja_id', pozycjaId)
+      .order('lp', { ascending: true }),
+  ]);
 
-  if (mError) {
-    return { success: false, error: mError.message };
+  if (skladoweMResult.error) {
+    return { success: false, error: skladoweMResult.error.message };
+  }
+  if (skladoweRResult.error) {
+    return { success: false, error: skladoweRResult.error.message };
   }
 
-  // 3. Fetch dropdown lists + library skladowe materialy in parallel
+  const skladoweM = skladoweMResult.data;
+  const skladoweR = skladoweRResult.data;
+
+  // 3. Fetch dropdown lists + library skladowe in parallel
   const pozycjaBibliotekaId = pozycja.pozycja_biblioteka_id as string | null;
 
-  const [podwykonawcyResult, dostawcyResult, libMResult] = await Promise.all([
+  const [podwykonawcyResult, dostawcyResult, libMResult, libRResult] = await Promise.all([
     supabase
       .from('podwykonawcy')
       .select('id, nazwa')
@@ -315,6 +348,14 @@ export async function getKosztorysPozycjaDetail(
       ? supabase
           .from('biblioteka_skladowe_materialy')
           .select('id, lp, nazwa, cena_domyslna, norma_domyslna, jednostka')
+          .eq('pozycja_biblioteka_id', pozycjaBibliotekaId)
+          .order('lp', { ascending: true })
+      : Promise.resolve({ data: null, error: null }),
+    // Fetch library skladowe robocizna (for override indicators)
+    pozycjaBibliotekaId
+      ? supabase
+          .from('biblioteka_skladowe_robocizna')
+          .select('id, lp, opis, cena')
           .eq('pozycja_biblioteka_id', pozycjaBibliotekaId)
           .order('lp', { ascending: true })
       : Promise.resolve({ data: null, error: null }),
@@ -350,6 +391,14 @@ export async function getKosztorysPozycjaDetail(
         jednostka: m.jednostka as string | null,
         is_manual: m.is_manual as boolean,
       })),
+      skladoweR: (skladoweR || []).map((r: Record<string, unknown>) => ({
+        id: r.id as string,
+        lp: Number(r.lp),
+        opis: r.opis as string,
+        cena: Number(r.cena),
+        cena_zrodlowa: r.cena_zrodlowa != null ? Number(r.cena_zrodlowa) : null,
+        podwykonawca_id: r.podwykonawca_id as string | null,
+      })),
       bibliotekaSkladoweM: (libMResult.data || []).map((m: Record<string, unknown>) => ({
         id: m.id as string,
         lp: Number(m.lp),
@@ -357,6 +406,12 @@ export async function getKosztorysPozycjaDetail(
         cena_domyslna: Number(m.cena_domyslna ?? 0),
         norma_domyslna: Number(m.norma_domyslna ?? 1),
         jednostka: m.jednostka as string | null,
+      })),
+      bibliotekaSkladoweR: (libRResult.data || []).map((r: Record<string, unknown>) => ({
+        id: r.id as string,
+        lp: Number(r.lp),
+        opis: r.opis as string,
+        cena: Number(r.cena ?? 0),
       })),
       podwykonawcy: (podwykonawcyResult.data || []) as NameIdPair[],
       dostawcy: (dostawcyResult.data || []) as NameIdPair[],
@@ -414,15 +469,32 @@ export async function getLibraryPositions(
   // Fetch składowe materialy counts for these positions
   const ids = (data || []).map((d: { id: string }) => d.id);
   let mCounts: Record<string, number> = {};
+  let rCounts: Record<string, number> = {};
 
   if (ids.length > 0) {
-    const { data: mResult } = await supabase
-      .from('biblioteka_skladowe_materialy')
-      .select('pozycja_biblioteka_id')
-      .in('pozycja_biblioteka_id', ids);
+    const [mRes, rRes] = await Promise.all([
+      supabase
+        .from('biblioteka_skladowe_materialy')
+        .select('pozycja_biblioteka_id')
+        .in('pozycja_biblioteka_id', ids),
+      supabase
+        .from('biblioteka_skladowe_robocizna')
+        .select('pozycja_biblioteka_id')
+        .in('pozycja_biblioteka_id', ids),
+    ]);
 
-    if (mResult) {
-      mCounts = (mResult as { pozycja_biblioteka_id: string }[]).reduce<Record<string, number>>(
+    if (mRes.data) {
+      mCounts = (mRes.data as { pozycja_biblioteka_id: string }[]).reduce<Record<string, number>>(
+        (acc, row) => {
+          acc[row.pozycja_biblioteka_id] = (acc[row.pozycja_biblioteka_id] || 0) + 1;
+          return acc;
+        },
+        {}
+      );
+    }
+
+    if (rRes.data) {
+      rCounts = (rRes.data as { pozycja_biblioteka_id: string }[]).reduce<Record<string, number>>(
         (acc, row) => {
           acc[row.pozycja_biblioteka_id] = (acc[row.pozycja_biblioteka_id] || 0) + 1;
           return acc;
@@ -442,6 +514,7 @@ export async function getLibraryPositions(
         jednostka: d.jednostka as string,
         cenaRobocizny: d.cena_robocizny != null ? Number(d.cena_robocizny) : null,
         skladoweMCount: mCounts[d.id as string] || 0,
+        skladoweRCount: rCounts[d.id as string] || 0,
       })),
       totalCount: count ?? 0,
       page,
@@ -590,6 +663,26 @@ export async function addPositionFromLibrary(
     await supabase.from('kosztorys_skladowe_materialy').insert(materialyInserts);
   }
 
+  // 7. Copy składowe robocizna from library
+  const { data: libRobocizna } = await supabase
+    .from('biblioteka_skladowe_robocizna')
+    .select('lp, opis, cena, podwykonawca_id')
+    .eq('pozycja_biblioteka_id', pozycjaBibliotekaId)
+    .order('lp');
+
+  if (libRobocizna && libRobocizna.length > 0) {
+    const robociznaInserts = (libRobocizna as Record<string, unknown>[]).map((r) => ({
+      kosztorys_pozycja_id: pozycjaId,
+      lp: Number(r.lp),
+      opis: r.opis as string,
+      cena: Number(r.cena ?? 0),
+      cena_zrodlowa: Number(r.cena ?? 0),
+      podwykonawca_id: r.podwykonawca_id as string | null,
+    }));
+
+    await supabase.from('kosztorys_skladowe_robocizna').insert(robociznaInserts);
+  }
+
   revalidatePath('/projekty');
   return { success: true };
 }
@@ -685,6 +778,60 @@ export async function updateKosztorysSkladowaM(
   const { error } = await supabase
     .from('kosztorys_skladowe_materialy')
     .update(updateData)
+    .eq('id', id);
+
+  if (error) {
+    return { success: false, error: error.message };
+  }
+
+  revalidatePath('/projekty');
+  return { success: true };
+}
+
+// --- WRITE: Update składowa robocizna ---
+
+export async function updateKosztorysSkladowaR(
+  id: string,
+  input: unknown
+): Promise<ActionResult> {
+  const parsed = updateSkladowaRSchema.safeParse(input);
+  if (!parsed.success) {
+    return { success: false, error: parsed.error.issues[0].message };
+  }
+
+  const supabase = await createClient();
+
+  const updateData: Record<string, unknown> = {
+    cena: parsed.data.cena,
+  };
+  if (parsed.data.podwykonawca_id !== undefined) {
+    updateData.podwykonawca_id = parsed.data.podwykonawca_id;
+  }
+
+  const { error } = await supabase
+    .from('kosztorys_skladowe_robocizna')
+    .update(updateData)
+    .eq('id', id);
+
+  if (error) {
+    return { success: false, error: error.message };
+  }
+
+  revalidatePath('/projekty');
+  return { success: true };
+}
+
+// --- WRITE: Reset składowa R to library value ---
+
+export async function resetSkladowaR(
+  id: string,
+  libraryCena: number
+): Promise<ActionResult> {
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from('kosztorys_skladowe_robocizna')
+    .update({ cena: libraryCena })
     .eq('id', id);
 
   if (error) {
@@ -830,6 +977,35 @@ export async function resetPozycjaToLibrary(
   );
 
   await Promise.all(mUpdates.filter(Boolean));
+
+  // 5. Reset robocizna by lp matching
+  const [libRResult2, koszRResult] = await Promise.all([
+    supabase
+      .from('biblioteka_skladowe_robocizna')
+      .select('lp, cena')
+      .eq('pozycja_biblioteka_id', bibId)
+      .order('lp', { ascending: true }),
+    supabase
+      .from('kosztorys_skladowe_robocizna')
+      .select('id, lp')
+      .eq('kosztorys_pozycja_id', pozycjaId)
+      .order('lp', { ascending: true }),
+  ]);
+
+  const libR = (libRResult2.data || []) as { lp: number; cena: number }[];
+  const koszR = (koszRResult.data || []) as { id: string; lp: number }[];
+
+  const rUpdates = koszR.map((kr) => {
+    const lib = libR.find((l) => l.lp === kr.lp);
+    if (!lib) return null;
+
+    return supabase
+      .from('kosztorys_skladowe_robocizna')
+      .update({ cena: lib.cena, cena_zrodlowa: lib.cena })
+      .eq('id', kr.id);
+  });
+
+  await Promise.all(rUpdates.filter(Boolean));
 
   revalidatePath('/projekty');
   return { success: true };

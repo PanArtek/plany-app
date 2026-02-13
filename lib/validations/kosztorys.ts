@@ -21,6 +21,12 @@ export const updateSkladowaMSchema = z.object({
   dostawca_id: z.string().uuid().nullable().optional(),
 });
 
+// Schema for updating labor component in kosztorys
+export const updateSkladowaRSchema = z.object({
+  cena: z.number().min(0, "Cena nie może być ujemna"),
+  podwykonawca_id: z.string().uuid().nullable().optional(),
+});
+
 // Schema for library position filters
 export const libraryFiltersSchema = z.object({
   search: z.string().optional(),
@@ -35,4 +41,5 @@ export const libraryFiltersSchema = z.object({
 export type UpdateKosztorysPozycjaInput = z.infer<typeof updateKosztorysPozycjaSchema>;
 export type UpdateCenaRobociznyInput = z.infer<typeof updateCenaRobociznySchema>;
 export type UpdateSkladowaMInput = z.infer<typeof updateSkladowaMSchema>;
+export type UpdateSkladowaRInput = z.infer<typeof updateSkladowaRSchema>;
 export type LibraryFilters = z.infer<typeof libraryFiltersSchema>;

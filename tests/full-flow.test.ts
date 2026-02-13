@@ -11,11 +11,13 @@ import {
   createPodwykonawca,
   createStawkaPodwykonawcy,
   createBibliotekaSkladowaM,
+  createBibliotekaSkladowaR,
   updatePozycjaCenaRobocizny,
   createProjekt,
   createRewizja,
   createKosztorysPozycja,
   createKosztorysSkladowaM,
+  createKosztorysSkladowaR,
 } from './helpers/setup';
 
 describe('Full end-to-end chain: library → kosztorys → accept → umowy + zamówienia → realizacja', () => {
@@ -77,13 +79,16 @@ describe('Full end-to-end chain: library → kosztorys → accept → umowy + za
     await createBibliotekaSkladowaM({ pozycja_biblioteka_id: pSciana.id, lp: 1, nazwa: 'Profil C50', produkt_id: profil.id, dostawca_id: bricoman.id, cena_domyslna: 8.5, norma_domyslna: 0.9, jednostka: 'mb' });
     await createBibliotekaSkladowaM({ pozycja_biblioteka_id: pSciana.id, lp: 2, nazwa: 'Płyta GK 12.5', produkt_id: plyta.id, dostawca_id: bricoman.id, cena_domyslna: 22.0, norma_domyslna: 1.1, jednostka: 'm2' });
 
-    // Flat labor price for Ściana GK: 15.0*0.3 + 12.0*0.2 = 6.90
+    // Biblioteka labor components for Ściana GK: 4.50 + 2.40 = 6.90
+    await createBibliotekaSkladowaR({ pozycja_biblioteka_id: pSciana.id, lp: 1, opis: 'Montaż profili', cena: 4.50 });
+    await createBibliotekaSkladowaR({ pozycja_biblioteka_id: pSciana.id, lp: 2, opis: 'Szpachlowanie', cena: 2.40 });
     await updatePozycjaCenaRobocizny(pSciana.id, 6.90);
 
     // Biblioteka składowe materiały — Malowanie
     await createBibliotekaSkladowaM({ pozycja_biblioteka_id: pMalowanie.id, lp: 1, nazwa: 'Farba', produkt_id: farba.id, dostawca_id: sig.id, cena_domyslna: 35.0, norma_domyslna: 0.15, jednostka: 'l' });
 
-    // Flat labor price for Malowanie: 20.0*0.1 = 2.00
+    // Biblioteka labor components for Malowanie: 2.00
+    await createBibliotekaSkladowaR({ pozycja_biblioteka_id: pMalowanie.id, lp: 1, opis: 'Malowanie', cena: 2.00 });
     await updatePozycjaCenaRobocizny(pMalowanie.id, 2.00);
 
     // Projekt + Rewizja
@@ -107,7 +112,11 @@ describe('Full end-to-end chain: library → kosztorys → accept → umowy + za
     await createKosztorysSkladowaM({ kosztorys_pozycja_id: kpScianaId, lp: 1, nazwa: 'Profil C50', produkt_id: profil.id, dostawca_id: bricoman.id, cena: 8.5, norma: 0.9 });
     await createKosztorysSkladowaM({ kosztorys_pozycja_id: kpScianaId, lp: 2, nazwa: 'Płyta GK 12.5', produkt_id: plyta.id, dostawca_id: bricoman.id, cena: 22.0, norma: 1.1 });
 
-    // Set flat labor price + podwykonawca on kosztorys_pozycje
+    // Kosztorys labor components for Ściana GK: 4.50 + 2.40 = 6.90
+    await createKosztorysSkladowaR({ kosztorys_pozycja_id: kpScianaId, lp: 1, opis: 'Montaż profili', cena: 4.50, cena_zrodlowa: 4.50 });
+    await createKosztorysSkladowaR({ kosztorys_pozycja_id: kpScianaId, lp: 2, opis: 'Szpachlowanie', cena: 2.40, cena_zrodlowa: 2.40 });
+
+    // Set podwykonawca + source tracking on kosztorys_pozycje
     await supabase.from('kosztorys_pozycje').update({
       cena_robocizny: 6.90,
       cena_robocizny_zrodlo: 'podwykonawca',
@@ -128,7 +137,10 @@ describe('Full end-to-end chain: library → kosztorys → accept → umowy + za
 
     await createKosztorysSkladowaM({ kosztorys_pozycja_id: kpMalowanieId, lp: 1, nazwa: 'Farba', produkt_id: farba.id, dostawca_id: sig.id, cena: 35.0, norma: 0.15 });
 
-    // Set flat labor price + podwykonawca on kosztorys_pozycje
+    // Kosztorys labor components for Malowanie: 2.00
+    await createKosztorysSkladowaR({ kosztorys_pozycja_id: kpMalowanieId, lp: 1, opis: 'Malowanie', cena: 2.00, cena_zrodlowa: 2.00 });
+
+    // Set podwykonawca + source tracking on kosztorys_pozycje
     await supabase.from('kosztorys_pozycje').update({
       cena_robocizny: 2.00,
       cena_robocizny_zrodlo: 'podwykonawca',

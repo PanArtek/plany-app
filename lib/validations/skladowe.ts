@@ -19,8 +19,19 @@ export const createSkladowaMaterialSchema = z.object({
     .optional(),
 });
 
+// Schema dla tworzenia składowej robociznowej (biblioteka)
+export const createSkladowaRobociznaSchema = z.object({
+  opis: z.string()
+    .min(1, "Opis jest wymagany")
+    .max(255, "Max 255 znaków"),
+  cena: z.number()
+    .min(0, "Cena nie może być ujemna"),
+  podwykonawca_id: z.string().uuid().nullable().optional(),
+});
+
 // Typy TypeScript
 export type CreateSkladowaMaterialInput = z.infer<typeof createSkladowaMaterialSchema>;
+export type CreateSkladowaRobociznaInput = z.infer<typeof createSkladowaRobociznaSchema>;
 
 // Export enums for use in UI
 export const jednostkaMaterialOptions = jednostkaMaterialValues;

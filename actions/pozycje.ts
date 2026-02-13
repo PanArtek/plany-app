@@ -28,6 +28,14 @@ export interface SkladowaMaterial {
   jednostka: string | null;
 }
 
+export interface SkladowaRobocizna {
+  id: string;
+  lp: number;
+  opis: string;
+  cena: number;
+  podwykonawca_id: string | null;
+}
+
 export interface KategoriaInfo {
   id: string;
   kod: string;
@@ -53,6 +61,7 @@ export interface Pozycja {
   updated_at: string;
   cena_robocizny: number | null;
   biblioteka_skladowe_materialy: SkladowaMaterial[];
+  biblioteka_skladowe_robocizna: SkladowaRobocizna[];
   kategoria: KategoriaInfo | null;
 }
 
@@ -79,7 +88,8 @@ export async function createPozycja(input: unknown): Promise<ActionResult<Pozycj
     })
     .select(`
       *,
-      biblioteka_skladowe_materialy(*)
+      biblioteka_skladowe_materialy(*),
+      biblioteka_skladowe_robocizna(*)
     `)
     .single();
 
@@ -118,7 +128,8 @@ export async function updatePozycja(id: string, input: unknown): Promise<ActionR
     .eq('id', id)
     .select(`
       *,
-      biblioteka_skladowe_materialy(*)
+      biblioteka_skladowe_materialy(*),
+      biblioteka_skladowe_robocizna(*)
     `)
     .single();
 
@@ -186,6 +197,7 @@ export async function getPozycje(filters: PozycjeFilters): Promise<PozycjeResult
     .select(`
       *,
       biblioteka_skladowe_materialy(*),
+      biblioteka_skladowe_robocizna(*),
       kategoria:kategorie!kategoria_id(
         id,
         kod,
@@ -258,7 +270,8 @@ export async function getPozycja(id: string): Promise<Pozycja | null> {
     .from('pozycje_biblioteka')
     .select(`
       *,
-      biblioteka_skladowe_materialy(*)
+      biblioteka_skladowe_materialy(*),
+      biblioteka_skladowe_robocizna(*)
     `)
     .eq('id', id)
     .single();

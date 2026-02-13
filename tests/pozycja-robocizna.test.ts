@@ -7,10 +7,11 @@ import {
   createPozycjaBiblioteka,
   createPodwykonawca,
   createStawkaPodwykonawcy,
+  createBibliotekaSkladowaR,
   updatePozycjaCenaRobocizny,
 } from './helpers/setup';
 
-describe('Pozycja <-> Robocizna <-> Podwykonawcy', () => {
+describe('Pozycja <-> Robocizna (składowe) <-> Podwykonawcy', () => {
   let orgId: string;
   let pozycja: Record<string, unknown>;
   let kowalski: Record<string, unknown>;
@@ -45,7 +46,21 @@ describe('Pozycja <-> Robocizna <-> Podwykonawcy', () => {
       stawka: 45.0,
     });
 
-    // Set flat labor price: 6.90 PLN/m2
+    // Create labor components: 4.50 + 2.40 = 6.90
+    await createBibliotekaSkladowaR({
+      pozycja_biblioteka_id: pozycja.id as string,
+      lp: 1,
+      opis: 'Montaż profili',
+      cena: 4.50,
+    });
+    await createBibliotekaSkladowaR({
+      pozycja_biblioteka_id: pozycja.id as string,
+      lp: 2,
+      opis: 'Szpachlowanie',
+      cena: 2.40,
+    });
+
+    // Update cached sum
     await updatePozycjaCenaRobocizny(pozycja.id as string, 6.90);
   });
 
@@ -53,7 +68,22 @@ describe('Pozycja <-> Robocizna <-> Podwykonawcy', () => {
     if (orgId) await cleanupOrganization(orgId);
   });
 
-  it('pozycja_biblioteka has cena_robocizny set correctly', async () => {
+  it('biblioteka_skladowe_robocizna has correct components', async () => {
+    const { data, error } = await supabase
+      .from('biblioteka_skladowe_robocizna')
+      .select('*')
+      .eq('pozycja_biblioteka_id', pozycja.id as string)
+      .order('lp');
+
+    expect(error).toBeNull();
+    expect(data).toHaveLength(2);
+    expect(data![0].opis).toBe('Montaż profili');
+    expect(Number(data![0].cena)).toBeCloseTo(4.50, 2);
+    expect(data![1].opis).toBe('Szpachlowanie');
+    expect(Number(data![1].cena)).toBeCloseTo(2.40, 2);
+  });
+
+  it('cena_robocizny reflects sum of components', async () => {
     const { data, error } = await supabase
       .from('pozycje_biblioteka')
       .select('cena_robocizny')
@@ -99,5 +129,22 @@ describe('Pozycja <-> Robocizna <-> Podwykonawcy', () => {
     const stawki = data!.map((r) => Number(r.stawka));
     expect(stawki).toContain(45.0);
     expect(stawki).toContain(42.0);
+  });
+
+  it('adding a third labor component increases total', async () => {
+    await createBibliotekaSkladowaR({
+      pozycja_biblioteka_id: pozycja.id as string,
+      lp: 3,
+      opis: 'Gruntowanie',
+      cena: 1.10,
+    });
+
+    const { data } = await supabase
+      .from('biblioteka_skladowe_robocizna')
+      .select('cena')
+      .eq('pozycja_biblioteka_id', pozycja.id as string);
+
+    const sum = data!.reduce((s, r) => s + Number(r.cena), 0);
+    expect(sum).toBeCloseTo(8.00, 2); // 4.50 + 2.40 + 1.10
   });
 });

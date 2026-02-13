@@ -4,9 +4,14 @@ interface SkladowaMaterial {
   norma_domyslna: number | null;
 }
 
+interface SkladowaRobocizna {
+  cena: number | null;
+}
+
 interface PozycjaZeSkladowymi {
   cena_robocizny?: number | null;
   biblioteka_skladowe_materialy?: SkladowaMaterial[] | null;
+  biblioteka_skladowe_robocizna?: SkladowaRobocizna[] | null;
 }
 
 interface CenaPozycji {
@@ -17,12 +22,15 @@ interface CenaPozycji {
 
 /**
  * Oblicza cene pozycji z biblioteki na podstawie skladowych
- * robocizna = cena_robocizny (flat field on pozycja)
+ * robocizna = SUM(skladowe_robocizna.cena) if available, else cena_robocizny (cache)
  * material = sum of (cena_domyslna * norma_domyslna) for each skladowa_material
  * cena = robocizna + material
  */
 export function obliczCenePozycji(pozycja: PozycjaZeSkladowymi): CenaPozycji {
-  const robocizna = pozycja.cena_robocizny ?? 0;
+  const skladoweR = pozycja.biblioteka_skladowe_robocizna;
+  const robocizna = skladoweR && skladoweR.length > 0
+    ? skladoweR.reduce((sum, s) => sum + Number(s.cena ?? 0), 0)
+    : (pozycja.cena_robocizny ?? 0);
 
   const material = (pozycja.biblioteka_skladowe_materialy ?? []).reduce((sum, s) => {
     const cena = s.cena_domyslna ?? 0;
