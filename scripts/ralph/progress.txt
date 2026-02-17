@@ -15,3 +15,8 @@ Started: Tue Feb 17 14:40:38 CET 2026
 - ON CONFLICT DO NOTHING for idempotency
 - Used INSERT...SELECT with CROSS JOIN on Demo Organization
 ---
+## US-003: Regenerate TypeScript types — PASSED
+- Generated via Supabase MCP generate_typescript_types
+- Both podwykonawcy and dostawcy Row types include all 11 new fields
+- npm run build passes
+---

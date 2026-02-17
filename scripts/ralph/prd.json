@@ -49,8 +49,8 @@
         "Typecheck passes"
       ],
       "priority": 2,
-      "passes": false,
-      "notes": "",
+      "passes": true,
+      "notes": "Types regenerated via Supabase MCP generate_typescript_types. All 11 new fields present on both Row types. Build passes.",
       "dependsOn": ["US-001"]
     },
     {
