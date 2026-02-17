@@ -85,8 +85,8 @@
         "Typecheck passes"
       ],
       "priority": 3,
-      "passes": false,
-      "notes": "",
+      "passes": true,
+      "notes": "createPodwykonawca inserts all 11 fields. updatePodwykonawca updates only provided fields. getPodwykonawca returns all fields. Build passes.",
       "dependsOn": ["US-004"]
     },
     {
@@ -102,8 +102,8 @@
         "Typecheck passes"
       ],
       "priority": 3,
-      "passes": false,
-      "notes": "",
+      "passes": true,
+      "notes": "Same pattern as US-005. Build passes.",
       "dependsOn": ["US-004"]
     },
     {
@@ -122,8 +122,8 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 4,
-      "passes": false,
-      "notes": "",
+      "passes": true,
+      "notes": "Form has 4 sections + aktywny toggle. Collapsible used from shadcn/ui. getPodwykonawca fetches full data on edit. Build passes.",
       "dependsOn": ["US-005"]
     },
     {
@@ -142,8 +142,8 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 4,
-      "passes": false,
-      "notes": "",
+      "passes": true,
+      "notes": "Same pattern as US-007. Build passes.",
       "dependsOn": ["US-006"]
     },
     {

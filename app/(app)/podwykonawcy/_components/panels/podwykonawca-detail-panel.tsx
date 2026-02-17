@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Pencil, Trash2, Loader2, Plus } from 'lucide-react';
+import { Pencil, Trash2, Loader2, Plus, Star, ExternalLink, Mail } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -20,6 +20,7 @@ import {
   type StawkaEntry,
   type PodwykonawcaPozycja,
 } from '@/actions/podwykonawcy';
+import { CopyContractData } from '@/components/copy-contract-data';
 
 interface PodwykonawcaDetailPanelProps {
   podwykonawcaId: string | null;
@@ -115,17 +116,66 @@ export function PodwykonawcaDetailPanel({
           </div>
         ) : podwykonawca ? (
           <>
+            {/* Ocena */}
+            {podwykonawca.ocena && (
+              <div className="flex items-center gap-1">
+                {Array.from({ length: 5 }, (_, i) => (
+                  <Star
+                    key={i}
+                    className={`h-4 w-4 ${i < podwykonawca.ocena! ? 'fill-amber-500 text-amber-500' : 'text-white/20'}`}
+                  />
+                ))}
+                <span className="text-sm text-white/60 ml-2">{podwykonawca.ocena}/5</span>
+              </div>
+            )}
+
             {/* Section 1: Dane kontaktowe */}
             <div className="space-y-3">
               <h4 className="text-sm font-medium text-white/50 uppercase tracking-wider">
                 Dane kontaktowe
               </h4>
-              {podwykonawca.kontakt ? (
-                <p className="text-sm text-white/80 whitespace-pre-wrap">{podwykonawca.kontakt}</p>
-              ) : (
-                <p className="text-sm text-white/50">Brak danych kontaktowych</p>
-              )}
+              <div className="space-y-2">
+                {podwykonawca.kontakt && (
+                  <p className="text-sm text-white/80">{podwykonawca.kontakt}</p>
+                )}
+                {podwykonawca.email && (
+                  <a href={`mailto:${podwykonawca.email}`} className="text-sm text-amber-500 hover:text-amber-400 flex items-center gap-1.5">
+                    <Mail className="h-3 w-3" />
+                    {podwykonawca.email}
+                  </a>
+                )}
+                {podwykonawca.strona_www && (
+                  <a href={podwykonawca.strona_www.startsWith('http') ? podwykonawca.strona_www : `https://${podwykonawca.strona_www}`} target="_blank" rel="noopener noreferrer" className="text-sm text-amber-500 hover:text-amber-400 flex items-center gap-1.5">
+                    <ExternalLink className="h-3 w-3" />
+                    {podwykonawca.strona_www}
+                  </a>
+                )}
+                {!podwykonawca.kontakt && !podwykonawca.email && !podwykonawca.strona_www && (
+                  <p className="text-sm text-white/50">Brak danych kontaktowych</p>
+                )}
+              </div>
             </div>
+
+            {/* Copy contract data */}
+            <CopyContractData
+              nazwaPelna={podwykonawca.nazwa_pelna}
+              nip={podwykonawca.nip}
+              regon={podwykonawca.regon}
+              krs={podwykonawca.krs}
+              adresSiedziby={podwykonawca.adres_siedziby}
+              osobaReprezentujaca={podwykonawca.osoba_reprezentujaca}
+              nrKonta={podwykonawca.nr_konta}
+            />
+
+            {/* Uwagi */}
+            {podwykonawca.uwagi && (
+              <div className="space-y-2">
+                <h4 className="text-sm font-medium text-white/50 uppercase tracking-wider">
+                  Uwagi
+                </h4>
+                <p className="text-sm text-white/70 whitespace-pre-wrap">{podwykonawca.uwagi}</p>
+              </div>
+            )}
 
             {/* Section 2: Cennik stawek */}
             <div className="space-y-3">

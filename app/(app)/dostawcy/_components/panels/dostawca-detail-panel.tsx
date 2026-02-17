@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Pencil, Trash2, Loader2, Plus } from 'lucide-react';
+import { Pencil, Trash2, Loader2, Plus, Star, ExternalLink, Mail } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -20,6 +20,7 @@ import {
   type CennikEntry,
   type DostawcaPozycja,
 } from '@/actions/dostawcy';
+import { CopyContractData } from '@/components/copy-contract-data';
 
 interface DostawcaDetailPanelProps {
   dostawcaId: string | null;
@@ -115,17 +116,66 @@ export function DostawcaDetailPanel({
           </div>
         ) : dostawca ? (
           <>
+            {/* Ocena */}
+            {dostawca.ocena && (
+              <div className="flex items-center gap-1">
+                {Array.from({ length: 5 }, (_, i) => (
+                  <Star
+                    key={i}
+                    className={`h-4 w-4 ${i < dostawca.ocena! ? 'fill-amber-500 text-amber-500' : 'text-white/20'}`}
+                  />
+                ))}
+                <span className="text-sm text-white/60 ml-2">{dostawca.ocena}/5</span>
+              </div>
+            )}
+
             {/* Section 1: Dane kontaktowe */}
             <div className="space-y-3">
               <h4 className="text-sm font-medium text-white/50 uppercase tracking-wider">
                 Dane kontaktowe
               </h4>
-              {dostawca.kontakt ? (
-                <p className="text-sm text-white/80 whitespace-pre-wrap">{dostawca.kontakt}</p>
-              ) : (
-                <p className="text-sm text-white/50">Brak danych kontaktowych</p>
-              )}
+              <div className="space-y-2">
+                {dostawca.kontakt && (
+                  <p className="text-sm text-white/80">{dostawca.kontakt}</p>
+                )}
+                {dostawca.email && (
+                  <a href={`mailto:${dostawca.email}`} className="text-sm text-amber-500 hover:text-amber-400 flex items-center gap-1.5">
+                    <Mail className="h-3 w-3" />
+                    {dostawca.email}
+                  </a>
+                )}
+                {dostawca.strona_www && (
+                  <a href={dostawca.strona_www.startsWith('http') ? dostawca.strona_www : `https://${dostawca.strona_www}`} target="_blank" rel="noopener noreferrer" className="text-sm text-amber-500 hover:text-amber-400 flex items-center gap-1.5">
+                    <ExternalLink className="h-3 w-3" />
+                    {dostawca.strona_www}
+                  </a>
+                )}
+                {!dostawca.kontakt && !dostawca.email && !dostawca.strona_www && (
+                  <p className="text-sm text-white/50">Brak danych kontaktowych</p>
+                )}
+              </div>
             </div>
+
+            {/* Copy contract data */}
+            <CopyContractData
+              nazwaPelna={dostawca.nazwa_pelna}
+              nip={dostawca.nip}
+              regon={dostawca.regon}
+              krs={dostawca.krs}
+              adresSiedziby={dostawca.adres_siedziby}
+              osobaReprezentujaca={dostawca.osoba_reprezentujaca}
+              nrKonta={dostawca.nr_konta}
+            />
+
+            {/* Uwagi */}
+            {dostawca.uwagi && (
+              <div className="space-y-2">
+                <h4 className="text-sm font-medium text-white/50 uppercase tracking-wider">
+                  Uwagi
+                </h4>
+                <p className="text-sm text-white/70 whitespace-pre-wrap">{dostawca.uwagi}</p>
+              </div>
+            )}
 
             {/* Section 2: Cennik produktów */}
             <div className="space-y-3">
