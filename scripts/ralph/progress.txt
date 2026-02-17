@@ -9,3 +9,9 @@ Started: Tue Feb 17 14:40:38 CET 2026
 - Existing data preserved
 - npm run build passes
 ---
+## US-002: Seed data — PASSED
+- 9 stolarni meblowych inserted as podwykonawcy (ocena 3-5, with email/www/uwagi)
+- 7 hurtowni płyt inserted as dostawcy (ocena 3-5, with kod/email/www/uwagi)
+- ON CONFLICT DO NOTHING for idempotency
+- Used INSERT...SELECT with CROSS JOIN on Demo Organization
+---

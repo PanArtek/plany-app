@@ -34,8 +34,8 @@
         "Typecheck passes"
       ],
       "priority": 1,
-      "passes": false,
-      "notes": "",
+      "passes": true,
+      "notes": "Seed migration applied. 9 podwykonawcy + 7 dostawcy inserted via INSERT...SELECT with ON CONFLICT DO NOTHING.",
       "dependsOn": ["US-001"]
     },
     {
