@@ -20,3 +20,43 @@ Started: Tue Feb 17 14:40:38 CET 2026
 - Both podwykonawcy and dostawcy Row types include all 11 new fields
 - npm run build passes
 ---
+## US-004: Extend Zod validation schemas — PASSED
+- Added companyCardFields to both podwykonawcy and dostawcy validation files
+- Created form schemas without .default() for zodResolver compatibility
+- Build passes
+---
+## US-005: Server Actions — extend podwykonawcy CRUD — PASSED
+- Extended PodwykonawcaBase interface with 11 new fields
+- Updated getPodwykonawca, createPodwykonawca, updatePodwykonawca
+- Build passes
+---
+## US-006: Server Actions — extend dostawcy CRUD — PASSED
+- Same pattern as US-005 for dostawcy
+- Build passes
+---
+## US-007: Form panel podwykonawcy — PASSED
+- 4 sections: Podstawowe, Kontakt, Dane do umowy (Collapsible), Uwagi
+- Fetches full data via getPodwykonawca on edit
+- Build passes
+---
+## US-008: Form panel dostawcy — PASSED
+- Same pattern as US-007 with kod instead of specjalizacja
+- Build passes
+---
+## US-009: CopyContractData + detail panels — PASSED
+- Created components/copy-contract-data.tsx
+- Updated both detail panels with ocena stars, email/www links, uwagi, copy button
+- Build passes
+---
+## US-010: Historia realizacji — podwykonawcy — PASSED
+- Created get_podwykonawca_historia Postgres function
+- Added getPodwykonawcaHistoria server action
+- Detail panel shows history with project names, dates, sums, total footer
+- Build passes
+---
+## US-011: Historia realizacji — dostawcy — PASSED
+- Created get_dostawca_historia Postgres function
+- Added getDostawcaHistoria server action
+- Detail panel shows history with project names, dates, sums, total footer
+- Build passes
+---

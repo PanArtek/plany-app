@@ -344,6 +344,36 @@ export async function updatePodwykonawca(id: string, input: unknown): Promise<Ac
   return { success: true, data: data as PodwykonawcaBase };
 }
 
+// --- READ: Historia realizacji ---
+
+export interface HistoriaEntry {
+  projektId: string;
+  projektNazwa: string;
+  projektStatus: string;
+  data: string;
+  suma: number;
+  count: number;
+}
+
+export async function getPodwykonawcaHistoria(podwykonawcaId: string): Promise<HistoriaEntry[]> {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase.rpc('get_podwykonawca_historia', {
+    p_podwykonawca_id: podwykonawcaId,
+  });
+
+  if (error) throw error;
+
+  return (data || []).map((row: Record<string, unknown>) => ({
+    projektId: row.projekt_id as string,
+    projektNazwa: row.projekt_nazwa as string,
+    projektStatus: row.projekt_status as string,
+    data: row.data_realizacji as string,
+    suma: Number(row.suma),
+    count: Number(row.pozycje_count),
+  }));
+}
+
 // --- DELETE podwykonawca ---
 
 export async function deletePodwykonawca(id: string): Promise<ActionResult> {

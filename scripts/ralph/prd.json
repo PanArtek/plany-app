@@ -162,8 +162,8 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 5,
-      "passes": false,
-      "notes": "",
+      "passes": true,
+      "notes": "CopyContractData component created. Both detail panels enhanced with ocena stars, email/www links, uwagi, copy button. Build passes.",
       "dependsOn": ["US-007", "US-008"]
     },
     {
@@ -182,8 +182,8 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 5,
-      "passes": false,
-      "notes": "",
+      "passes": true,
+      "notes": "Created get_podwykonawca_historia Postgres function. Added getPodwykonawcaHistoria server action. Detail panel shows history section with project names, dates, sums, and total footer. Build passes.",
       "dependsOn": ["US-005"]
     },
     {
@@ -202,8 +202,8 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 5,
-      "passes": false,
-      "notes": "",
+      "passes": true,
+      "notes": "Created get_dostawca_historia Postgres function. Added getDostawcaHistoria server action. Detail panel shows history section with project names, dates, sums, and total footer. Build passes.",
       "dependsOn": ["US-006"]
     },
     {

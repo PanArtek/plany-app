@@ -16,9 +16,11 @@ import {
   getPodwykonawca,
   getPodwykonawcaStawki,
   getPodwykonawcaPozycje,
+  getPodwykonawcaHistoria,
   type PodwykonawcaBase,
   type StawkaEntry,
   type PodwykonawcaPozycja,
+  type HistoriaEntry,
 } from '@/actions/podwykonawcy';
 import { CopyContractData } from '@/components/copy-contract-data';
 
@@ -52,6 +54,7 @@ export function PodwykonawcaDetailPanel({
   const [podwykonawca, setPodwykonawca] = useState<PodwykonawcaBase | null>(null);
   const [stawki, setStawki] = useState<StawkaEntry[]>([]);
   const [pozycje, setPozycje] = useState<PodwykonawcaPozycja[]>([]);
+  const [historia, setHistoria] = useState<HistoriaEntry[]>([]);
 
   useEffect(() => {
     if (open && podwykonawcaId) {
@@ -60,10 +63,12 @@ export function PodwykonawcaDetailPanel({
         getPodwykonawca(podwykonawcaId),
         getPodwykonawcaStawki(podwykonawcaId),
         getPodwykonawcaPozycje(podwykonawcaId),
-      ]).then(([p, s, poz]) => {
+        getPodwykonawcaHistoria(podwykonawcaId),
+      ]).then(([p, s, poz, hist]) => {
         setPodwykonawca(p);
         setStawki(s);
         setPozycje(poz);
+        setHistoria(hist);
       }).catch(() => {
         setPodwykonawca(null);
       }).finally(() => {
@@ -231,7 +236,43 @@ export function PodwykonawcaDetailPanel({
               )}
             </div>
 
-            {/* Section 3: Używany w pozycjach (only if count > 0) */}
+            {/* Section 3: Historia realizacji */}
+            {historia.length > 0 && (
+              <div className="space-y-3">
+                <h4 className="text-sm font-medium text-white/50 uppercase tracking-wider">
+                  Historia realizacji ({historia.length})
+                </h4>
+                <div className="space-y-2">
+                  {historia.map((h) => (
+                    <div
+                      key={h.projektId}
+                      className="flex items-center justify-between px-3 py-2 rounded-md bg-white/[0.03] border border-white/[0.06]"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <span className="text-sm text-white/80">{h.projektNazwa}</span>
+                        <span className="text-xs text-white/40 ml-2">
+                          {new Date(h.data).toLocaleDateString('pl-PL', { year: 'numeric', month: 'short' })}
+                        </span>
+                      </div>
+                      <div className="text-right">
+                        <span className="font-mono text-sm text-amber-500">
+                          {h.suma.toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, ' ')} zł
+                        </span>
+                        <span className="text-xs text-white/40 ml-1">({h.count} poz.)</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="flex items-center justify-between px-3 py-2 border-t border-white/10">
+                  <span className="text-xs text-white/50">Łącznie</span>
+                  <span className="font-mono text-sm font-medium text-amber-500">
+                    {historia.reduce((sum, h) => sum + h.suma, 0).toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, ' ')} zł z {historia.length} projektów
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {/* Section 4: Używany w pozycjach (only if count > 0) */}
             {pozycje.length > 0 && (
               <div className="space-y-3">
                 <h4 className="text-sm font-medium text-white/50 uppercase tracking-wider">

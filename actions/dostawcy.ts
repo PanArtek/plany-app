@@ -305,6 +305,36 @@ export async function updateDostawca(id: string, input: unknown): Promise<Action
   return { success: true, data: data as DostawcaBase };
 }
 
+// --- READ: Historia realizacji ---
+
+export interface DostawcaHistoriaEntry {
+  projektId: string;
+  projektNazwa: string;
+  projektStatus: string;
+  data: string;
+  suma: number;
+  count: number;
+}
+
+export async function getDostawcaHistoria(dostawcaId: string): Promise<DostawcaHistoriaEntry[]> {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase.rpc('get_dostawca_historia', {
+    p_dostawca_id: dostawcaId,
+  });
+
+  if (error) throw error;
+
+  return (data || []).map((row: Record<string, unknown>) => ({
+    projektId: row.projekt_id as string,
+    projektNazwa: row.projekt_nazwa as string,
+    projektStatus: row.projekt_status as string,
+    data: row.data_realizacji as string,
+    suma: Number(row.suma),
+    count: Number(row.materialy_count),
+  }));
+}
+
 // --- DELETE dostawca ---
 
 export async function deleteDostawca(id: string): Promise<ActionResult> {
