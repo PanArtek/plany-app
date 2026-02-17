@@ -1,3 +1,11 @@
 # Ralph Progress Log
 Started: Tue Feb 17 14:40:38 CET 2026
 ---
+## US-001: DB migration — PASSED
+- Applied migration `add_company_card_columns` via Supabase MCP
+- podwykonawcy: 8 → 19 columns
+- dostawcy: 8 → 19 columns
+- CHECK constraints on ocena (1-5) verified
+- Existing data preserved
+- npm run build passes
+---

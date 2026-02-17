@@ -17,8 +17,8 @@
         "Typecheck passes"
       ],
       "priority": 1,
-      "passes": false,
-      "notes": "",
+      "passes": true,
+      "notes": "Migration applied via Supabase MCP. Both tables now have 19 columns (8+11). CHECK constraints on ocena verified.",
       "dependsOn": []
     },
     {
