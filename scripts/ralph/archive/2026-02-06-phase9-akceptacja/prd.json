@@ -1,0 +1,264 @@
+{
+  "project": "PLANY App",
+  "branchName": "ralph/phase8b-kosztorys-interactions",
+  "description": "Phase 8b: Kosztorys Interactions - override indicators with reset to library, bottom library drawer with cascading filters, multi-select with bulk delete and bulk narzut",
+  "mode": "feature",
+  "baseBranch": "main",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Extend getKosztorysPozycjaDetail to return library reference values",
+      "description": "As a developer, I need library reference values alongside kosztorys values to compare and show override indicators.\n\nModify `getKosztorysPozycjaDetail()` in `actions/kosztorys.ts`. After fetching skladoweR and skladoweM, also fetch the library defaults from `biblioteka_skladowe_robocizna` and `biblioteka_skladowe_materialy` where `pozycja_id` matches the pozycja's `pozycja_biblioteka_id`.\n\nAdd to the return type:\n- `bibliotekaSkladoweR: { id, opis, stawka_domyslna, norma_domyslna, jednostka }[]`\n- `bibliotekaSkladoweM: { id, nazwa, cena_domyslna, norma_domyslna, jednostka }[]`\n\nThe matching between kosztorys skladowe and library skladowe is by `lp` (ordinal position) since skladowe are copied from library maintaining lp order.\n\nUpdate the `KosztorysPozycjaDetail` interface to include these two new arrays.",
+      "acceptanceCriteria": [
+        "KosztorysPozycjaDetail interface includes bibliotekaSkladoweR and bibliotekaSkladoweM arrays",
+        "getKosztorysPozycjaDetail fetches library skladowe via pozycja_biblioteka_id",
+        "Library skladowe have fields: stawka_domyslna/cena_domyslna, norma_domyslna, opis/nazwa, lp",
+        "Existing functionality unchanged - detail panel still loads correctly",
+        "Typecheck passes"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": "",
+      "dependsOn": []
+    },
+    {
+      "id": "US-002",
+      "title": "Set is_manual flag on skladowe updates",
+      "description": "As a developer, I need skladowe to track whether values were manually changed.\n\nModify `updateKosztorysSkladowaR()` in `actions/kosztorys.ts`: add `is_manual: true` to the update payload alongside stawka and podwykonawca_id.\n\nModify `updateKosztorysSkladowaM()` in `actions/kosztorys.ts`: add `is_manual: true` to the update payload alongside cena and dostawca_id.\n\nThe `is_manual` column already exists in both `kosztorys_skladowe_robocizna` and `kosztorys_skladowe_materialy` tables (added in Phase 8a migration). It just needs to be set to `true` whenever a user edits a value.",
+      "acceptanceCriteria": [
+        "updateKosztorysSkladowaR sets is_manual=true in the UPDATE query",
+        "updateKosztorysSkladowaM sets is_manual=true in the UPDATE query",
+        "Editing stawka/cena in detail panel marks skladowa as is_manual=true in DB",
+        "Typecheck passes"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "",
+      "dependsOn": []
+    },
+    {
+      "id": "US-003",
+      "title": "Create OverrideIndicator component",
+      "description": "As a developer, I need a reusable component to show when a value differs from library.\n\nCreate `app/(app)/projekty/[projektId]/kosztorys/_components/override-indicator.tsx`.\n\nProps:\n- `isOverridden: boolean` - whether current value differs from library\n- `libraryValue: number` - the original library value (for tooltip)\n- `onReset: () => void` - callback when user clicks to reset\n- `disabled?: boolean` - for locked revisions\n\nRendering:\n- When `isOverridden` is false: render nothing (null)\n- When `isOverridden` is true: render a small amber/orange dot (●) as a button\n- Use Tooltip from shadcn: \"Resetuj do wartości z biblioteki (X.XX)\" where X.XX is libraryValue formatted to 2 decimal places\n- On click: call `onReset()` (unless disabled)\n- When disabled: show dot but not clickable, no cursor pointer\n\nStyling: `text-amber-500 hover:text-amber-400 cursor-pointer text-xs inline-flex items-center ml-1` - small dot positioned right after the input field.",
+      "acceptanceCriteria": [
+        "OverrideIndicator component created with isOverridden, libraryValue, onReset, disabled props",
+        "Renders amber dot (●) only when isOverridden is true",
+        "Tooltip shows library value formatted to 2 decimals",
+        "Click calls onReset when not disabled",
+        "Disabled state shows dot but prevents click",
+        "Typecheck passes"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": "",
+      "dependsOn": []
+    },
+    {
+      "id": "US-004",
+      "title": "Add override indicators to detail panel skladowe rows",
+      "description": "As a user, I want to see which skladowe values differ from library defaults so I know what I changed.\n\nModify `app/(app)/projekty/[projektId]/kosztorys/_components/panels/pozycja-detail-panel.tsx`.\n\nIn the data fetching (useEffect that calls getKosztorysPozycjaDetail), the response now includes `bibliotekaSkladoweR` and `bibliotekaSkladoweM` (from US-001). Store these in state.\n\nFor each SkladowaRRow: find matching library skladowa by `lp`. Compare `stawka` with `biblioteka.stawka_domyslna` and `norma` with `biblioteka.norma_domyslna`. Show OverrideIndicator next to stawka input when values differ. OnReset: call `updateKosztorysSkladowaR(id, { stawka: biblioteka.stawka_domyslna })` then set `is_manual` back to false via a separate update, then refresh.\n\nFor each SkladowaMRow: same pattern - compare `cena` with `biblioteka.cena_domyslna`, show OverrideIndicator next to cena input. OnReset: call `updateKosztorysSkladowaM(id, { cena: biblioteka.cena_domyslna })`.\n\nThe indicator appears inline, right after the Input element for stawka/cena.",
+      "acceptanceCriteria": [
+        "Each skladowa R row shows amber dot when stawka differs from library stawka_domyslna",
+        "Each skladowa M row shows amber dot when cena differs from library cena_domyslna",
+        "Clicking dot resets stawka/cena to library value via server action",
+        "After reset, dot disappears and value updates in input",
+        "Dots hidden when revision is locked",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-001", "US-002", "US-003"]
+    },
+    {
+      "id": "US-005",
+      "title": "Add resetPozycjaToLibrary server action",
+      "description": "As a developer, I need a server action that resets all skladowe of a position back to library defaults.\n\nAdd `resetPozycjaToLibrary(pozycjaId: string)` to `actions/kosztorys.ts`.\n\nLogic:\n1. Fetch the pozycja to get `pozycja_biblioteka_id`\n2. Fetch all `biblioteka_skladowe_robocizna` for that pozycja_biblioteka_id (ordered by lp)\n3. Fetch all `kosztorys_skladowe_robocizna` for the pozycjaId (ordered by lp)\n4. For each matching pair (by lp): UPDATE kosztorys skladowa SET stawka = biblioteka.stawka_domyslna, norma = biblioteka.norma_domyslna, is_manual = false\n5. Same for materialy: fetch biblioteka_skladowe_materialy, match by lp, UPDATE cena = biblioteka.cena_domyslna, norma = biblioteka.norma_domyslna, is_manual = false\n6. For material skladowe: also run 3-tier price discovery (check ceny_dostawcow for preferred/cheapest supplier) to update cena - same logic as in addPositionFromLibrary\n7. revalidatePath('/projekty')\n8. Return ActionResult\n\nNote: This resets values but does NOT add/remove skladowe rows. The structure stays the same, only values are overwritten.",
+      "acceptanceCriteria": [
+        "resetPozycjaToLibrary function exported from actions/kosztorys.ts",
+        "Resets all skladoweR stawka/norma to library defaults",
+        "Resets all skladoweM cena/norma to library defaults",
+        "Sets is_manual=false on all reset skladowe",
+        "Runs 3-tier price discovery for material skladowe",
+        "Calls revalidatePath after reset",
+        "Typecheck passes"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-001"]
+    },
+    {
+      "id": "US-006",
+      "title": "Add 'Resetuj do biblioteki' button to detail panel",
+      "description": "As a user, I want to reset all values of a position back to library defaults with one click.\n\nModify `app/(app)/projekty/[projektId]/kosztorys/_components/panels/pozycja-detail-panel.tsx`.\n\nAdd a button at the bottom of the panel (before the delete button section), styled as a ghost/outline button with RotateCcw icon from lucide-react. Label: 'Resetuj do biblioteki'.\n\nOn click: show confirmation dialog (use AlertDialog from shadcn or simple confirm pattern already used in the codebase). Message: 'Czy na pewno chcesz zresetować wszystkie wartości do aktualnych wartości z biblioteki?'\n\nOn confirm: call `resetPozycjaToLibrary(pozycjaId)` from US-005. On success: toast.success('Zresetowano do wartości z biblioteki'), refresh detail panel data. On error: toast.error with message.\n\nButton hidden when `isLocked` is true. Button also hidden when no overrides exist (all is_manual === false or all values match library).",
+      "acceptanceCriteria": [
+        "'Resetuj do biblioteki' button visible at bottom of detail panel",
+        "Button hidden when revision is locked",
+        "Button hidden when no overrides exist (all skladowe match library)",
+        "Click shows confirmation dialog before resetting",
+        "After confirm, calls resetPozycjaToLibrary and shows success toast",
+        "Panel data refreshes after reset - all override dots disappear",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 6,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-004", "US-005"]
+    },
+    {
+      "id": "US-007",
+      "title": "Add getKategorieForFilter server action for cascading dropdowns",
+      "description": "As a developer, I need an action to fetch kategorie for cascading filter dropdowns in the library drawer.\n\nAdd `getKategorieForFilter(parentId?: string)` to `actions/kosztorys.ts`.\n\nLogic:\n- If no parentId: fetch all kategorie where poziom=0 (branże) - but actually branże are already known (BUD, ELE, SAN, TEL, HVC enum), so this action is for kategorie and podkategorie.\n- If parentId provided: fetch all kategorie where parent_id = parentId, ordered by kod.\n- Return: `{ id, kod, nazwa, pelny_kod }[]`\n\nThis will be used by the library drawer for cascading filters: user selects branża → fetches kategorie → user selects kategoria → fetches podkategorie.",
+      "acceptanceCriteria": [
+        "getKategorieForFilter exported from actions/kosztorys.ts",
+        "When parentId provided, returns child kategorie ordered by kod",
+        "Returns id, kod, nazwa, pelny_kod for each kategoria",
+        "Typecheck passes"
+      ],
+      "priority": 7,
+      "passes": false,
+      "notes": "",
+      "dependsOn": []
+    },
+    {
+      "id": "US-008",
+      "title": "Extend getLibraryPositions with kategoria/podkategoria filters",
+      "description": "As a developer, I need the library positions action to support filtering by kategoria and podkategoria.\n\nModify `getLibraryPositions()` in `actions/kosztorys.ts`.\n\nCurrent filters: `search`, `branza` (string), `page`.\nAdd new optional filters: `kategoriaId?: string`, `podkategoriaId?: string`.\n\nFilter logic:\n- If `podkategoriaId` is set: filter `pozycje_biblioteka.kategoria_id = podkategoriaId`\n- Else if `kategoriaId` is set: filter pozycje where kategoria's parent_id = kategoriaId OR kategoria_id = kategoriaId (positions in kategoria or any of its podkategorie)\n- Else if `branza` is set: keep existing filter (positions in any kategoria under that branża)\n\nUpdate the `LibraryFilters` interface to include the new fields.",
+      "acceptanceCriteria": [
+        "LibraryFilters interface includes optional kategoriaId and podkategoriaId",
+        "Filtering by podkategoriaId returns only positions in that podkategoria",
+        "Filtering by kategoriaId returns positions in kategoria and its podkategorie",
+        "Existing branza filter still works",
+        "Typecheck passes"
+      ],
+      "priority": 8,
+      "passes": false,
+      "notes": "",
+      "dependsOn": []
+    },
+    {
+      "id": "US-009",
+      "title": "Create library-drawer component (bottom sheet with filters)",
+      "description": "As a user, I want a bottom drawer to browse and add library positions with cascading filters.\n\nCreate `app/(app)/projekty/[projektId]/kosztorys/_components/library-drawer.tsx`.\n\nUse shadcn Sheet component with `side=\"bottom\"`. Height: ~40vh via className on SheetContent.\n\nProps:\n- `open: boolean`\n- `onOpenChange: (open: boolean) => void`\n- `rewizjaId: string`\n- `existingPozycjaBibliotekaIds: string[]`\n- `isLocked: boolean`\n\nLayout:\n- SheetHeader: 'Biblioteka pozycji' title + close button\n- Filter row: Search input + Branża dropdown (BUD/ELE/SAN/TEL/HVC) + Kategoria dropdown (loads via getKategorieForFilter when branża selected) + Podkategoria dropdown (loads when kategoria selected). Dropdowns reset when parent changes.\n- Scrollable list of positions from getLibraryPositions with applied filters\n- Each row: checkbox + kod + nazwa + jednostka + składowe counts (NR NM)\n- 'Dodano' badge for positions in existingPozycjaBibliotekaIds\n- 'Załaduj więcej' button at bottom for pagination (20 per page, append to list)\n- SheetFooter (sticky): 'Dodaj N pozycji' amber button, disabled when nothing selected\n\nOn add: loop selected IDs through addPositionFromLibrary, toast success, close drawer, router.refresh().\n\nState: search, branzaFilter, kategoriaFilter, podkategoriaFilter, positions[], selected Set<string>, page number.",
+      "acceptanceCriteria": [
+        "Library drawer opens from bottom, height ~40vh",
+        "Search input filters by nazwa/kod",
+        "Branża dropdown filters positions by branża",
+        "Kategoria dropdown loads after branża selection, filters positions",
+        "Podkategoria dropdown loads after kategoria selection, filters positions",
+        "Changing parent dropdown resets child dropdowns",
+        "Checkboxes for multi-select",
+        "'Dodano' badge shown for already-added positions",
+        "'Załaduj więcej' appends next page of results",
+        "'Dodaj N pozycji' button adds selected and closes drawer",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 9,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-007", "US-008"]
+    },
+    {
+      "id": "US-010",
+      "title": "Wire library drawer into kosztorys-view with Ctrl+B shortcut",
+      "description": "As a user, I want to open the library drawer with Ctrl+B or the '+' button.\n\nModify `app/(app)/projekty/[projektId]/kosztorys/_components/kosztorys-view.tsx`.\n\n1. Replace AddFromLibraryPanel with LibraryDrawer component (import from library-drawer.tsx).\n2. Keep existing `addFromLibraryOpen` state to control drawer open/close.\n3. Add useEffect with keydown listener for Ctrl+B (or Cmd+B on Mac):\n   - If revision is locked, ignore\n   - Otherwise toggle `addFromLibraryOpen`\n   - `e.preventDefault()` to prevent browser bookmark shortcut\n4. The existing '+' button in the toolbar now opens the drawer instead of the old panel.\n5. Remove import of AddFromLibraryPanel.\n6. Delete the file `panels/add-from-library-panel.tsx` since it's fully replaced.\n\nPass same props to LibraryDrawer as were passed to AddFromLibraryPanel: open, onOpenChange, rewizjaId, existingPozycjaBibliotekaIds (from pozycje array), isLocked.",
+      "acceptanceCriteria": [
+        "Ctrl+B toggles library drawer open/close",
+        "Ctrl+B ignored when revision is locked",
+        "'+' button in toolbar opens library drawer",
+        "Old AddFromLibraryPanel replaced by LibraryDrawer",
+        "panels/add-from-library-panel.tsx file deleted",
+        "Drawer receives correct props (rewizjaId, existingIds, isLocked)",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 10,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-009"]
+    },
+    {
+      "id": "US-011",
+      "title": "Add checkbox column to kosztorys table",
+      "description": "As a user, I want to select multiple positions in the table for bulk actions.\n\nModify `app/(app)/projekty/[projektId]/kosztorys/_components/kosztorys-table.tsx`.\n\nAdd new props:\n- `selectedIds: Set<string>`\n- `onSelectionChange: (ids: Set<string>) => void`\n- `isLocked: boolean` (already exists)\n\nAdd a checkbox column as the first column (before Lp):\n- Header: Checkbox component from shadcn. Checked when all visible pozycje are selected. onChange: toggle all visible pozycje IDs.\n- Row: Checkbox for each pozycja row. Checked when ID is in selectedIds. onChange: add/remove from selectedIds.\n- Click on checkbox must NOT trigger row selection (onSelect for detail panel). Use `e.stopPropagation()` on the checkbox cell.\n- Checkboxes hidden when `isLocked` is true.\n\nModify `kosztorys-view.tsx`:\n- Add `selectedIds` state: `useState<Set<string>>(new Set())`\n- Pass to KosztorysTable as props\n- Reset selectedIds when: filter changes, rewizja changes\n- Pass to new BulkToolbar (US-012)",
+      "acceptanceCriteria": [
+        "Checkbox column appears as first column in table",
+        "Header checkbox toggles all visible pozycje",
+        "Row checkbox toggles individual pozycja selection",
+        "Clicking checkbox does NOT open detail panel",
+        "Checkboxes hidden when revision is locked",
+        "selectedIds state managed in kosztorys-view",
+        "Selection resets on filter/rewizja change",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 11,
+      "passes": false,
+      "notes": "",
+      "dependsOn": []
+    },
+    {
+      "id": "US-012",
+      "title": "Add bulkUpdateNarzut server action",
+      "description": "As a developer, I need a server action for bulk updating narzut on multiple positions.\n\nAdd `bulkUpdateNarzut(pozycjaIds: string[], narzutPercent: number)` to `actions/kosztorys.ts`.\n\nLogic:\n- Validate narzutPercent is a number >= 0\n- UPDATE kosztorys_pozycje SET narzut_percent = narzutPercent WHERE id = ANY(pozycjaIds) AND organization_id = orgId\n- revalidatePath('/projekty')\n- Return ActionResult with count of updated rows",
+      "acceptanceCriteria": [
+        "bulkUpdateNarzut exported from actions/kosztorys.ts",
+        "Updates narzut_percent on all specified pozycje",
+        "Filters by organization_id for security",
+        "Validates narzutPercent >= 0",
+        "Calls revalidatePath after update",
+        "Typecheck passes"
+      ],
+      "priority": 12,
+      "passes": false,
+      "notes": "",
+      "dependsOn": []
+    },
+    {
+      "id": "US-013",
+      "title": "Create bulk-toolbar component with delete and narzut actions",
+      "description": "As a user, I want a toolbar with bulk actions when positions are selected.\n\nCreate `app/(app)/projekty/[projektId]/kosztorys/_components/bulk-toolbar.tsx`.\n\nProps:\n- `selectedIds: Set<string>`\n- `onClearSelection: () => void`\n- `onDelete: () => void` (triggers after successful delete)\n\nRendering (only when selectedIds.size > 0):\n- Sticky bar above the table with dark bg (bg-white/[0.06] border border-white/[0.1] rounded-lg)\n- Left: 'Zaznaczono N pozycji' text\n- Right: two buttons:\n  1. 'Ustaw narzut %' (outline button) → opens Popover with:\n     - Label: 'Narzut %'\n     - Number Input (min 0, step 1)\n     - 'Zastosuj' button → calls bulkUpdateNarzut(Array.from(selectedIds), value) → toast.success → onClearSelection\n  2. 'Usuń' (red outline button, Trash2 icon) → opens AlertDialog: 'Czy na pewno chcesz usunąć N pozycji? Ta operacja jest nieodwracalna.' → on confirm: calls deleteKosztorysPozycje(Array.from(selectedIds)) → toast.success → onClearSelection → onDelete\n\nWire into kosztorys-view.tsx: render BulkToolbar between KosztorysSummary and KosztorysTable. Pass selectedIds, onClearSelection (resets to empty Set), onDelete (triggers router.refresh).",
+      "acceptanceCriteria": [
+        "Bulk toolbar appears when 1+ positions selected",
+        "Shows count of selected positions",
+        "'Ustaw narzut %' opens popover with number input and 'Zastosuj' button",
+        "Applying narzut calls bulkUpdateNarzut, shows toast, clears selection",
+        "'Usuń' shows confirmation dialog before deleting",
+        "Delete calls deleteKosztorysPozycje, shows toast, clears selection",
+        "Toolbar disappears after action completes",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 13,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-011", "US-012"]
+    },
+    {
+      "id": "US-014",
+      "title": "Final build verification and manual testing",
+      "description": "As a developer, I need to verify the entire Phase 8b works end-to-end.\n\nRun `npm run build` to verify no type errors or build issues.\n\nManual verification checklist at localhost:3000/projekty/[id]/kosztorys:\n1. Open detail panel → edit stawka on a skladowa → amber dot appears\n2. Click amber dot → value resets to library value, dot disappears\n3. Edit multiple skladowe → click 'Resetuj do biblioteki' → all reset\n4. Press Ctrl+B → library drawer opens from bottom\n5. Select branża filter → kategoria dropdown populates → select kategoria → podkategoria populates\n6. Search for position → results filter\n7. Check 2 positions → 'Dodaj 2 pozycje' button active → click → positions added to table\n8. Check 3 positions in table via checkboxes → bulk toolbar appears\n9. Click 'Ustaw narzut %' → enter 15 → Zastosuj → all 3 positions get 15% narzut\n10. Check 2 positions → click 'Usuń' → confirm → positions deleted",
+      "acceptanceCriteria": [
+        "npm run build passes without errors",
+        "Override indicators appear on edited skladowe values",
+        "Per-field reset works via amber dot click",
+        "Full position reset works via 'Resetuj do biblioteki' button",
+        "Library drawer opens with Ctrl+B and '+' button",
+        "Cascading filters (branża → kategoria → podkategoria) work",
+        "Multi-select in drawer + batch add works",
+        "Table checkboxes work without opening detail panel",
+        "Bulk narzut updates all selected positions",
+        "Bulk delete removes all selected positions with confirmation",
+        "All features disabled when revision is locked"
+      ],
+      "priority": 14,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-006", "US-010", "US-013"]
+    }
+  ]
+}

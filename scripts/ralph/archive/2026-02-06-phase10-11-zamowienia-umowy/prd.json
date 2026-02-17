@@ -1,0 +1,257 @@
+{
+  "project": "PLANY App",
+  "branchName": "ralph/phase12-realizacja",
+  "description": "Phase 12: Realizacja Dashboard — financial tracking dashboard for project execution. Two-column layout: KPI sidebar (budget comparison planowane vs rzeczywiste, zamówienia/umowy mini-summaries) + wpisy/invoices table with full CRUD. Route: /projekty/[projektId]/realizacja",
+  "mode": "feature",
+  "baseBranch": "main",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Create get_realizacja_stats Postgres function via migration",
+      "description": "Create a Postgres function `get_realizacja_stats(p_projekt_id UUID)` that returns all KPI sidebar data in a single call.\n\nUse `mcp__supabase__apply_migration` with name `get_realizacja_stats`.\n\nThe function aggregates from multiple tables and returns JSON:\n```sql\nCREATE OR REPLACE FUNCTION get_realizacja_stats(p_projekt_id UUID)\nRETURNS JSON AS $$\nDECLARE\n  v_accepted_rewizja_id UUID;\n  v_result JSON;\nBEGIN\n  -- Get accepted revision\n  SELECT accepted_rewizja_id INTO v_accepted_rewizja_id\n  FROM projekty WHERE id = p_projekt_id;\n\n  SELECT json_build_object(\n    'budzet', json_build_object(\n      'planowane_r', COALESCE((SELECT suma_r FROM rewizje_summary WHERE id = v_accepted_rewizja_id), 0),\n      'planowane_m', COALESCE((SELECT suma_m FROM rewizje_summary WHERE id = v_accepted_rewizja_id), 0),\n      'planowane_razem', COALESCE((SELECT suma_razem FROM rewizje_summary WHERE id = v_accepted_rewizja_id), 0),\n      'rzeczywiste_r', COALESCE((SELECT SUM(kwota_netto) FROM realizacja_wpisy WHERE projekt_id = p_projekt_id AND typ = 'robocizna'), 0),\n      'rzeczywiste_m', COALESCE((SELECT SUM(kwota_netto) FROM realizacja_wpisy WHERE projekt_id = p_projekt_id AND typ = 'material'), 0),\n      'rzeczywiste_inne', COALESCE((SELECT SUM(kwota_netto) FROM realizacja_wpisy WHERE projekt_id = p_projekt_id AND typ = 'inny'), 0),\n      'rzeczywiste_razem', COALESCE((SELECT SUM(kwota_netto) FROM realizacja_wpisy WHERE projekt_id = p_projekt_id), 0)\n    ),\n    'zamowienia', (\n      SELECT json_build_object(\n        'total', COUNT(*),\n        'per_status', json_build_object(\n          'draft', COUNT(*) FILTER (WHERE status = 'draft'),\n          'wyslane', COUNT(*) FILTER (WHERE status = 'wyslane'),\n          'czesciowo', COUNT(*) FILTER (WHERE status = 'czesciowo'),\n          'dostarczone', COUNT(*) FILTER (WHERE status = 'dostarczone'),\n          'rozliczone', COUNT(*) FILTER (WHERE status = 'rozliczone')\n        ),\n        'wartosc_total', COALESCE((\n          SELECT SUM(zp.wartosc) FROM zamowienie_pozycje zp\n          JOIN zamowienia z2 ON z2.id = zp.zamowienie_id\n          WHERE z2.projekt_id = p_projekt_id\n        ), 0)\n      ) FROM zamowienia WHERE projekt_id = p_projekt_id\n    ),\n    'umowy', (\n      SELECT json_build_object(\n        'total', COUNT(*),\n        'per_status', json_build_object(\n          'draft', COUNT(*) FILTER (WHERE status = 'draft'),\n          'wyslana', COUNT(*) FILTER (WHERE status = 'wyslana'),\n          'podpisana', COUNT(*) FILTER (WHERE status = 'podpisana'),\n          'wykonana', COUNT(*) FILTER (WHERE status = 'wykonana'),\n          'rozliczona', COUNT(*) FILTER (WHERE status = 'rozliczona')\n        ),\n        'avg_procent_wykonania', COALESCE((\n          SELECT ROUND(AVG(up.procent_wykonania)::numeric, 0)\n          FROM umowa_pozycje up\n          JOIN umowy u2 ON u2.id = up.umowa_id\n          WHERE u2.projekt_id = p_projekt_id\n        ), 0),\n        'wartosc_total', COALESCE((\n          SELECT SUM(up.wartosc) FROM umowa_pozycje up\n          JOIN umowy u2 ON u2.id = up.umowa_id\n          WHERE u2.projekt_id = p_projekt_id\n        ), 0)\n      ) FROM umowy WHERE projekt_id = p_projekt_id\n    )\n  ) INTO v_result;\n\n  RETURN v_result;\nEND;\n$$ LANGUAGE plpgsql SECURITY INVOKER;\n```\n\nHandle edge case: when no accepted revision exists, planowane values should be 0. When no zamowienia/umowy exist, counts should be 0 and wartosc_total should be 0.",
+      "acceptanceCriteria": [
+        "Migration applied successfully via apply_migration",
+        "Function returns correct JSON structure with budzet, zamowienia, umowy sections",
+        "planowane values come from rewizje_summary for accepted revision",
+        "rzeczywiste values come from realizacja_wpisy grouped by typ",
+        "zamowienia per_status counts are correct",
+        "umowy per_status counts and avg_procent_wykonania are correct",
+        "Returns zeros when no data exists",
+        "Typecheck passes"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": "",
+      "dependsOn": []
+    },
+    {
+      "id": "US-002",
+      "title": "Create validation schemas for realizacja",
+      "description": "Create `lib/validations/realizacja.ts` following the pattern from `lib/validations/zamowienia.ts`.\n\nSchemas:\n```typescript\nimport { z } from 'zod';\n\nexport const wpisCreateSchema = z.object({\n  typ: z.enum(['material', 'robocizna', 'inny']),\n  kwota_netto: z.number().positive('Kwota musi być większa od 0'),\n  numer_faktury: z.string().max(100).optional().nullable(),\n  data_faktury: z.string().optional().nullable(),\n  opis: z.string().max(500).optional().nullable(),\n  zamowienie_id: z.string().uuid().optional().nullable(),\n  umowa_id: z.string().uuid().optional().nullable(),\n  oplacone: z.boolean().default(false),\n}).refine(\n  (data) => !(data.zamowienie_id && data.umowa_id),\n  { message: 'Wpis może być powiązany z zamówieniem lub umową, nie oboma' }\n);\n\nexport const wpisEditSchema = wpisCreateSchema;\n\nexport type WpisCreateInput = z.infer<typeof wpisCreateSchema>;\nexport type WpisEditInput = z.infer<typeof wpisEditSchema>;\n```\n\nIMPORTANT: Use z.number() not z.coerce.number() to avoid zodResolver incompatibility. The form will handle valueAsNumber on the input.",
+      "acceptanceCriteria": [
+        "File lib/validations/realizacja.ts exists",
+        "wpisCreateSchema validates all required fields correctly",
+        "Rejects when both zamowienie_id and umowa_id are set",
+        "Accepts valid input with optional fields omitted",
+        "Types WpisCreateInput and WpisEditInput are exported",
+        "Uses z.number() not z.coerce.number()",
+        "Typecheck passes"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": "",
+      "dependsOn": []
+    },
+    {
+      "id": "US-003",
+      "title": "Create typ config for realizacja wpisy badges",
+      "description": "Create `lib/realizacja/typ-config.ts` following the exact pattern from `lib/zamowienia/status-config.ts`.\n\n```typescript\nexport type RealizacjaWpisTyp = 'material' | 'robocizna' | 'inny';\n\nexport interface TypConfig {\n  label: string;\n  className: string;\n}\n\nexport const WPIS_TYP_CONFIG: Record<RealizacjaWpisTyp, TypConfig> = {\n  material: { label: 'Materiał', className: 'bg-blue-500/10 text-blue-400 border-blue-500/20' },\n  robocizna: { label: 'Robocizna', className: 'bg-amber-500/10 text-amber-400 border-amber-500/20' },\n  inny: { label: 'Inny', className: 'bg-zinc-500/10 text-zinc-400 border-zinc-500/20' },\n};\n\nexport function getWpisTypConfig(typ: string): TypConfig {\n  return WPIS_TYP_CONFIG[typ as RealizacjaWpisTyp] || { label: typ, className: 'bg-zinc-500/10 text-zinc-400 border-zinc-500/20' };\n}\n```",
+      "acceptanceCriteria": [
+        "File lib/realizacja/typ-config.ts exists",
+        "Exports WPIS_TYP_CONFIG with material, robocizna, inny",
+        "Badge colors: material=blue, robocizna=amber, inny=zinc",
+        "getWpisTypConfig returns fallback for unknown typ",
+        "Typecheck passes"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": "",
+      "dependsOn": []
+    },
+    {
+      "id": "US-004",
+      "title": "Create Server Actions for realizacja",
+      "description": "Create `actions/realizacja.ts` with `'use server'` directive, following the pattern from `actions/zamowienia.ts`.\n\nImport `createClient` from `@/lib/supabase/server`, `revalidatePath` from `next/cache`, `wpisCreateSchema` from `@/lib/validations/realizacja`, `ActionResult` from `@/actions/projekty`.\n\nInterfaces:\n```typescript\nexport interface RealizacjaWpisRow {\n  id: string;\n  typ: string;\n  opis: string | null;\n  kwota_netto: number;\n  numer_faktury: string | null;\n  data_faktury: string | null;\n  oplacone: boolean;\n  zamowienie_id: string | null;\n  zamowienie_numer: string | null;\n  umowa_id: string | null;\n  umowa_numer: string | null;\n  created_at: string;\n}\n\nexport interface RealizacjaStats {\n  budzet: {\n    planowane_r: number; planowane_m: number; planowane_razem: number;\n    rzeczywiste_r: number; rzeczywiste_m: number; rzeczywiste_inne: number; rzeczywiste_razem: number;\n  };\n  zamowienia: { total: number; per_status: Record<string, number>; wartosc_total: number; };\n  umowy: { total: number; per_status: Record<string, number>; avg_procent_wykonania: number; wartosc_total: number; };\n}\n```\n\nActions:\n1. `getRealizacjaStats(projektId: string): Promise<RealizacjaStats>` — calls `supabase.rpc('get_realizacja_stats', { p_projekt_id: projektId })`. Return typed result.\n\n2. `getRealizacjaWpisy(projektId: string): Promise<RealizacjaWpisRow[]>` — query `realizacja_wpisy` with joins:\n```typescript\nconst { data } = await supabase\n  .from('realizacja_wpisy')\n  .select('*, zamowienia(numer), umowy(numer)')\n  .eq('projekt_id', projektId)\n  .order('data_faktury', { ascending: false, nullsFirst: false });\n```\nMap to RealizacjaWpisRow[], extracting zamowienia.numer and umowy.numer from joins.\n\n3. `getZamowieniaForSelect(projektId: string): Promise<{id: string, numer: string}[]>` — simple select id, numer from zamowienia WHERE projekt_id, for the form panel dropdown.\n\n4. `getUmowyForSelect(projektId: string): Promise<{id: string, numer: string}[]>` — same for umowy.\n\n5. `createRealizacjaWpis(projektId: string, input: unknown): Promise<ActionResult>` — validate with wpisCreateSchema. Get organization_id from projekty. Insert into realizacja_wpisy. revalidatePath.\n\n6. `updateRealizacjaWpis(id: string, projektId: string, input: unknown): Promise<ActionResult>` — validate, update, revalidatePath.\n\n7. `deleteRealizacjaWpis(id: string, projektId: string): Promise<ActionResult>` — delete, revalidatePath.\n\n8. `toggleOplacone(id: string, projektId: string, value: boolean): Promise<ActionResult>` — update only oplacone field, revalidatePath.\n\nAll mutations revalidate `/projekty/${projektId}/realizacja`.",
+      "acceptanceCriteria": [
+        "File actions/realizacja.ts exists with 'use server' directive",
+        "getRealizacjaStats calls RPC and returns typed RealizacjaStats",
+        "getRealizacjaWpisy returns list with joined zamowienia/umowy numer",
+        "getZamowieniaForSelect and getUmowyForSelect return simple id+numer arrays",
+        "createRealizacjaWpis validates input and inserts with correct organization_id",
+        "updateRealizacjaWpis validates and updates",
+        "deleteRealizacjaWpis deletes by id",
+        "toggleOplacone flips boolean and revalidates",
+        "All mutations call revalidatePath",
+        "Typecheck passes"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-001", "US-002"]
+    },
+    {
+      "id": "US-005",
+      "title": "Add Realizacja tab to project-tabs.tsx",
+      "description": "Modify `app/(app)/projekty/[projektId]/_components/project-tabs.tsx`.\n\nChange the tabs array from:\n```typescript\nconst tabs = [\n  { label: 'Kosztorys', segment: 'kosztorys' },\n  { label: 'Zamówienia', segment: 'zamowienia' },\n  { label: 'Umowy', segment: 'umowy' },\n];\n```\nTo:\n```typescript\nconst tabs = [\n  { label: 'Kosztorys', segment: 'kosztorys' },\n  { label: 'Zamówienia', segment: 'zamowienia' },\n  { label: 'Umowy', segment: 'umowy' },\n  { label: 'Realizacja', segment: 'realizacja' },\n];\n```\n\nThe existing enablement logic handles this correctly: `tab.segment !== 'kosztorys' && !isEnabled` means realizacja will be disabled until status is 'realizacja' or 'zamkniety'. No other changes needed.",
+      "acceptanceCriteria": [
+        "Realizacja tab appears as 4th tab in the tab bar",
+        "Tab is disabled when project status is draft or ofertowanie",
+        "Tab is enabled when status is realizacja or zamkniety",
+        "Active tab shows amber underline consistent with other tabs",
+        "Typecheck passes"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "",
+      "dependsOn": []
+    },
+    {
+      "id": "US-006",
+      "title": "Create realizacja page and view with two-column layout",
+      "description": "Create the page and main view component.\n\n**File: `app/(app)/projekty/[projektId]/realizacja/page.tsx`**\nAsync Server Component following the exact pattern from `app/(app)/projekty/[projektId]/zamowienia/page.tsx`:\n```typescript\nimport { getRealizacjaStats, getRealizacjaWpisy, getZamowieniaForSelect, getUmowyForSelect } from '@/actions/realizacja';\nimport { RealizacjaView } from './_components/realizacja-view';\n\ninterface PageProps { params: Promise<{ projektId: string }>; }\n\nexport default async function RealizacjaPage({ params }: PageProps) {\n  const { projektId } = await params;\n  const [stats, wpisy, zamowieniaList, umowyList] = await Promise.all([\n    getRealizacjaStats(projektId),\n    getRealizacjaWpisy(projektId),\n    getZamowieniaForSelect(projektId),\n    getUmowyForSelect(projektId),\n  ]);\n  return <RealizacjaView stats={stats} wpisy={wpisy} projektId={projektId} zamowieniaList={zamowieniaList} umowyList={umowyList} />;\n}\n```\n\n**File: `app/(app)/projekty/[projektId]/realizacja/_components/realizacja-view.tsx`**\n'use client' component. Two-column layout:\n```tsx\n<div className=\"flex gap-6 p-6\">\n  <div className=\"w-80 shrink-0 space-y-4 sticky top-0 self-start\">\n    <RealizacjaSidebar stats={stats} projektId={projektId} />\n  </div>\n  <div className=\"flex-1 min-w-0 space-y-4\">\n    {/* Toolbar */}\n    <div className=\"flex items-center gap-3\">\n      {/* Typ select, Oplacone select, Search input, Dodaj wpis button */}\n    </div>\n    {/* Table or Empty state */}\n    {wpisy.length === 0 ? <WpisyEmpty onAddClick={...} /> : <WpisyTable ... />}\n  </div>\n</div>\n```\n\nState:\n- `formPanelOpen: boolean` + `formPanelWpisId: string | null` (null=create, string=edit)\n- `detailPanelWpisId: string | null`\n- `filters: { typ: string | null, oplacone: string | null, search: string }`\n\nToolbar:\n- Typ select: shadcn Select with options: Wszystkie, Materiał, Robocizna, Inny\n- Opłacone select: Wszystkie, Opłacone, Nieopłacone\n- Search: Input with Search icon, placeholder 'Szukaj...'\n- Dodaj wpis: Button with Plus icon, amber variant\n\nFiltering is client-side: filter wpisy array before passing to table based on filters state. Search with debounce (300ms) matching opis or numer_faktury.",
+      "acceptanceCriteria": [
+        "page.tsx fetches stats, wpisy, zamowieniaList, umowyList in parallel",
+        "realizacja-view.tsx uses 'use client' directive",
+        "Two-column layout: sidebar left (~320px sticky), table right (flex-1)",
+        "Filter toolbar above table with Typ, Oplacone selects and search input",
+        "Dodaj wpis button in toolbar opens form panel",
+        "Client-side filtering works for all 3 filter types",
+        "Search debounces at 300ms",
+        "Empty state shown when no wpisy exist (before filters)",
+        "Typecheck passes"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-004", "US-005"]
+    },
+    {
+      "id": "US-007",
+      "title": "Create realizacja sidebar with budget, zamowienia, umowy sections",
+      "description": "Create `app/(app)/projekty/[projektId]/realizacja/_components/realizacja-sidebar.tsx`.\n\n'use client' component. Props: `stats: RealizacjaStats`, `projektId: string`.\n\nThree stacked card sections, each styled as `rounded-lg border border-white/[0.06] bg-white/[0.02] p-4`.\n\n**Section 1: BUDŻET**\n- Title: `<h3 className=\"text-xs uppercase tracking-wider text-white/40 mb-3\">Budżet</h3>`\n- For Materiały, Robocizna: show label + percentage + progress bar + values\n- Progress bar: `<div className=\"h-1.5 rounded-full bg-white/[0.06]\"><div className=\"h-full rounded-full\" style={{width: `${pct}%`}} /></div>`\n- Bar color logic: `pct < 80 ? 'bg-emerald-500' : pct <= 100 ? 'bg-amber-500' : 'bg-red-500'`\n- Values line: `{rzeczywiste.toLocaleString('pl-PL')} / {planowane.toLocaleString('pl-PL')} zł` in text-sm text-white/50\n- Inne: just show `Inne: {kwota} zł` without bar (no planowane)\n- RAZEM: separated by `border-t border-white/[0.06] pt-3 mt-3`, slightly bolder text\n\n**Section 2: ZAMÓWIENIA**\n- Title row: `ZAMÓWIENIA` + total count badge + Link arrow icon to `/projekty/${projektId}/zamowienia`\n- Import `ZAMOWIENIE_STATUS_CONFIG` from `@/lib/zamowienia/status-config`\n- For each non-zero status: colored dot (4px circle) + label + count\n- Bottom: `Wartość: {total.toLocaleString('pl-PL')} zł`\n\n**Section 3: UMOWY**\n- Same pattern as zamówienia but import `UMOWA_STATUS_CONFIG` from `@/lib/umowy/status-config`\n- Additional: `Wykonanie: {avg}%` line\n- Link arrow to `/projekty/${projektId}/umowy`\n\nUse `ArrowRight` icon from lucide-react for the navigation arrows.",
+      "acceptanceCriteria": [
+        "Sidebar displays 3 sections: Budżet, Zamówienia, Umowy",
+        "Budget shows progress bars for Materiały, Robocizna, RAZEM",
+        "Bar colors: green <80%, amber 80-100%, red >100%",
+        "Inne shows only actual value without progress bar",
+        "Zamówienia section shows count per status with correct colors from ZAMOWIENIE_STATUS_CONFIG",
+        "Umowy section shows count per status with avg % wykonania",
+        "Arrow links navigate to respective tabs",
+        "Numbers formatted with toLocaleString pl-PL",
+        "Typecheck passes"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-006"]
+    },
+    {
+      "id": "US-008",
+      "title": "Create wpisy table with TanStack Table and sorting",
+      "description": "Create `app/(app)/projekty/[projektId]/realizacja/_components/wpisy-table.tsx`.\n\n'use client' component using TanStack Table (`@tanstack/react-table` — already in project deps, used in zamowienia-table.tsx).\n\nProps:\n- `wpisy: RealizacjaWpisRow[]`\n- `onRowClick: (id: string) => void`\n- `onToggleOplacone: (id: string, value: boolean) => void`\n\nColumns (using createColumnHelper<RealizacjaWpisRow>()):\n1. **oplacone** (size: 48): Render checkbox input. `onClick` calls `onToggleOplacone(row.id, !row.oplacone)`. Use `e.stopPropagation()` to prevent row click.\n2. **typ** (size: 112): Badge using `getWpisTypConfig(row.typ)`. Render: `<span className={cn('text-xs px-2 py-0.5 rounded-full border', config.className)}>{config.label}</span>`\n3. **opis** (size: flex): `<span className=\"truncate max-w-xs\">{row.opis || '—'}</span>`\n4. **numer_faktury** (size: 128): `<span className=\"font-mono text-sm\">{row.numer_faktury || '—'}</span>`\n5. **data_faktury** (size: 112): Format as DD.MM.YYYY using `new Date(row.data_faktury).toLocaleDateString('pl-PL')`. Show '—' if null. Default sort: desc.\n6. **powiazanie** (size: 128): Show `row.zamowienie_numer || row.umowa_numer || '—'`. If linked, style as `text-amber-500/70`.\n7. **kwota_netto** (size: 128): Right-aligned. `row.kwota_netto.toLocaleString('pl-PL', { minimumFractionDigits: 2 }) + ' zł'`\n\nEnable sorting on: oplacone, typ, data_faktury, kwota_netto. Initial sort: data_faktury desc.\n\nRow styling: `hover:bg-white/[0.03] cursor-pointer transition-colors`. Oplacone rows: `opacity-60`.\nRow click (on any cell except oplacone checkbox): calls `onRowClick(row.id)`.\n\nTable footer: span full width, show `RAZEM` label left + sum of kwota_netto right. Use `useMemo` to compute sum from filtered wpisy.\n\nIf wpisy is empty after filtering, show inline message: 'Brak wyników dla wybranych filtrów' centered in table body.",
+      "acceptanceCriteria": [
+        "Table renders 7 columns with correct formatting",
+        "Oplacone checkbox toggles inline without opening panel",
+        "Typ column shows colored badges from WPIS_TYP_CONFIG",
+        "Data faktury sorted descending by default",
+        "Powiazanie shows zamowienie/umowa numer with amber color",
+        "Kwota netto right-aligned with Polish number formatting",
+        "Footer row shows RAZEM sum of visible rows",
+        "Row click calls onRowClick except on checkbox",
+        "Oplacone rows shown with reduced opacity",
+        "Empty filter result shows inline message",
+        "Typecheck passes"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-006", "US-003"]
+    },
+    {
+      "id": "US-009",
+      "title": "Create wpis form panel (create and edit in SlidePanel)",
+      "description": "Create `app/(app)/projekty/[projektId]/realizacja/_components/panels/wpis-form-panel.tsx`.\n\n'use client' component using SlidePanel from `@/components/ui/slide-panel`. Reused for create (wpisId=null) and edit (wpisId=string).\n\nProps:\n- `open: boolean`\n- `onClose: () => void`\n- `projektId: string`\n- `wpisId: string | null` (null = create, string = edit)\n- `wpisy: RealizacjaWpisRow[]` (to find existing data for edit)\n- `zamowieniaList: {id: string, numer: string}[]`\n- `umowyList: {id: string, numer: string}[]`\n\nWhen wpisId is set, find the wpis from the wpisy array and pre-fill form.\n\nForm (react-hook-form + zodResolver):\n1. **Typ** — 3 styled radio buttons as a toggle group. Each: `rounded-md px-3 py-1.5 text-sm cursor-pointer border`. Selected: solid bg matching typ color. Use Controller from react-hook-form.\n2. **Kwota netto** — Input type='number' with step='0.01'. Use `valueAsNumber` on register. Suffix 'zł' as text inside input container.\n3. **Numer faktury** — Input type='text'\n4. **Data faktury** — Input type='date'\n5. **Opis** — Textarea, maxLength=500\n6. **Powiązanie** — Two selects:\n   - First: Select with options 'Brak', 'Zamówienie', 'Umowa'. Default 'Brak'.\n   - Second: Conditionally rendered Select. Options from zamowieniaList or umowyList.\n   - When 'Brak' selected, set both zamowienie_id and umowa_id to null.\n7. **Opłacone** — Checkbox with label\n\nSubmit: call `createRealizacjaWpis(projektId, data)` or `updateRealizacjaWpis(wpisId, projektId, data)`. On success: onClose(). On error: show error in form.\n\nSlidePanel title: 'Dodaj wpis' or 'Edytuj wpis'.\n\nIMPORTANT: For zodResolver, create a separate form schema without .default() to avoid type mismatch (documented in MEMORY.md). Use z.number() not z.coerce.number().",
+      "acceptanceCriteria": [
+        "SlidePanel opens for create (empty form) and edit (pre-filled)",
+        "Typ radio toggle group works with correct colors",
+        "Kwota netto validates as positive number",
+        "Powiązanie two-step select: type first then entity from list",
+        "Cannot set both zamowienie_id and umowa_id (hidden by UI flow)",
+        "Submit calls correct action (create vs update)",
+        "Form closes and data revalidates on success",
+        "zodResolver works without type errors",
+        "Typecheck passes"
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-008"]
+    },
+    {
+      "id": "US-010",
+      "title": "Create wpis detail panel (view and delete)",
+      "description": "Create `app/(app)/projekty/[projektId]/realizacja/_components/panels/wpis-detail-panel.tsx`.\n\n'use client' component using SlidePanel. Shows full wpis details in read-only mode.\n\nProps:\n- `open: boolean`\n- `onClose: () => void`\n- `wpisId: string | null`\n- `wpisy: RealizacjaWpisRow[]` (find wpis from array)\n- `onEdit: (id: string) => void`\n- `projektId: string`\n\nWhen wpisId is set, find wpis from wpisy array.\n\nLayout (follow zamowienie-detail-panel.tsx pattern):\n1. **Header**: Typ badge (from WPIS_TYP_CONFIG) + Numer faktury or 'Bez numeru'\n2. **Info rows** — each as `flex justify-between items-center px-3 py-2 rounded-md bg-white/[0.03] border border-white/[0.06]`:\n   - Typ: badge\n   - Kwota netto: formatted amount\n   - Numer faktury: text or '—'\n   - Data faktury: DD.MM.YYYY or '—'\n   - Opis: text or '—'\n   - Powiązanie: zamowienie_numer or umowa_numer or 'Brak'\n   - Opłacone: green Check icon if true, red X icon if false\n3. **Action buttons** at bottom:\n   - 'Edytuj' (Pencil icon, ghost button) — calls onEdit(wpisId)\n   - 'Usuń' (Trash2 icon, red ghost button) — shows inline confirmation: 'Na pewno usunąć ten wpis?' with Tak/Nie buttons. On Tak: call deleteRealizacjaWpis, onClose.\n\nInline delete confirmation: `bg-red-500/5 border border-red-500/20 rounded-md p-3` appearing above the buttons when delete clicked.",
+      "acceptanceCriteria": [
+        "Detail panel shows all wpis fields in read-only format",
+        "Typ displayed as colored badge",
+        "Powiązanie shows linked entity numer or 'Brak'",
+        "Opłacone shows Check or X icon with color",
+        "Edytuj button calls onEdit to switch to form panel",
+        "Usuń shows inline confirmation before deleting",
+        "Delete calls action, closes panel on success",
+        "Typecheck passes"
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-008"]
+    },
+    {
+      "id": "US-011",
+      "title": "Wire up inline oplacone toggle and all panel interactions",
+      "description": "Wire up all interactions in `realizacja-view.tsx`.\n\n1. **Inline opłacone toggle**:\n   - Create handler using `useTransition` from React:\n   ```typescript\n   const [isPending, startTransition] = useTransition();\n   const handleToggleOplacone = (id: string, value: boolean) => {\n     startTransition(async () => {\n       const result = await toggleOplacone(id, projektId, value);\n       if (!result.success) toast.error(result.error);\n     });\n   };\n   ```\n   - Pass to WpisyTable as `onToggleOplacone`\n\n2. **Row click → detail panel**:\n   - `handleRowClick(id: string)` sets `detailPanelWpisId = id`\n   - Detail panel: open when detailPanelWpisId is not null\n\n3. **Dodaj wpis → form panel (create)**:\n   - Button in toolbar sets `formPanelOpen = true, formPanelWpisId = null`\n\n4. **Edit from detail → form panel (edit)**:\n   - `handleEdit(id: string)`: close detail panel, set `formPanelWpisId = id, formPanelOpen = true`\n\n5. **Form panel onClose**:\n   - Reset `formPanelOpen = false, formPanelWpisId = null`\n   - Call `router.refresh()` to reload data\n\n6. **Detail panel onClose**:\n   - Reset `detailPanelWpisId = null`",
+      "acceptanceCriteria": [
+        "Clicking oplacone checkbox toggles value with useTransition",
+        "Error toast shown if toggle fails",
+        "Row click opens detail panel with correct wpis",
+        "Dodaj wpis button opens form panel in create mode",
+        "Edit from detail panel opens form panel in edit mode",
+        "Closing form panel refreshes data via router.refresh",
+        "Closing detail panel resets state",
+        "Typecheck passes"
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-008", "US-009", "US-010"]
+    },
+    {
+      "id": "US-012",
+      "title": "Create empty state component for realizacja",
+      "description": "Create `app/(app)/projekty/[projektId]/realizacja/_components/wpisy-empty.tsx`.\n\nFollow pattern from `app/(app)/projekty/[projektId]/zamowienia/_components/zamowienia-empty.tsx`.\n\nProps: `onAddClick: () => void`\n\nRender centered layout:\n```tsx\n<div className=\"flex flex-col items-center justify-center py-16 text-center\">\n  <Receipt className=\"h-12 w-12 text-white/10 mb-4\" />\n  <h3 className=\"text-lg text-white/60 mb-1\">Brak wpisów realizacji</h3>\n  <p className=\"text-sm text-white/30 mb-6\">Dodaj pierwszy wpis aby śledzić koszty projektu</p>\n  <Button onClick={onAddClick} className=\"bg-amber-600 hover:bg-amber-500 text-white\">\n    <Plus className=\"h-4 w-4 mr-2\" />\n    Dodaj wpis\n  </Button>\n</div>\n```\n\nImport Receipt and Plus from lucide-react, Button from @/components/ui/button.\n\nThis component is shown only when wpisy array is empty BEFORE any filters are applied. When filters produce no results, the table shows inline message 'Brak wyników dla wybranych filtrów' (handled in US-008).",
+      "acceptanceCriteria": [
+        "Empty state shows when no wpisy exist (pre-filter)",
+        "Displays Receipt icon, title, subtitle, and amber CTA button",
+        "CTA button calls onAddClick to open form panel",
+        "Styling consistent with zamowienia-empty and umowy-empty patterns",
+        "Typecheck passes"
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-006"]
+    },
+    {
+      "id": "US-013",
+      "title": "Seed test data for realizacja_wpisy and final verification",
+      "description": "Seed test data and verify everything works end-to-end.\n\n**Step 1: Seed data** using `mcp__supabase__execute_sql` (not apply_migration — this is test data).\n\nUse INSERT...SELECT with JOINs on natural keys (no hardcoded UUIDs):\n```sql\nWITH test_proj AS (\n  SELECT p.id as projekt_id, p.organization_id\n  FROM projekty p\n  LIMIT 1\n),\ntest_zam AS (\n  SELECT z.id FROM zamowienia z\n  JOIN test_proj tp ON z.projekt_id = tp.projekt_id\n  ORDER BY z.created_at LIMIT 1\n),\ntest_umowa AS (\n  SELECT u.id FROM umowy u\n  JOIN test_proj tp ON u.projekt_id = tp.projekt_id\n  ORDER BY u.created_at LIMIT 1\n)\nINSERT INTO realizacja_wpisy (organization_id, projekt_id, zamowienie_id, umowa_id, typ, opis, kwota_netto, numer_faktury, data_faktury, oplacone)\nVALUES\n  ((SELECT organization_id FROM test_proj), (SELECT projekt_id FROM test_proj), (SELECT id FROM test_zam), NULL, 'material', 'Farby i grunty - dostawa 1', 12500.00, 'FV/2026/001', '2026-02-01', true),\n  ((SELECT organization_id FROM test_proj), (SELECT projekt_id FROM test_proj), (SELECT id FROM test_zam), NULL, 'material', 'Profile stalowe CD60', 8750.00, 'FV/2026/002', '2026-02-03', true),\n  ((SELECT organization_id FROM test_proj), (SELECT projekt_id FROM test_proj), NULL, (SELECT id FROM test_umowa), 'robocizna', 'Malowanie ścian - etap 1', 15000.00, 'FV/2026/003', '2026-02-05', false),\n  ((SELECT organization_id FROM test_proj), (SELECT projekt_id FROM test_proj), NULL, (SELECT id FROM test_umowa), 'robocizna', 'Montaż sufitów GK', 22000.00, 'FV/2026/004', '2026-02-08', false),\n  ((SELECT organization_id FROM test_proj), (SELECT projekt_id FROM test_proj), NULL, NULL, 'inny', 'Transport materiałów', 3500.00, NULL, '2026-02-02', true),\n  ((SELECT organization_id FROM test_proj), (SELECT projekt_id FROM test_proj), NULL, NULL, 'inny', 'Wynajem rusztowań', 4200.00, 'FV/2026/005', '2026-02-06', false)\nON CONFLICT DO NOTHING;\n```\n\n**Step 2: Verify** — run `npm run build` to confirm no type errors.\n\n**Step 3: Browser check** — verify at localhost:3000:\n1. Open a project in 'realizacja' status\n2. Click 'Realizacja' tab\n3. Sidebar shows budget comparison with progress bars\n4. Table shows seeded wpisy with correct badges and formatting\n5. Oplacone checkbox toggles inline\n6. Click row → detail panel opens\n7. Click Dodaj wpis → form panel opens\n8. Create new wpis → table refreshes\n9. Edit existing wpis → form pre-fills\n10. Delete wpis → confirmation → removed\n11. Filters work (typ, oplacone, search)",
+      "acceptanceCriteria": [
+        "6 realizacja_wpisy seeded with mix of types, links, and oplacone states",
+        "npm run build passes without errors",
+        "Realizacja tab accessible for projects in realizacja status",
+        "Sidebar KPIs display correct data from get_realizacja_stats",
+        "Wpisy table renders with all columns and formatting",
+        "Inline oplacone toggle works",
+        "Detail panel opens on row click",
+        "Form panel works for create and edit",
+        "Delete with confirmation works",
+        "All 3 filters (typ, oplacone, search) work correctly",
+        "Typecheck passes"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-011", "US-012"]
+    }
+  ]
+}

@@ -1,0 +1,4 @@
+# Ralph Progress Log
+Started: Phase 9 - Akceptacja + State Machine
+---
+

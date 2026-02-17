@@ -1,0 +1,206 @@
+{
+  "project": "PLANY App",
+  "branchName": "ralph/phase5-podwykonawcy",
+  "description": "Phase 5: Podwykonawcy (subcontractors) with stawki (rates) linked to pozycje_biblioteka",
+  "mode": "feature",
+  "baseBranch": "main",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "DB migration: rebuild stawki_podwykonawcow to link pozycje_biblioteka",
+      "description": "As a developer, I need stawki_podwykonawcow to reference pozycje_biblioteka instead of free-form nazwa_stawki, so rates are structured and usable by the Kosztorys module.",
+      "acceptanceCriteria": [
+        "Apply Supabase migration (name: rebuild_stawki_podwykonawcow) that alters stawki_podwykonawcow table",
+        "DROP columns: nazwa_stawki, jednostka (if they exist - use IF EXISTS)",
+        "DROP column: updated_at (not needed for price entries, matching ceny_dostawcow pattern)",
+        "ADD column: pozycja_biblioteka_id UUID NOT NULL REFERENCES pozycje_biblioteka(id) ON DELETE CASCADE",
+        "ADD UNIQUE constraint on (podwykonawca_id, pozycja_biblioteka_id)",
+        "CREATE INDEX idx_stawki_pozycja_bib ON stawki_podwykonawcow(pozycja_biblioteka_id)",
+        "Verify migration applies without errors (table has no production data, ALTER is safe)",
+        "Typecheck passes"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": "",
+      "dependsOn": []
+    },
+    {
+      "id": "US-002",
+      "title": "Zod schemas and TypeScript types for podwykonawcy and stawki",
+      "description": "As a developer, I need validation schemas for podwykonawcy and stawki so that server actions can validate input consistently.",
+      "acceptanceCriteria": [
+        "Create lib/validations/podwykonawcy.ts",
+        "Export createPodwykonawcaSchema: { nazwa: string min 1 max 255, specjalizacja?: string max 100, kontakt?: string, aktywny: boolean default true }",
+        "Export updatePodwykonawcaSchema: all fields optional",
+        "Export createStawkaSchema: { podwykonawcaId: string uuid, pozycjaBibliotekaId: string uuid, stawka: number positive }",
+        "Export updateStawkaSchema: { stawka?: number positive }",
+        "Export podwykonawcyFiltersSchema: { search?: string, showInactive?: boolean default false, page?: number default 1 }",
+        "Export all inferred types: CreatePodwykonawcaInput, UpdatePodwykonawcaInput, CreateStawkaInput, UpdateStawkaInput, PodwykonawcyFilters",
+        "Create separate form schemas without .default() for zodResolver compatibility (podwykonawcaFormSchema, stawkaFormSchema)",
+        "Typecheck passes"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-001"]
+    },
+    {
+      "id": "US-003",
+      "title": "Server Actions for podwykonawcy CRUD and stawki CRUD",
+      "description": "As a developer, I need server actions for subcontractor management, rate list CRUD, and detail queries.",
+      "acceptanceCriteria": [
+        "Create actions/podwykonawcy.ts with 'use server' directive",
+        "Export interface PodwykonawcaWithCount: id, nazwa, specjalizacja, kontakt, aktywny, stawkiCount: number",
+        "Export interface PodwykonawcyResult: data: PodwykonawcaWithCount[], totalCount: number, page: number, pageSize: number",
+        "Implement getPodwykonawcy(filters: PodwykonawcyFilters) - paginated (PAGE_SIZE=15), count stawki via separate count query (same pattern as getDostawcy in actions/dostawcy.ts). When search: ilike on nazwa and specjalizacja. When showInactive=false (default): filter aktywny=true. Order by nazwa ASC",
+        "Implement getPodwykonawca(id) - single podwykonawca or null",
+        "Implement getPodwykonawcaStawki(podwykonawcaId) - returns array of {id, pozycjaBibliotekaId, pozycjaKod, pozycjaNazwa, pozycjaJednostka, stawka, aktywny} from stawki_podwykonawcow JOIN pozycje_biblioteka, ordered by pozycje_biblioteka.kod ASC",
+        "Implement getPodwykonawcaPozycje(podwykonawcaId) - returns array of {id, kod, nazwa} from pozycje_biblioteka JOIN biblioteka_skladowe_robocizna where podwykonawca_id matches",
+        "Implement createPodwykonawca(input) - validate with createPodwykonawcaSchema, insert, revalidatePath('/podwykonawcy')",
+        "Implement updatePodwykonawca(id, input) - validate with updatePodwykonawcaSchema, update, revalidatePath('/podwykonawcy')",
+        "Implement deletePodwykonawca(id) - check stawki_podwykonawcow count AND biblioteka_skladowe_robocizna count. If has stawki: error 'Nie można usunąć - podwykonawca ma N stawek w cenniku'. If used in pozycje: error 'Nie można usunąć - podwykonawca jest używany w N pozycjach'. Otherwise delete, revalidatePath('/podwykonawcy')",
+        "Implement createStawka(input) - validate with createStawkaSchema, insert into stawki_podwykonawcow, handle 23505 'Ta pozycja jest już w cenniku tego podwykonawcy', revalidatePath('/podwykonawcy')",
+        "Implement updateStawka(id, input) - validate, update, revalidatePath('/podwykonawcy')",
+        "Implement deleteStawka(id) - delete from stawki_podwykonawcow, revalidatePath('/podwykonawcy')",
+        "Implement getAllPozycjeBiblioteka() - returns [{id, kod, nazwa, jednostka}] without pagination for select dropdown in stawka form",
+        "Typecheck passes"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-002"]
+    },
+    {
+      "id": "US-004",
+      "title": "Podwykonawcy page with view, table, search filter, and pagination",
+      "description": "As a user, I want a Podwykonawcy page with a searchable table of subcontractors showing their rate counts.",
+      "acceptanceCriteria": [
+        "Create app/(app)/podwykonawcy/page.tsx as async Server Component: read searchParams (search?, showInactive?, page?), call getPodwykonawcy(filters), pass to PodwykonawcyView",
+        "Create app/(app)/podwykonawcy/_components/podwykonawcy-view.tsx as 'use client' wrapped in Suspense. Breadcrumb: 'Podwykonawcy'. Right side: 'Dodaj podwykonawcę' button (Plus icon, amber bg). Manage state for: detailPanel, formPanel, stawkaFormPanel, deletePanel",
+        "Create app/(app)/podwykonawcy/_components/podwykonawcy-filters.tsx: search input only (same pattern as dostawcy-filters.tsx). Debounce 300ms, placeholder 'Szukaj po nazwie lub specjalizacji...'. Push to URL: /podwykonawcy?search=...",
+        "Create app/(app)/podwykonawcy/_components/podwykonawcy-table.tsx with TanStack Table. 4 columns: Nazwa (bold), Specjalizacja (text-white/50, or '—' if empty), Stawki (font-mono, e.g. '5 stawek'), Kontakt (text-white/50, truncated max 30 chars). Row click opens detail panel",
+        "Create app/(app)/podwykonawcy/_components/podwykonawcy-pagination.tsx following the same pattern as dostawcy-pagination.tsx",
+        "Empty state: 'Brak podwykonawców'",
+        "Typecheck passes",
+        "Verify at localhost:3000/podwykonawcy: page loads with breadcrumb, search, table, pagination, and 'Dodaj podwykonawcę' button"
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-003"]
+    },
+    {
+      "id": "US-005",
+      "title": "Podwykonawca detail panel with stawki cennik inline",
+      "description": "As a user, I want to click a subcontractor row and see their details with full rate list and which positions use them.",
+      "acceptanceCriteria": [
+        "Create app/(app)/podwykonawcy/_components/panels/podwykonawca-detail-panel.tsx using SlidePanel/SlidePanelHeader/SlidePanelContent from @/components/ui/slide-panel",
+        "Props: podwykonawcaId: string | null, open: boolean, onOpenChange, onEdit, onDelete, onAddStawka, onEditStawka: (stawka) => void",
+        "When open and podwykonawcaId set: fetch data via getPodwykonawca(id), getPodwykonawcaStawki(id), getPodwykonawcaPozycje(id) using useEffect + useState",
+        "Header: nazwa + specjalizacja Badge (if present). Two icon buttons: Pencil (edit) and Trash2 (delete)",
+        "Section 1 'Dane kontaktowe': kontakt text displayed (whitespace-pre-wrap). If empty: 'Brak danych kontaktowych' in text-white/50",
+        "Section 2 'Cennik stawek (N)': header row with '+ Dodaj pozycję' button (amber text). List items: kod (font-mono text-amber-500 text-sm) + nazwa + stawka formatted 'XX,XX zł/{jednostka}'. Each row has Pencil and Trash2 icon buttons (h-7 w-7). Pencil calls onEditStawka(stawka), Trash2 deletes after window.confirm. If empty: 'Brak stawek w cenniku' in text-white/50",
+        "Section 3 'Używany w pozycjach (N)': list of positions from biblioteka_skladowe_robocizna. Each row: kod (font-mono amber) + nazwa. Click navigates to /pozycje?selected={id}. Only shown if count > 0",
+        "Loading state: Loader2 spinner centered while fetching",
+        "Wire into podwykonawcy-view.tsx: row click sets podwykonawcaId and opens panel",
+        "Typecheck passes",
+        "Verify at localhost:3000/podwykonawcy: clicking a subcontractor row opens slide panel with contact, rates, and positions sections"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-004"]
+    },
+    {
+      "id": "US-006",
+      "title": "Podwykonawca form panel (add/edit subcontractor)",
+      "description": "As a user, I want to add new subcontractors and edit existing ones via a slide panel form.",
+      "acceptanceCriteria": [
+        "Create app/(app)/podwykonawcy/_components/panels/podwykonawca-form-panel.tsx using SlidePanel pattern (same as dostawca-form-panel.tsx)",
+        "Props: mode: 'add' | 'edit', podwykonawca?: PodwykonawcaWithCount, open: boolean, onOpenChange",
+        "Form fields: Nazwa (text input, required), Specjalizacja (text input, optional, placeholder 'np. GK, Tynki, Sufity'), Kontakt (textarea, optional, placeholder 'Telefon, email, adres...'), Aktywny (checkbox, default true)",
+        "Use react-hook-form with zodResolver(podwykonawcaFormSchema)",
+        "Edit mode: prefill form with podwykonawca data",
+        "Submit: call createPodwykonawca or updatePodwykonawca server action. On success: toast.success('Podwykonawca zapisany') + close panel. On error: toast.error with message",
+        "Wire into podwykonawcy-view.tsx: 'Dodaj podwykonawcę' button opens form in add mode, detail panel edit button opens form in edit mode",
+        "Typecheck passes",
+        "Verify at localhost:3000/podwykonawcy: can open add form, fill fields, submit successfully"
+      ],
+      "priority": 6,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-004"]
+    },
+    {
+      "id": "US-007",
+      "title": "Stawka form panel (add/edit rate with pozycja select)",
+      "description": "As a user, I want to add positions to a subcontractor's rate list by selecting from the pozycje_biblioteka catalog.",
+      "acceptanceCriteria": [
+        "Create app/(app)/podwykonawcy/_components/panels/stawka-form-panel.tsx using SlidePanel pattern (same as cennik-form-panel.tsx in dostawcy)",
+        "Props: mode: 'add' | 'edit', podwykonawcaId: string, stawka?: StawkaEntry, open: boolean, onOpenChange",
+        "Form fields: Pozycja (searchable Select from pozycje_biblioteka list - fetch via getAllPozycjeBiblioteka(), show 'KOD - Nazwa' format, e.g. 'BUD.03.01.001 - Ściana GK 12.5mm'), Stawka (number input, step 0.01, required, label includes jednostka from selected pozycja e.g. 'Stawka (zł/m²)')",
+        "In edit mode: pozycja field is disabled (can't change position, only rate amount)",
+        "Use react-hook-form with zodResolver(stawkaFormSchema)",
+        "Submit: call createStawka or updateStawka. On success: toast.success + close panel. On 23505 error: toast.error('Ta pozycja jest już w cenniku tego podwykonawcy')",
+        "Wire into podwykonawcy-view.tsx: detail panel '+ Dodaj pozycję' opens stawka form add mode, cennik row edit opens stawka form edit mode",
+        "Typecheck passes",
+        "Verify at localhost:3000/podwykonawcy: can open stawka form from detail panel, select a position, enter rate, submit"
+      ],
+      "priority": 7,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-005"]
+    },
+    {
+      "id": "US-008",
+      "title": "Delete confirm panel with dependency validation",
+      "description": "As a user, I want delete confirmation that warns me if the subcontractor is in use.",
+      "acceptanceCriteria": [
+        "Create app/(app)/podwykonawcy/_components/panels/delete-confirm-panel.tsx - reuse the pattern from kategorie/_components/panels/delete-confirm-panel.tsx or dostawcy equivalent",
+        "Props: podwykonawca: {id, nazwa} | null, open: boolean, onOpenChange",
+        "On confirm: call deletePodwykonawca(id). If blocked (has stawki or used in pozycje): show blocked state with reason message. If success: toast.success('Podwykonawca usunięty') + close panel + clear detail panel",
+        "Wire into podwykonawcy-view.tsx: detail panel delete button opens delete confirm",
+        "For stawka delete: no separate panel needed - use window.confirm in detail panel, then call deleteStawka directly with toast feedback",
+        "Typecheck passes",
+        "Verify at localhost:3000/podwykonawcy: delete button shows confirmation, blocking works when subcontractor has rates"
+      ],
+      "priority": 8,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-005"]
+    },
+    {
+      "id": "US-009",
+      "title": "Regenerate TypeScript types from Supabase",
+      "description": "As a developer, I need updated TypeScript types reflecting the rebuilt stawki_podwykonawcow table.",
+      "acceptanceCriteria": [
+        "Use Supabase MCP generate_typescript_types to get updated types",
+        "Write output to lib/supabase/database.types.ts",
+        "Verify stawki_podwykonawcow type now has pozycja_biblioteka_id instead of nazwa_stawki and jednostka",
+        "Typecheck passes"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-001"]
+    },
+    {
+      "id": "US-010",
+      "title": "Seed data: 5 podwykonawców + stawki linked to pozycje",
+      "description": "As a developer, I need sample data to test the module end-to-end.",
+      "acceptanceCriteria": [
+        "Apply Supabase migration (name: seed_podwykonawcy) with INSERT statements",
+        "Insert 5 podwykonawcy: Ekipa GK 'Budmont' (specjalizacja: 'GK, Tynki, Sufity', kontakt: 'tel: 501 234 567, budmont@email.pl'), Tynki-Expres (specjalizacja: 'Tynki maszynowe', kontakt: 'tel: 502 345 678'), Malarze Pro (specjalizacja: 'Malowanie, tapetowanie', kontakt: 'tel: 503 456 789, malarze@pro.pl'), Płytkarze OK (specjalizacja: 'Glazura, gres', kontakt: 'tel: 504 567 890'), Elektro-Mont (specjalizacja: 'Instalacje elektryczne', kontakt: 'tel: 505 678 901, elektro@mont.pl'). All with organization_id = NULL",
+        "Insert stawki linking to existing pozycje_biblioteka by kod using INSERT...SELECT with JOIN: Budmont→BUD.02.001(25.00), Budmont→BUD.03.01.001(42.00), Budmont→BUD.03.02.001(48.00), Budmont→BUD.05.01.001(55.00), TynkiExpres→BUD.04.01.001(32.00), TynkiExpres→BUD.04.02.001(28.00), MalarzePro→BUD.04.03.001(18.00), MalarzePro→BUD.04.03.002(22.00), PlytkarzOK→BUD.08.01.001(65.00), PlytkarzOK→BUD.08.02.001(45.00), ElektroMont→ELE.02.01.001(85.00)",
+        "Use INSERT...SELECT with JOINs on natural keys (nazwa for podwykonawcy, kod for pozycje) - not hardcoded UUIDs",
+        "Use ON CONFLICT DO NOTHING for idempotency",
+        "Verify data appears in /podwykonawcy page: 5 subcontractors visible with stawki counts",
+        "Typecheck passes"
+      ],
+      "priority": 9,
+      "passes": false,
+      "notes": "Stawki link to pozycje that were seeded in Phase 3. If a pozycja kod doesn't exist, the INSERT...SELECT simply won't insert that row (safe).",
+      "dependsOn": ["US-001"]
+    }
+  ]
+}

@@ -1,0 +1,68 @@
+# Ralph Progress Log
+Started: Fri Feb  6 12:21:22 CET 2026
+---
+
+## PROJ-001 + PROJ-002: Server Actions + Validation Schemas [DONE]
+- Created actions/projekty.ts with full CRUD (getProjekty, getProjekt, createProjekt, updateProjekt, deleteProjekt)
+- Created lib/validations/projekty.ts with Zod schemas
+- Slug generation handles Polish characters (ą→a, ć→c, etc.)
+- Rewizje count via separate query on rewizje table
+- Build passes
+
+## PROJ-003: Projekty page with table, filters, pagination [DONE]
+- Server component page.tsx reads searchParams, calls getProjekty
+- TanStack Table with columns: Nazwa, Klient, Status, Rewizje, Data
+- Filters: search with 300ms debounce + status Select dropdown
+- Pagination: 15/page, hardcoded /projekty route
+- View manages detailPanel, formPanel, deletePanel states
+- Build passes
+
+## PROJ-004: Status badges [DONE]
+- Shared config in lib/projekty/status-config.ts
+- StatusBadge component exported from projekty-table.tsx
+- 5 statuses with Polish labels and color-coded badges
+- Build passes
+
+## PROJ-005: Projekt form panel [DONE]
+- SlidePanel with react-hook-form + zodResolver
+- Form schema uses .or(z.literal('')) pattern for optional strings
+- Powierzchnia uses valueAsNumber on onChange
+- Add/edit modes, toast feedback
+- Build passes
+
+## PROJ-006: Projekt detail panel [DONE]
+- SlidePanel variant='wide' with header (name + status badge + edit/delete buttons)
+- Sections: Dane projektu, Rewizje, Otwórz kosztorys (disabled)
+- Wired into projekty-view.tsx with edit/delete handlers
+- Build passes
+
+## PROJ-007: Server Actions for rewizje CRUD [DONE]
+- Created actions/rewizje.ts with getRewizje, createRewizja, lockRewizja, unlockRewizja
+- Auto-increment numer using MAX(numer)+1
+- revalidatePath('/projekty') after mutations
+- Build passes
+
+## PROJ-008: Rewizja selector in detail panel [DONE]
+- Horizontal badges R0, R1, R2... with Lock/Check icons
+- Selected revision shows details (numer, nazwa, status, date)
+- Create new revision, lock/unlock toggle
+- Auto-selects latest revision on load
+- Build passes
+
+## PROJ-009: Delete projekt with confirmation [DONE]
+- Reuses DeleteConfirmPanel from kategorie module
+- Warning message about irreversible operation
+- ON DELETE CASCADE handles revisions
+- Build passes
+
+## PROJ-010: Seed sample data [DONE]
+- Created Demo Organization (organizations table was empty)
+- 4 projects: Biuro Acme (realizacja, 3 rewizje), Klinika (ofertowanie, 2), Coworking (draft, 1), Restauracja (zamkniety, 2)
+- Multiple locked revisions
+- Idempotent: ON CONFLICT + NOT EXISTS
+- Migration applied successfully
+
+## Notes
+- organizations table was empty, had to create Demo Organization first
+- organization_id is NOT NULL on projekty (unlike dostawcy where it's nullable)
+- stale .next cache caused ENOENT error on pages-manifest.json - fixed with rm -rf .next

@@ -1,0 +1,14 @@
+# Ralph Progress Log
+Started: Thu Feb  5 21:28:01 CET 2026
+---
+[UX-001] DONE - Removed kategoria/podkategoria columns and getKategoriaNames helper from pozycje-columns.tsx. Build passes.
+[UX-002] DONE - Added akcje column with Pencil/Trash2 icons. Converted to getPozycjeColumns function with onEdit/onDelete callbacks. Updated PozycjeTable and PozycjeView. Build passes.
+[UX-003] DONE - Added group class to tr, opacity-0 group-hover:opacity-100 transition-opacity to actions container. Build passes.
+[UX-004] DONE - Already implemented in UX-002 (handleEditById/handleDeleteById, stopPropagation).
+[UX-005] DONE - Updated headers to text-sm font-medium text-muted-foreground. Nazwa: text-sm font-normal. Jednostka: text-white/50. Cena: font-medium. Build passes.
+[UX-006] DONE - Changed {kod} to {nazwa} in branza-tabs. Full names already in BRANZE constant. Build passes.
+[UX-007] DONE - Added Select dropdown with 'all' + kategorie from current branza. State in selectedKategoriaId.
+[UX-008] DONE - Filtered kategorie array based on selectedKategoriaId before passing to KategorieList.
+[UX-009] DONE - Changed 'grid gap-3' to 'grid grid-cols-3 gap-4' in kategorie-list.tsx.
+[UX-010] DONE - Changed p-4 to p-3 in card header, px-4 to px-3 in children section.
+[UX-011] DONE - Final build passes. All file verifications pass. All 11 stories complete.

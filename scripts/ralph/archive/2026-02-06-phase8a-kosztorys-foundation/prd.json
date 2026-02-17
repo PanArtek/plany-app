@@ -1,0 +1,160 @@
+{
+  "project": "PLANY App",
+  "branchName": "ralph/phase9-akceptacja",
+  "description": "Phase 9: Akceptacja + State Machine - project status transitions (DRAFT ⇄ WYSŁANO ⇄ REALIZACJA → ZAMKNIĘTY, ⇄ ODRZUCONY), accept revision flow, contextual action buttons, status badges",
+  "mode": "feature",
+  "baseBranch": "main",
+  "userStories": [
+    {
+      "id": "AKC-001",
+      "title": "DB migration: sent_at column + change_project_status RPC",
+      "description": "Use Supabase MCP apply_migration tool to create migration 014_acceptance_state_machine.sql. Two parts:\n\n1) ALTER TABLE projekty ADD COLUMN sent_at TIMESTAMPTZ;\n\n2) CREATE OR REPLACE FUNCTION change_project_status(p_projekt_id UUID, p_new_status project_status, p_rewizja_id UUID DEFAULT NULL) RETURNS JSON. Logic:\n- Fetch current projekt (status, accepted_rewizja_id)\n- Validate allowed transitions:\n  - draft → ofertowanie: requires ≥1 locked rewizja in this projekt (SELECT EXISTS from rewizje WHERE projekt_id = p_projekt_id AND is_locked = true). Sets sent_at = NOW()\n  - ofertowanie → draft: clears sent_at to NULL\n  - ofertowanie → realizacja: requires p_rewizja_id not null, that rewizja must be locked. Sets accepted_rewizja_id = p_rewizja_id on projekty, sets is_accepted = true + accepted_at = NOW() on that rewizja\n  - ofertowanie → odrzucony: no conditions\n  - realizacja → ofertowanie: clears accepted_rewizja_id on projekty, clears is_accepted = false + accepted_at = NULL on the previously accepted rewizja\n  - odrzucony → ofertowanie: no conditions\n  - realizacja → zamkniety: no conditions\n  - Any other transition: RAISE EXCEPTION 'Invalid status transition from % to %'\n- UPDATE projekty SET status = p_new_status (+ sent_at / accepted_rewizja_id as needed)\n- RETURN the updated projekt row as JSON\n\nNote: the DB enum uses 'ofertowanie' not 'wysłano' - the UI label 'Wysłano do klienta' is display-only. Keep the existing enum values.",
+      "acceptanceCriteria": [
+        "sent_at column added to projekty table",
+        "change_project_status function created and callable via supabase.rpc()",
+        "draft → ofertowanie requires ≥1 locked rewizja, sets sent_at",
+        "ofertowanie → realizacja requires rewizja_id param, sets is_accepted + accepted_at on rewizja",
+        "realizacja → ofertowanie clears acceptance (is_accepted, accepted_at, accepted_rewizja_id)",
+        "ofertowanie → draft clears sent_at",
+        "Invalid transitions raise exception",
+        "realizacja → zamkniety allowed without conditions",
+        "Migration applies without errors",
+        "Typecheck passes"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": "",
+      "dependsOn": []
+    },
+    {
+      "id": "AKC-002",
+      "title": "Server action: changeProjectStatus wrapper",
+      "description": "Create actions/acceptance.ts with 'use server' directive. Import createClient from '@/lib/supabase/server', revalidatePath from 'next/cache'. Import ActionResult type from actions/projekty.ts.\n\nExport async function changeProjectStatus(projektId: string, newStatus: string, rewizjaId?: string): Promise<ActionResult>. Implementation:\n- Call supabase.rpc('change_project_status', { p_projekt_id: projektId, p_new_status: newStatus, p_rewizja_id: rewizjaId || null })\n- If error, return { success: false, error: error.message }\n- revalidatePath('/projekty')\n- Return { success: true, data: result }\n\nKeep it minimal — all validation is in Postgres.",
+      "acceptanceCriteria": [
+        "actions/acceptance.ts created with 'use server'",
+        "changeProjectStatus calls supabase.rpc('change_project_status')",
+        "Passes projektId, newStatus, optional rewizjaId",
+        "Returns ActionResult with error from Postgres on invalid transition",
+        "Calls revalidatePath('/projekty') on success",
+        "Typecheck passes"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["AKC-001"]
+    },
+    {
+      "id": "AKC-003",
+      "title": "Update status-config with 'Wysłano do klienta' label + sent_at in interfaces",
+      "description": "Update lib/projekty/status-config.ts: change the 'ofertowanie' entry label from 'Ofertowanie' to 'Wysłano do klienta'. Change its className to 'bg-blue-500/10 text-blue-400 border-blue-500/20' (blue instead of amber). Change 'realizacja' className to 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' (green). Change 'zamkniety' label to 'Zamknięty' and className to 'bg-zinc-500/10 text-zinc-400 border-zinc-500/20' (dark gray).\n\nUpdate actions/projekty.ts: add 'sent_at: string | null' and 'accepted_rewizja_id: string | null' to ProjektBase and ProjektWithCount interfaces. Update getProjekty and getProjekt select queries to include sent_at and accepted_rewizja_id columns.\n\nUpdate the StatusBadge component in app/(app)/projekty/_components/projekty-table.tsx: extract it to a separate file app/(app)/projekty/_components/status-badge.tsx so it can be imported from both the table and the detail panel and the kosztorys header. The component stays the same (uses getStatusConfig), just moved to its own file. Update imports in projekty-table.tsx and projekt-detail-panel.tsx.",
+      "acceptanceCriteria": [
+        "status-config labels: draft='Szkic', ofertowanie='Wysłano do klienta' (blue), realizacja='Realizacja' (green), zamkniety='Zamknięty' (dark gray), odrzucony='Odrzucony' (red)",
+        "ProjektBase and ProjektWithCount have sent_at and accepted_rewizja_id fields",
+        "getProjekty and getProjekt queries select sent_at and accepted_rewizja_id",
+        "StatusBadge extracted to separate file app/(app)/projekty/_components/status-badge.tsx",
+        "Imports updated in projekty-table.tsx and projekt-detail-panel.tsx",
+        "Typecheck passes"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "",
+      "dependsOn": []
+    },
+    {
+      "id": "AKC-004",
+      "title": "Projects table: add 'Wysłano' column with sent_at date",
+      "description": "Update app/(app)/projekty/_components/projekty-table.tsx: add a new column 'Wysłano' after the 'Status' column. Cell renders sent_at date formatted with toLocaleDateString('pl-PL') if not null, or '—' if null. Style: text-white/50 text-sm, same as the existing 'Data' column.\n\nThe column data comes from ProjektWithCount.sent_at which was added in AKC-003.",
+      "acceptanceCriteria": [
+        "New 'Wysłano' column visible in projects table between Status and Rewizje columns",
+        "Shows formatted date when sent_at is set, '—' when null",
+        "Styled consistently with other date columns",
+        "Typecheck passes",
+        "Verify at localhost:3000/projekty"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["AKC-003"]
+    },
+    {
+      "id": "AKC-005",
+      "title": "Contextual action buttons in projekt detail panel",
+      "description": "Update app/(app)/projekty/_components/panels/projekt-detail-panel.tsx. Add a new section 'Akcje' between the 'Rewizje' section and the 'Otwórz kosztorys' button. Import changeProjectStatus from '@/actions/acceptance'. Add state: statusLoading boolean.\n\nRender contextual buttons based on projekt.status:\n\n1) status === 'draft':\n   - 'Wyślij do klienta' button (blue bg, Send icon from lucide). Disabled if no locked rewizja exists (check rewizje array for any r.is_locked === true). On click: call changeProjectStatus(projektId, 'ofertowanie'). On success: toast 'Wysłano do klienta', refresh data. On error: toast.error with message.\n\n2) status === 'ofertowanie':\n   - 'Akceptuj rewizję' button (green bg, Check icon). On click: set showAcceptDialog = true (state). See AKC-006 for dialog.\n   - 'Odrzuć' button (red outline, X icon). On click: confirm dialog ('Czy na pewno odrzucić projekt?'), then changeProjectStatus(projektId, 'odrzucony').\n   - 'Cofnij do szkicu' button (ghost, Undo2 icon). On click: changeProjectStatus(projektId, 'draft').\n\n3) status === 'realizacja':\n   - 'Zamknij projekt' button (gray outline, Archive icon). On click: confirm dialog, then changeProjectStatus(projektId, 'zamkniety').\n   - 'Cofnij do wysłano' button (ghost, Undo2 icon). On click: changeProjectStatus(projektId, 'ofertowanie'). Toast warns 'Cofnięto akceptację rewizji'.\n\n4) status === 'odrzucony':\n   - 'Reaktywuj (cofnij do wysłano)' button (ghost, Undo2 icon). On click: changeProjectStatus(projektId, 'ofertowanie').\n\n5) status === 'zamkniety': no buttons.\n\nAll buttons disabled while statusLoading. After each action, call refreshRewizje() and re-fetch projekt to update UI. Show sent_at date in 'Dane projektu' section if not null: 'Wysłano' row with formatted date.",
+      "acceptanceCriteria": [
+        "DRAFT shows 'Wyślij do klienta' button, disabled if no locked rewizja",
+        "OFERTOWANIE shows 'Akceptuj rewizję', 'Odrzuć', 'Cofnij do szkicu' buttons",
+        "REALIZACJA shows 'Zamknij projekt', 'Cofnij do wysłano' buttons",
+        "ODRZUCONY shows 'Reaktywuj' button",
+        "ZAMKNIETY shows no action buttons",
+        "All transitions call changeProjectStatus and handle success/error with toasts",
+        "Buttons disabled during loading state",
+        "sent_at shown in project data section when not null",
+        "After status change, panel data refreshes to show new state",
+        "Typecheck passes",
+        "Verify at localhost:3000/projekty - open project detail panel"
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["AKC-002", "AKC-003"]
+    },
+    {
+      "id": "AKC-006",
+      "title": "Accept revision dialog in projekt detail panel",
+      "description": "Add to app/(app)/projekty/_components/panels/projekt-detail-panel.tsx (inline, not separate file — it's small). When 'Akceptuj rewizję' is clicked (status === 'ofertowanie'), show an inline dialog section within the panel (not a separate SlidePanel). Use showAcceptDialog state boolean.\n\nDialog content: heading 'Akceptuj rewizję', description 'Wybierz zamkniętą rewizję do akceptacji. Zaakceptowana rewizja zostanie zablokowana na stałe.', Select dropdown with only locked rewizje (filter rewizje.filter(r => r.is_locked && !r.is_accepted)), each option shows 'R{numer}' + nazwa if exists. Two buttons: 'Anuluj' (ghost, closes dialog) and 'Potwierdź akceptację' (green, calls changeProjectStatus(projektId, 'realizacja', selectedLockedRewizjaId)). On success: toast 'Rewizja R{numer} zaakceptowana. Projekt w realizacji.', close dialog, refresh.\n\nIf no locked rewizje available, show message 'Brak zamkniętych rewizji do akceptacji. Zamknij rewizję w kosztorysie.' with disabled confirm button.",
+      "acceptanceCriteria": [
+        "Clicking 'Akceptuj rewizję' shows inline dialog within panel",
+        "Dialog shows Select with only locked (non-accepted) rewizje",
+        "Each option shows R{numer} format",
+        "'Potwierdź akceptację' calls changeProjectStatus with rewizjaId",
+        "Success toast shows revision number and status change",
+        "If no locked rewizje, shows info message and disabled button",
+        "'Anuluj' closes the dialog",
+        "After acceptance, panel refreshes to show REALIZACJA status",
+        "Typecheck passes",
+        "Verify: set project to ofertowanie, then click Akceptuj rewizję"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["AKC-005"]
+    },
+    {
+      "id": "AKC-007",
+      "title": "Kosztorys header: status badge + accepted banner variant",
+      "description": "Two changes:\n\n1) Update app/(app)/projekty/[projektId]/kosztorys/_components/kosztorys-view.tsx: import StatusBadge from '@/app/(app)/projekty/_components/status-badge'. Add it to the header row next to the breadcrumb, after 'Kosztorys' text. Pass projekt.status. Read-only, no action buttons.\n\n2) Update app/(app)/projekty/[projektId]/kosztorys/_components/locked-banner.tsx: add prop isAccepted boolean (default false). When isAccepted is true, change the banner: amber/yellow bg stays, text changes to 'Rewizja R{numer} została zaakceptowana. Edycja zablokowana na stałe.', HIDE the 'Utwórz nową rewizję' button (accepted = permanent lock, no copy allowed). When isAccepted is false, keep current behavior (show copy button).\n\nUpdate kosztorys-view.tsx to pass isAccepted={rewizja.is_accepted} to LockedBanner. The is_accepted field is already available on RewizjaInfo interface in actions/kosztorys.ts.",
+      "acceptanceCriteria": [
+        "StatusBadge visible in kosztorys header next to breadcrumb",
+        "Badge shows correct status with color from status-config",
+        "When rewizja is_accepted=true, banner shows 'zaakceptowana na stałe' text",
+        "When rewizja is_accepted=true, 'Utwórz nową rewizję' button is hidden",
+        "When rewizja is_locked but not accepted, banner shows current behavior with copy button",
+        "Typecheck passes",
+        "Verify at localhost:3000/projekty/[id]/kosztorys"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["AKC-003"]
+    },
+    {
+      "id": "AKC-008",
+      "title": "E2E test: full status transition flow via seed data",
+      "description": "Use Supabase MCP apply_migration to create migration 015_seed_acceptance_test.sql. This sets up the Biuro Acme project for testing the full flow:\n\n1) Ensure rewizja R1 (numer=1) for Biuro Acme is locked (UPDATE rewizje SET is_locked = true WHERE projekt_id = (SELECT id FROM projekty WHERE slug = 'biuro-acme-marszalkowska-100') AND numer = 1)\n\n2) Do NOT change the project status — leave it as 'draft' so the full flow can be tested manually: DRAFT → click 'Wyślij do klienta' → OFERTOWANIE (verify sent_at shows) → click 'Akceptuj rewizję' → select R1 → REALIZACJA (verify badge green, kosztorys shows accepted banner) → click 'Cofnij do wysłano' → back to OFERTOWANIE → click 'Odrzuć' → ODRZUCONY → 'Reaktywuj' → OFERTOWANIE → 'Akceptuj' → REALIZACJA → 'Zamknij projekt' → ZAMKNIĘTY.\n\nAlso verify: in DRAFT status, if no locked rewizja exists, 'Wyślij do klienta' is disabled. After accepting, kosztorys locked banner shows 'na stałe' variant.",
+      "acceptanceCriteria": [
+        "R1 rewizja is locked for Biuro Acme project",
+        "Project starts in 'draft' status for manual testing",
+        "Migration applies without errors",
+        "Full flow testable: DRAFT → WYSŁANO → REALIZACJA → ZAMKNIĘTY",
+        "Reverse flow testable: REALIZACJA → WYSŁANO → DRAFT",
+        "ODRZUCONY → WYSŁANO recovery works",
+        "Typecheck passes",
+        "npm run build passes"
+      ],
+      "priority": 6,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["AKC-005", "AKC-006", "AKC-007"]
+    }
+  ]
+}

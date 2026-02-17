@@ -1,0 +1,267 @@
+{
+  "project": "PLANY App",
+  "branchName": "ralph/phase10-11-zamowienia-umowy",
+  "description": "Phase 10/11: Zamówienia (material orders) + Umowy (subcontractor contracts) — UI and server actions on top of existing DB schema. Shared project layout with tab bar, CRUD actions, list pages with tables, detail panels with status workflows, delivery/execution tracking.",
+  "mode": "feature",
+  "baseBranch": "main",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Create shared project layout with tab bar",
+      "description": "As a user, I want a persistent tab bar (Kosztorys | Zamówienia | Umowy) when viewing a project.\n\nCreate `app/(app)/projekty/[projektId]/layout.tsx` — Server Component:\n1. Accept `params` with `projektId` and `children`\n2. Call `getProjekt(projektId)` from `actions/projekty.ts`\n3. Render: project name + StatusBadge at the top, then `<ProjectTabs>` component, then `{children}`\n4. If project not found, show error message\n\nCreate `app/(app)/projekty/[projektId]/_components/project-tabs.tsx` — `'use client'`:\n1. Three tabs: Kosztorys (`/projekty/[id]/kosztorys`), Zamówienia (`/projekty/[id]/zamowienia`), Umowy (`/projekty/[id]/umowy`)\n2. Use `usePathname()` to detect active tab\n3. Active tab: amber text + amber bottom border (border-b-2 border-amber-500)\n4. Inactive tab: text-white/50 hover:text-white/70\n5. Disabled tabs (Zamówienia, Umowy): when project status is NOT `realizacja` or `zamkniety` → render as `<span>` not `<Link>`, with `text-white/20 cursor-not-allowed` and title tooltip 'Zaakceptuj rewizję'\n6. Props: `projektId: string`, `status: string`\n\nStyling: tab bar should be a `<nav>` with `flex gap-6 border-b border-white/[0.06] px-6` below the project header.",
+      "acceptanceCriteria": [
+        "layout.tsx created at app/(app)/projekty/[projektId]/layout.tsx",
+        "Layout fetches project and renders nazwa + StatusBadge",
+        "project-tabs.tsx created with 3 tabs using usePathname for active state",
+        "Active tab has amber underline styling",
+        "Zamówienia and Umowy tabs disabled when status is not realizacja/zamkniety",
+        "Disabled tabs show tooltip 'Zaakceptuj rewizję' and are not clickable",
+        "Existing kosztorys page renders correctly within layout",
+        "Typecheck passes"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": "",
+      "dependsOn": []
+    },
+    {
+      "id": "US-002",
+      "title": "Remove project header duplication from kosztorys-view",
+      "description": "As a developer, I need to remove the project header from kosztorys-view since it's now in the shared layout.\n\nModify `app/(app)/projekty/[projektId]/kosztorys/_components/kosztorys-view.tsx`:\n1. Remove the project name + StatusBadge rendering at the top of the view (this is now in layout.tsx)\n2. Remove the breadcrumb-style navigation (Link back to /projekty) since the layout handles context\n3. Keep everything else: RewizjaSelector, LockedBanner, KosztorysSidebar, KosztorysSummary, BulkToolbar, KosztorysTable, all panels\n4. Remove the import of StatusBadge if no longer used in this file\n\nThe kosztorys-view should start directly with the rewizja selector and functional content.",
+      "acceptanceCriteria": [
+        "Project name and StatusBadge no longer rendered in kosztorys-view",
+        "Breadcrumb navigation removed from kosztorys-view",
+        "RewizjaSelector, table, sidebar, panels all still work",
+        "No duplicate project header visible in browser",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-001"]
+    },
+    {
+      "id": "US-003",
+      "title": "Create status configs and validation schemas for zamówienia and umowy",
+      "description": "As a developer, I need status badge configs and Zod validation schemas for both modules.\n\nCreate `lib/zamowienia/status-config.ts`:\n- Type `ZamowienieStatus = 'draft' | 'wyslane' | 'czesciowo' | 'dostarczone' | 'rozliczone'`\n- Config map with labels and className (same pattern as `lib/projekty/status-config.ts`):\n  - draft: 'Szkic', zinc\n  - wyslane: 'Wysłane', blue\n  - czesciowo: 'Częściowo dostarczone', amber\n  - dostarczone: 'Dostarczone', emerald\n  - rozliczone: 'Rozliczone', zinc (dark gray)\n- Export `getZamowienieStatusConfig(status: string)` function\n\nCreate `lib/umowy/status-config.ts`:\n- Type `UmowaStatus = 'draft' | 'wyslana' | 'podpisana' | 'wykonana' | 'rozliczona'`\n- Config: draft=Szkic/zinc, wyslana=Wysłana/blue, podpisana=Podpisana/amber, wykonana=Wykonana/emerald, rozliczona=Rozliczona/zinc\n- Export `getUmowaStatusConfig(status: string)` function\n\nCreate `lib/validations/zamowienia.ts`:\n- `zamowienieEditSchema`: data_zamowienia (z.string().optional()), data_dostawy_planowana (z.string().optional()), uwagi (z.string().optional())\n- `dostawaSchema`: data_dostawy (z.string().min(1)), numer_wz (z.string().optional()), uwagi (z.string().optional()), pozycje (z.array(z.object({ zamowienie_pozycja_id: z.string().uuid(), ilosc: z.number().positive() })).min(1))\n\nCreate `lib/validations/umowy.ts`:\n- `umowaEditSchema`: data_podpisania (z.string().optional()), warunki_platnosci (z.string().optional()), uwagi (z.string().optional())\n- `wykonanieSchema`: data_wpisu (z.string().min(1)), ilosc_wykonana (z.number().positive()), uwagi (z.string().optional())",
+      "acceptanceCriteria": [
+        "lib/zamowienia/status-config.ts exports ZamowienieStatus type and getZamowienieStatusConfig",
+        "lib/umowy/status-config.ts exports UmowaStatus type and getUmowaStatusConfig",
+        "Badge colors match spec: draft=zinc, sent=blue, partial=amber, complete=emerald, settled=zinc",
+        "lib/validations/zamowienia.ts exports zamowienieEditSchema and dostawaSchema",
+        "lib/validations/umowy.ts exports umowaEditSchema and wykonanieSchema",
+        "Typecheck passes"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": "",
+      "dependsOn": []
+    },
+    {
+      "id": "US-004",
+      "title": "Create zamówienia server actions",
+      "description": "As a developer, I need server actions for zamówienia CRUD operations.\n\nCreate `actions/zamowienia.ts` with `'use server'`.\n\nImport `createClient` from `@/lib/supabase/server`, `revalidatePath`, and `ActionResult` from `@/actions/projekty`.\n\nInterfaces:\n- `ZamowienieRow`: id, numer, status, dostawca_id, dostawca_nazwa (joined), projekt_id, rewizja_id, data_zamowienia, data_dostawy_planowana, uwagi, created_at, pozycje_count (number), wartosc_total (number), dostarczone_ratio (string like '12/20')\n- `ZamowieniePozycja`: id, produkt_id, nazwa, jednostka, ilosc_zamowiona, cena_jednostkowa, wartosc (generated), ilosc_dostarczona\n- `ZamowienieDostawa`: id, data_dostawy, numer_wz, uwagi, created_at, pozycje: { zamowienie_pozycja_id, ilosc_dostarczona }[]\n- `ZamowienieDetail`: extends ZamowienieRow + pozycje: ZamowieniePozycja[] + dostawy: ZamowienieDostawa[]\n\nFunctions:\n1. `getZamowienia(projektId: string)` → ZamowienieRow[]:\n   - Query `zamowienia` WHERE projekt_id, JOIN dostawcy for nazwa\n   - For each: subquery count + sum from zamowienie_pozycje, compute dostarczone ratio\n   - Order by numer ASC\n\n2. `getZamowienie(id: string)` → ZamowienieDetail | null:\n   - Fetch zamówienie + join dostawcy\n   - Fetch zamowienie_pozycje ordered by nazwa\n   - Fetch zamowienie_dostawy + their pozycje\n\n3. `generateZamowieniaDraft(projektId: string)` → ActionResult:\n   - Get project to find accepted_rewizja_id\n   - Call `supabase.rpc('generate_zamowienia_draft', { p_projekt_id: projektId, p_rewizja_id: rewizjaId })`\n   - revalidatePath(`/projekty/${projektId}/zamowienia`)\n\n4. `updateZamowienie(id: string, input: {data_zamowienia?, data_dostawy_planowana?, uwagi?})` → ActionResult:\n   - Validate with zamowienieEditSchema\n   - UPDATE zamowienia SET ... WHERE id AND status = 'draft'\n   - revalidatePath\n\n5. `deleteZamowienie(id: string)` → ActionResult:\n   - DELETE FROM zamowienia WHERE id AND status = 'draft' (cascade deletes pozycje)\n   - revalidatePath\n\n6. `changeZamowienieStatus(id: string, newStatus: string)` → ActionResult:\n   - Fetch current status\n   - Validate transition: draft→wyslane, wyslane→czesciowo, czesciowo→dostarczone, dostarczone→rozliczone\n   - UPDATE zamowienia SET status, updated_at\n   - revalidatePath\n\n7. `addDostawa(zamowienieId: string, input: {data_dostawy, numer_wz?, uwagi?, pozycje: {zamowienie_pozycja_id, ilosc}[]})` → ActionResult:\n   - Validate with dostawaSchema\n   - INSERT INTO zamowienie_dostawy → get id\n   - INSERT INTO zamowienie_dostawy_pozycje for each pozycja\n   - Trigger auto-updates ilosc_dostarczona on zamowienie_pozycje\n   - revalidatePath",
+      "acceptanceCriteria": [
+        "actions/zamowienia.ts created with 'use server' directive",
+        "getZamowienia returns list with joined dostawca name, pozycje count, total value",
+        "getZamowienie returns full detail with pozycje and dostawy",
+        "generateZamowieniaDraft calls RPC and revalidates",
+        "updateZamowienie only works on draft status",
+        "deleteZamowienie only works on draft status",
+        "changeZamowienieStatus validates allowed transitions",
+        "addDostawa creates delivery + delivery pozycje",
+        "All functions use createClient from lib/supabase/server",
+        "Typecheck passes"
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": "",
+      "dependsOn": []
+    },
+    {
+      "id": "US-005",
+      "title": "Create umowy server actions",
+      "description": "As a developer, I need server actions for umowy CRUD operations.\n\nCreate `actions/umowy.ts` with `'use server'`. Same pattern as zamówienia actions.\n\nInterfaces:\n- `UmowaRow`: id, numer, status, podwykonawca_id, podwykonawca_nazwa (joined), podwykonawca_specjalizacja (joined), projekt_id, rewizja_id, data_podpisania, warunki_platnosci, uwagi, created_at, pozycje_count, wartosc_total, avg_procent_wykonania\n- `UmowaPozycja`: id, pozycja_biblioteka_id, nazwa, jednostka, ilosc, stawka, wartosc (generated), ilosc_wykonana, procent_wykonania (generated)\n- `UmowaWykonanie`: id, umowa_pozycja_id, data_wpisu, ilosc_wykonana, uwagi, created_at\n- `UmowaDetail`: extends UmowaRow + pozycje: UmowaPozycja[] + wykonanie: UmowaWykonanie[]\n\nFunctions:\n1. `getUmowy(projektId: string)` → UmowaRow[]:\n   - Query `umowy` WHERE projekt_id, JOIN podwykonawcy for nazwa + specjalizacja\n   - For each: count + sum from umowa_pozycje, avg procent_wykonania\n   - Order by numer ASC\n\n2. `getUmowa(id: string)` → UmowaDetail | null:\n   - Fetch umowa + join podwykonawcy\n   - Fetch umowa_pozycje ordered by nazwa\n   - Fetch umowa_wykonanie for all pozycje of this umowa, ordered by data_wpisu DESC\n\n3. `generateUmowyDraft(projektId: string)` → ActionResult:\n   - Get project accepted_rewizja_id\n   - Call `supabase.rpc('generate_umowy_draft', { p_projekt_id: projektId, p_rewizja_id: rewizjaId })`\n   - revalidatePath\n\n4. `updateUmowa(id: string, input: {data_podpisania?, warunki_platnosci?, uwagi?})` → ActionResult (draft only)\n\n5. `deleteUmowa(id: string)` → ActionResult (draft only)\n\n6. `changeUmowaStatus(id: string, newStatus: string)` → ActionResult:\n   - Validate: draft→wyslana, wyslana→podpisana, podpisana→wykonana, wykonana→rozliczona\n\n7. `addWykonanie(umowaPozycjaId: string, input: {data_wpisu, ilosc_wykonana, uwagi?})` → ActionResult:\n   - Validate with wykonanieSchema\n   - INSERT INTO umowa_wykonanie\n   - Trigger auto-updates ilosc_wykonana on umowa_pozycje\n   - revalidatePath",
+      "acceptanceCriteria": [
+        "actions/umowy.ts created with 'use server' directive",
+        "getUmowy returns list with joined podwykonawca name, pozycje count, total value, avg % execution",
+        "getUmowa returns full detail with pozycje and wykonanie records",
+        "generateUmowyDraft calls RPC and revalidates",
+        "updateUmowa only works on draft status",
+        "deleteUmowa only works on draft status",
+        "changeUmowaStatus validates allowed transitions",
+        "addWykonanie creates execution record for a pozycja",
+        "Typecheck passes"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": "",
+      "dependsOn": []
+    },
+    {
+      "id": "US-006",
+      "title": "Auto-generate zamówienia and umowy drafts on acceptance",
+      "description": "As a user, I want zamówienia and umowy drafts auto-generated when I accept a revision.\n\nModify `actions/acceptance.ts`:\n\nAfter the successful `changeProjectStatus` RPC call that transitions to `realizacja`, add two more RPC calls:\n\n```typescript\nif (newStatus === 'realizacja' && rewizjaId) {\n  // Auto-generate drafts - errors don't block acceptance\n  try {\n    await supabase.rpc('generate_zamowienia_draft', {\n      p_projekt_id: projektId,\n      p_rewizja_id: rewizjaId,\n    });\n  } catch { /* ignore */ }\n  try {\n    await supabase.rpc('generate_umowy_draft', {\n      p_projekt_id: projektId,\n      p_rewizja_id: rewizjaId,\n    });\n  } catch { /* ignore */ }\n}\n```\n\nErrors are caught and ignored — if there are no materials or labor in the kosztorys, the RPC may return 0 or throw, but we don't want to block the acceptance flow. The user can always manually generate later via the empty state button.\n\nAlso add revalidatePath for zamowienia and umowy pages:\n```typescript\nrevalidatePath(`/projekty/${projektId}/zamowienia`);\nrevalidatePath(`/projekty/${projektId}/umowy`);\n```",
+      "acceptanceCriteria": [
+        "acceptance.ts calls generate_zamowienia_draft after transition to realizacja",
+        "acceptance.ts calls generate_umowy_draft after transition to realizacja",
+        "Both RPC calls wrapped in try/catch - errors don't block acceptance",
+        "Only triggered when newStatus is 'realizacja' and rewizjaId exists",
+        "revalidatePath called for zamowienia and umowy routes",
+        "Existing acceptance flow unchanged for other transitions",
+        "Typecheck passes"
+      ],
+      "priority": 6,
+      "passes": false,
+      "notes": "",
+      "dependsOn": []
+    },
+    {
+      "id": "US-007",
+      "title": "Create zamówienia page, empty state, and table components",
+      "description": "As a user, I want to see a list of zamówienia for a project.\n\nCreate `app/(app)/projekty/[projektId]/zamowienia/page.tsx` — Server Component:\n- Read `projektId` from params\n- Call `getZamowienia(projektId)` from `actions/zamowienia.ts`\n- Render `<ZamowieniaView data={zamowienia} projektId={projektId} />`\n\nCreate `app/(app)/projekty/[projektId]/zamowienia/_components/zamowienia-empty.tsx` — `'use client'`:\n- Props: `projektId: string`, `onGenerate: () => void`, `loading: boolean`\n- Render: centered content with Package icon (lucide), 'Brak zamówień' heading, 'Wygeneruj zamówienia materiałowe z zaakceptowanej rewizji' description, amber 'Generuj zamówienia' button\n- Button calls onGenerate, shows loading spinner when loading\n\nCreate `app/(app)/projekty/[projektId]/zamowienia/_components/zamowienia-table.tsx` — `'use client'`:\n- Props: `data: ZamowienieRow[]`, `onRowClick: (row: ZamowienieRow) => void`\n- Use TanStack `useReactTable` + `getCoreRowModel` (same pattern as projekty-table.tsx)\n- Columns: Numer (font-mono), Dostawca (text), Status (badge using getZamowienieStatusConfig), Pozycje (number), Wartość (formatted PLN), Dostarczone (ratio text)\n- Row click calls onRowClick\n- Empty state within table: 'Brak zamówień'\n- Create a `ZamowienieStatusBadge` inline component using the same pattern as `StatusBadge` but with `getZamowienieStatusConfig`\n- Styling: same table pattern as projekty-table.tsx (sticky header, hover rows, border-b)",
+      "acceptanceCriteria": [
+        "page.tsx created as Server Component fetching zamówienia data",
+        "zamowienia-empty.tsx shows empty state with generate button",
+        "zamowienia-table.tsx renders TanStack table with 6 columns",
+        "Status column shows colored badge from zamówienia status config",
+        "Wartość column formatted with Intl.NumberFormat pl-PL + 'zł'",
+        "Row click triggers onRowClick callback",
+        "Table styling matches existing projekty-table pattern",
+        "Typecheck passes"
+      ],
+      "priority": 7,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-001", "US-003", "US-004"]
+    },
+    {
+      "id": "US-008",
+      "title": "Create zamówienia view and detail panel",
+      "description": "As a user, I want to click a zamówienie row and see its details in a slide panel.\n\nCreate `app/(app)/projekty/[projektId]/zamowienia/_components/zamowienia-view.tsx` — `'use client'`:\n- Props: `data: ZamowienieRow[]`, `projektId: string`\n- State: `detailId: string | null`, `loading: boolean` (for generate)\n- If data is empty: render `<ZamowieniaEmpty>` with onGenerate calling `generateZamowieniaDraft(projektId)` then `router.refresh()`\n- If data exists: render `<ZamowieniaTable>` with onRowClick setting detailId\n- Render `<ZamowienieDetailPanel>` with open/onOpenChange controlled by detailId\n\nCreate `app/(app)/projekty/[projektId]/zamowienia/_components/panels/zamowienie-detail-panel.tsx` — `'use client'`:\n- Props: `zamowienieId: string | null`, `open: boolean`, `onOpenChange: (open: boolean) => void`\n- useEffect: when open && zamowienieId, call `getZamowienie(zamowienieId)` → set detail state\n- Use `SlidePanel` variant=\"wide\" (same as projekt-detail-panel)\n\nPanel sections:\n1. **Header**: Numer + ZamowienieStatusBadge\n2. **Dane zamówienia**: Dostawca, Data zamówienia, Planowana data dostawy, Uwagi (4 rows, same styling as projekt-detail-panel info rows: `flex justify-between px-3 py-2 rounded-md bg-white/[0.03] border border-white/[0.06]`)\n3. **Pozycje** — mini table: Produkt | Ilość | Cena j. | Wartość | Dostarczone. Format prices with Intl.NumberFormat pl-PL. Show ilosc_dostarczona/ilosc_zamowiona ratio.\n4. **Dostawy** — list of cards. Each card: data_dostawy + numer_wz in header, uwagi below. Styled as `rounded-md bg-white/[0.03] border border-white/[0.06] p-3`.\n5. **Akcje** — contextual buttons based on status:\n   - draft: 'Wyślij' (blue bg, Send icon) + 'Usuń' (red ghost, Trash2 icon with confirm())\n   - wyslane: 'Dodaj dostawę' (amber) — placeholder for now, US-009 will wire it\n   - czesciowo: 'Dodaj dostawę' (amber) + 'Oznacz jako dostarczone' (green ghost)\n   - dostarczone: 'Rozlicz' (gray)\n   - rozliczone: no buttons\n   All status buttons call `changeZamowienieStatus` then refresh detail\n   Delete button calls `deleteZamowienie` then closes panel + router.refresh()",
+      "acceptanceCriteria": [
+        "zamowienia-view.tsx renders empty state or table based on data",
+        "Generate button calls generateZamowieniaDraft and refreshes page",
+        "Clicking table row opens detail panel",
+        "Detail panel loads zamówienie data via getZamowienie",
+        "Panel shows dane zamówienia section with 4 info rows",
+        "Panel shows pozycje mini-table with 5 columns",
+        "Panel shows dostawy list as cards",
+        "Status-dependent action buttons render correctly for each status",
+        "Status change buttons call changeZamowienieStatus and refresh",
+        "Delete button works only on draft with confirmation",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 8,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-004", "US-007"]
+    },
+    {
+      "id": "US-009",
+      "title": "Add dostawa form to zamówienie detail panel",
+      "description": "As a user, I want to add a delivery record to a zamówienie.\n\nCreate `app/(app)/projekty/[projektId]/zamowienia/_components/panels/dostawa-form.tsx` — `'use client'`:\n- Props: `pozycje: ZamowieniePozycja[]`, `onSubmit: (input: DostawaInput) => Promise<void>`, `loading: boolean`\n- Render an inline form (not a separate panel) that appears when user clicks 'Dodaj dostawę' in the detail panel\n\nForm fields:\n- Data dostawy: date input (required, default today)\n- Numer WZ: text input (optional)\n- Uwagi: textarea (optional)\n- Pozycje table: for each ZamowieniePozycja, show: nazwa, ilość zamówiona, ilość dostarczona (current), ilość do przyjęcia (number input, min 0, max = ilosc_zamowiona - ilosc_dostarczona). Pre-fill with remaining quantity.\n\nButtons: 'Anuluj' (ghost) + 'Zapisz dostawę' (amber)\n\nModify `zamowienie-detail-panel.tsx`:\n- Add state `showDostawaForm: boolean`\n- 'Dodaj dostawę' button toggles showDostawaForm\n- When showDostawaForm is true, render `<DostawaForm>` instead of action buttons\n- onSubmit: call `addDostawa(zamowienieId, input)` → toast.success → hide form → refresh detail\n- Filter out pozycje with 0 ilosc from the submission (only send pozycje where user entered > 0)\n\nStyling: form appears in a bordered section `bg-amber-500/5 border border-amber-500/20 rounded-md p-4` (similar to accept-rewizja dialog in projekt-detail-panel).",
+      "acceptanceCriteria": [
+        "dostawa-form.tsx created with date, WZ number, notes fields",
+        "Pozycje table shows each product with remaining quantity input",
+        "Remaining quantity pre-filled with ilosc_zamowiona - ilosc_dostarczona",
+        "Number inputs have max = remaining quantity",
+        "'Dodaj dostawę' button in detail panel toggles form visibility",
+        "Form submission calls addDostawa with filtered pozycje (ilosc > 0 only)",
+        "Success toast shown after adding delivery",
+        "Detail panel data refreshes after adding delivery",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 9,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-004", "US-008"]
+    },
+    {
+      "id": "US-010",
+      "title": "Create umowy page, empty state, and table components",
+      "description": "As a user, I want to see a list of umowy for a project.\n\nCreate `app/(app)/projekty/[projektId]/umowy/page.tsx` — Server Component:\n- Read `projektId` from params\n- Call `getUmowy(projektId)` from `actions/umowy.ts`\n- Render `<UmowyView data={umowy} projektId={projektId} />`\n\nCreate `app/(app)/projekty/[projektId]/umowy/_components/umowy-empty.tsx` — `'use client'`:\n- Same pattern as zamowienia-empty but with Briefcase icon (lucide) and text 'Brak umów' / 'Wygeneruj umowy z podwykonawcami z zaakceptowanej rewizji' / 'Generuj umowy' button\n\nCreate `app/(app)/projekty/[projektId]/umowy/_components/umowy-table.tsx` — `'use client'`:\n- Same TanStack pattern as zamowienia-table\n- Columns: Numer (font-mono), Podwykonawca (text), Status (badge using getUmowaStatusConfig), Pozycje (number), Wartość (formatted PLN), Wykonanie (progress bar + percentage)\n- For the Wykonanie column: render a small progress bar div (h-1.5 rounded bg-white/10 with inner div bg-emerald-500 width = avg_procent_wykonania%) + text 'XX%' next to it\n- Create `UmowaStatusBadge` inline (same pattern as ZamowienieStatusBadge but using umowy config)\n- Row click triggers onRowClick",
+      "acceptanceCriteria": [
+        "page.tsx created as Server Component fetching umowy data",
+        "umowy-empty.tsx shows empty state with generate button",
+        "umowy-table.tsx renders TanStack table with 6 columns",
+        "Status column uses umowy status config for badge colors",
+        "Wykonanie column shows progress bar + percentage text",
+        "Progress bar width matches avg_procent_wykonania value",
+        "Table styling matches existing patterns",
+        "Typecheck passes"
+      ],
+      "priority": 10,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-001", "US-003", "US-005"]
+    },
+    {
+      "id": "US-011",
+      "title": "Create umowy view and detail panel",
+      "description": "As a user, I want to click an umowa row and see its details with execution tracking.\n\nCreate `app/(app)/projekty/[projektId]/umowy/_components/umowy-view.tsx` — `'use client'`:\n- Same pattern as zamowienia-view: empty state or table, detail panel controlled by detailId\n- onGenerate calls `generateUmowyDraft(projektId)` then router.refresh()\n\nCreate `app/(app)/projekty/[projektId]/umowy/_components/panels/umowa-detail-panel.tsx` — `'use client'`:\n- Same SlidePanel pattern as zamowienie-detail-panel\n\nPanel sections:\n1. **Header**: Numer + UmowaStatusBadge\n2. **Dane umowy**: Podwykonawca (nazwa + specjalizacja), Data podpisania, Warunki płatności, Uwagi\n3. **Załącznik cennikowy** — mini table with columns: Pozycja | Jedn. | Ilość | Stawka | Wartość | Wykonano | %\n   - Wykonano shows `ilosc_wykonana/ilosc` ratio\n   - % column: progress bar (h-1.5 bg-white/10 with inner bg-emerald-500) + text\n   - Each row is clickable (cursor-pointer, hover:bg-white/5) — clicking opens inline wykonanie form (US-012 will implement, for now just track `selectedPozycjaId` state)\n4. **Akcje** — contextual buttons:\n   - draft: 'Wyślij' (blue) + 'Usuń' (red ghost with confirm)\n   - wyslana: 'Oznacz jako podpisaną' (amber, Pen icon)\n   - podpisana: 'Oznacz jako wykonaną' (green ghost) — visible only when avg % > 0\n   - wykonana: 'Rozlicz' (gray)\n   - rozliczona: no buttons\n   All call `changeUmowaStatus` then refresh.\n   Delete calls `deleteUmowa` + close panel + router.refresh()",
+      "acceptanceCriteria": [
+        "umowy-view.tsx renders empty state or table with detail panel",
+        "Generate button calls generateUmowyDraft and refreshes",
+        "Detail panel loads umowa data via getUmowa",
+        "Dane umowy section shows podwykonawca info including specjalizacja",
+        "Załącznik cennikowy table shows 7 columns with progress bars",
+        "Pozycja rows are clickable (prepare for wykonanie form)",
+        "Status-dependent action buttons render for each status",
+        "Status changes and delete work correctly",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 11,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-005", "US-010"]
+    },
+    {
+      "id": "US-012",
+      "title": "Add wykonanie form to umowa detail panel",
+      "description": "As a user, I want to add execution records per pozycja in an umowa.\n\nCreate `app/(app)/projekty/[projektId]/umowy/_components/panels/wykonanie-form.tsx` — `'use client'`:\n- Props: `pozycja: UmowaPozycja`, `onSubmit: (input: WykonanieInput) => Promise<void>`, `onCancel: () => void`, `loading: boolean`\n- Inline form that appears below the clicked pozycja row in the załącznik cennikowy table\n\nForm fields:\n- Header: 'Dodaj wpis wykonania dla: {pozycja.nazwa}'\n- Data wpisu: date input (required, default today)\n- Ilość wykonana: number input (min: 0.01, step: 0.01, max: pozycja.ilosc - pozycja.ilosc_wykonana)\n- Uwagi: text input (optional)\n- Buttons: 'Anuluj' (ghost) + 'Zapisz' (amber)\n\nModify `umowa-detail-panel.tsx`:\n- Add state `selectedPozycjaId: string | null`\n- Clicking a pozycja row in the table toggles `selectedPozycjaId` (only when status is 'podpisana' — execution tracking only makes sense after signing)\n- When selectedPozycjaId matches a row, render `<WykonanieForm>` below that row (as a table row spanning all columns, or as a collapsible div below)\n- onSubmit: call `addWykonanie(pozycjaId, input)` → toast.success('Wpis wykonania dodany') → hide form → refresh detail\n\nStyling: form row has `bg-amber-500/5 border-t border-amber-500/20 px-4 py-3`",
+      "acceptanceCriteria": [
+        "wykonanie-form.tsx created with date, quantity, notes fields",
+        "Quantity input max = remaining (ilosc - ilosc_wykonana)",
+        "Clicking pozycja row in table toggles inline form below it",
+        "Form only opens when umowa status is 'podpisana'",
+        "Submission calls addWykonanie and shows success toast",
+        "Detail panel refreshes after adding execution record",
+        "Progress bars update to reflect new execution data",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 12,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-005", "US-011"]
+    },
+    {
+      "id": "US-013",
+      "title": "Final build verification and browser testing",
+      "description": "As a developer, I need to verify the entire Phase 10/11 works end-to-end.\n\nRun `npm run build` to verify no type errors.\n\nManual verification at localhost:3000:\n1. Go to /projekty → open a project in 'draft' status → tab bar shows Kosztorys active, Zamówienia/Umowy disabled (grayed out)\n2. Lock a revision → accept it → project moves to 'realizacja'\n3. Tab bar now shows all 3 tabs active\n4. Click 'Zamówienia' tab → zamówienia page loads with generated drafts\n5. Click a zamówienie row → detail panel opens with data, pozycje, status actions\n6. Click 'Wyślij' → status changes to 'wyslane'\n7. Click 'Dodaj dostawę' → form appears → fill date + quantities → save → delivery added\n8. Click 'Umowy' tab → umowy page loads with generated drafts\n9. Click an umowa → detail panel with załącznik cennikowy\n10. Change status to 'podpisana' → click pozycja row → wykonanie form appears → add entry\n11. Progress bars and percentages update\n\nIf any page shows empty state instead of drafts, test manual generation via the 'Generuj' button.",
+      "acceptanceCriteria": [
+        "npm run build passes without errors",
+        "Tab bar shows on all project sub-pages with correct active state",
+        "Zamówienia/Umowy tabs disabled when project not in realizacja/zamkniety",
+        "Auto-generated drafts appear after accepting revision",
+        "Zamówienia table shows correct data with status badges",
+        "Zamówienie detail panel displays all sections correctly",
+        "Status transitions work for zamówienia (draft → wyslane → ... → rozliczone)",
+        "Adding delivery works and updates dostarczone counts",
+        "Umowy table shows progress bars in wykonanie column",
+        "Umowa detail panel shows załącznik cennikowy with clickable rows",
+        "Adding wykonanie record works and updates progress",
+        "Manual generation works via empty state button"
+      ],
+      "priority": 13,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-009", "US-012"]
+    }
+  ]
+}

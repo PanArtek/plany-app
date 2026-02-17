@@ -1,0 +1,36 @@
+# Ralph Progress Log
+Started: Thu Feb  5 16:28:24 CET 2026
+---
+
+## BL-001: Add getKategorieCounts server action ✅
+- Added `getKategorieCounts()` to `actions/kategorie.ts`
+- Returns `Record<BranzaKod, number>` with counts of poziom 2 categories per branża
+- Query: selects pelny_kod where poziom=2, groups by first 3 chars
+- Typecheck passes
+
+## BL-002: Create BranzaTile component ✅
+- Created `branza-tile.tsx` with Link wrapper
+- Styling: stone-900/50 bg, amber hover effects, scale transform
+
+## BL-003: Create BranzeGrid component ✅
+- Created `branze-grid.tsx` with responsive grid
+- Uses BRANZE constant for 5 branże
+
+## BL-004: Update /kategorie page to show landing tiles ✅
+- Replaced KategorieView with BranzeGrid on landing page
+- Verified 5 tiles display with correct counts
+
+## BL-005/BL-006/BL-007: Dynamic route + props refactor ✅
+- Created `/kategorie/[branza]/page.tsx` with param validation
+- Updated KategorieView to accept `activeBranza` prop
+- Updated BranzaTabs to use Link navigation instead of store
+
+## BL-008: Final verification ✅
+All acceptance criteria verified:
+- Build passes
+- 5 tiles with counts on /kategorie
+- Tile click → /kategorie/BUD
+- Tabs work with URL navigation
+- Browser back works
+- Invalid URL shows 404
+- No console errors
