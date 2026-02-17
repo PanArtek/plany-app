@@ -42,6 +42,17 @@ export interface PodwykonawcaBase {
   specjalizacja: string | null;
   kontakt: string | null;
   aktywny: boolean;
+  nazwa_pelna: string | null;
+  nip: string | null;
+  regon: string | null;
+  krs: string | null;
+  adres_siedziby: string | null;
+  osoba_reprezentujaca: string | null;
+  email: string | null;
+  strona_www: string | null;
+  nr_konta: string | null;
+  uwagi: string | null;
+  ocena: number | null;
 }
 
 export interface StawkaEntry {
@@ -122,7 +133,7 @@ export async function getPodwykonawca(id: string): Promise<PodwykonawcaBase | nu
 
   const { data, error } = await supabase
     .from('podwykonawcy')
-    .select('id, nazwa, specjalizacja, kontakt, aktywny')
+    .select('id, nazwa, specjalizacja, kontakt, aktywny, nazwa_pelna, nip, regon, krs, adres_siedziby, osoba_reprezentujaca, email, strona_www, nr_konta, uwagi, ocena')
     .eq('id', id)
     .single();
 
@@ -268,8 +279,19 @@ export async function createPodwykonawca(input: unknown): Promise<ActionResult<P
       specjalizacja: parsed.data.specjalizacja,
       kontakt: parsed.data.kontakt,
       aktywny: parsed.data.aktywny,
+      nazwa_pelna: parsed.data.nazwa_pelna || null,
+      nip: parsed.data.nip || null,
+      regon: parsed.data.regon || null,
+      krs: parsed.data.krs || null,
+      adres_siedziby: parsed.data.adres_siedziby || null,
+      osoba_reprezentujaca: parsed.data.osoba_reprezentujaca || null,
+      email: parsed.data.email || null,
+      strona_www: parsed.data.strona_www || null,
+      nr_konta: parsed.data.nr_konta || null,
+      uwagi: parsed.data.uwagi || null,
+      ocena: parsed.data.ocena ?? null,
     })
-    .select('id, nazwa, specjalizacja, kontakt, aktywny')
+    .select('id, nazwa, specjalizacja, kontakt, aktywny, nazwa_pelna, nip, regon, krs, adres_siedziby, osoba_reprezentujaca, email, strona_www, nr_konta, uwagi, ocena')
     .single();
 
   if (error) {
@@ -295,12 +317,23 @@ export async function updatePodwykonawca(id: string, input: unknown): Promise<Ac
   if (parsed.data.specjalizacja !== undefined) updateData.specjalizacja = parsed.data.specjalizacja;
   if (parsed.data.kontakt !== undefined) updateData.kontakt = parsed.data.kontakt;
   if (parsed.data.aktywny !== undefined) updateData.aktywny = parsed.data.aktywny;
+  if (parsed.data.nazwa_pelna !== undefined) updateData.nazwa_pelna = parsed.data.nazwa_pelna || null;
+  if (parsed.data.nip !== undefined) updateData.nip = parsed.data.nip || null;
+  if (parsed.data.regon !== undefined) updateData.regon = parsed.data.regon || null;
+  if (parsed.data.krs !== undefined) updateData.krs = parsed.data.krs || null;
+  if (parsed.data.adres_siedziby !== undefined) updateData.adres_siedziby = parsed.data.adres_siedziby || null;
+  if (parsed.data.osoba_reprezentujaca !== undefined) updateData.osoba_reprezentujaca = parsed.data.osoba_reprezentujaca || null;
+  if (parsed.data.email !== undefined) updateData.email = parsed.data.email || null;
+  if (parsed.data.strona_www !== undefined) updateData.strona_www = parsed.data.strona_www || null;
+  if (parsed.data.nr_konta !== undefined) updateData.nr_konta = parsed.data.nr_konta || null;
+  if (parsed.data.uwagi !== undefined) updateData.uwagi = parsed.data.uwagi || null;
+  if (parsed.data.ocena !== undefined) updateData.ocena = parsed.data.ocena ?? null;
 
   const { data, error } = await supabase
     .from('podwykonawcy')
     .update(updateData)
     .eq('id', id)
-    .select('id, nazwa, specjalizacja, kontakt, aktywny')
+    .select('id, nazwa, specjalizacja, kontakt, aktywny, nazwa_pelna, nip, regon, krs, adres_siedziby, osoba_reprezentujaca, email, strona_www, nr_konta, uwagi, ocena')
     .single();
 
   if (error) {

@@ -68,8 +68,8 @@
         "Typecheck passes"
       ],
       "priority": 2,
-      "passes": false,
-      "notes": "",
+      "passes": true,
+      "notes": "Both schemas extended with 11 company card fields. Form schemas created without .default(). Build passes.",
       "dependsOn": ["US-003"]
     },
     {
