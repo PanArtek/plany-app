@@ -219,8 +219,8 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 6,
-      "passes": false,
-      "notes": "",
+      "passes": true,
+      "notes": "npm run build passes. npm run lint passes (pre-existing warnings only). No console.log in new code. No unused imports.",
       "dependsOn": ["US-009", "US-010", "US-011"]
     }
   ]

@@ -60,3 +60,10 @@ Started: Tue Feb 17 14:40:38 CET 2026
 - Detail panel shows history with project names, dates, sums, total footer
 - Build passes
 ---
+## US-012: Final build verification + cleanup — PASSED
+- npm run build: PASS (zero errors)
+- npm run lint: PASS (pre-existing warnings only, none from new code)
+- No console.log in new code
+- No unused imports in changed files
+- All 12 stories complete
+---
