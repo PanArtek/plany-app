@@ -1,13 +1,32 @@
 # Ralph Progress Log
-Started: Wed Feb 18 09:30:39 CET 2026
+Started: Wed Feb 18 11:21:07 CET 2026
 ---
-[US-005] PASS - 18 stawki_podwykonawcow inserted. Seed file: 04-pozycje-stawki.sql
-[US-006] PASS - DRAFT project restauracja-smaczna: 1 rev, 8 positions. Seed: 05-projekt-draft.sql
-[US-007] PASS - OFERTOWANIE project biuro-techhub: 2 locked revs, 12 positions. Seed: 06-projekt-ofertowanie.sql
-[US-008] PASS - REALIZACJA base klinika-dentsmile: 2 revs (rev 1 accepted), 10 positions. Seed: 07-projekt-realizacja-base.sql
-[US-009] PASS - REALIZACJA workflow: 6 zamówienia, 5 umowy, 3 wpisy. Seed: 08-projekt-realizacja-workflow.sql
-[US-010] PASS - ZAMKNIĘTY project lokal-fashion-box: full lifecycle, 3 zam rozliczone, 3 umowy rozliczona, 5 wpisy. Seed: 09-projekt-zamkniety.sql
-[US-011] PASS - ODRZUCONY project magazyn-logistore: draft→ofertowanie→odrzucony, 6 positions. Seed: 10-projekt-odrzucony.sql
-[US-012] PASS - Final verification: all counts match, npm run build passes.
+## US-001: Create typy_robocizny table with RLS policies ✅
+- Migration applied: table + index + 4 RLS policies
+- Build passes
+
+## US-002: Rebuild stawki_podwykonawcow ✅
+- Truncated, dropped pozycja_biblioteka_id, added typ_robocizny_id NOT NULL
+- Unique constraint on (podwykonawca_id, typ_robocizny_id)
+
+## US-003: Alter biblioteka_skladowe_robocizna ✅
+- Dropped opis, stawka_domyslna; added typ_robocizny_id NOT NULL
+- podwykonawca_id set NOT NULL, FK changed to CASCADE
+- Note: table has `cena` column from original schema (not norma_domyslna as PRD expected)
+
+## US-004: Alter biblioteka_skladowe_materialy ✅
+- Dropped nazwa, cena_domyslna; produkt_id + dostawca_id set NOT NULL
+- FK constraints changed to CASCADE
+
+## US-005: Alter kosztorys_skladowe tables ✅
+- materialy: dropped nazwa, produkt_id+dostawca_id NOT NULL, added cena_manualna
+- robocizna: dropped opis, added typ_robocizny_id NOT NULL, podwykonawca_id NOT NULL, stawka_manualna
+
+## US-006: Alter zamowienie_pozycje + umowa_pozycje ✅
+- zamowienie_pozycje: added kosztorys_skladowa_material_id, produkt_id NOT NULL
+- umowa_pozycje: added kosztorys_skladowa_robocizna_id + typ_robocizny_id, dropped pozycja_biblioteka_id
+
+## US-007: Regenerate TypeScript types ✅
+- database.types.ts regenerated with all schema changes
+- Build passes with zero errors
 ---
-All 12 stories PASS. Branch ready for review.

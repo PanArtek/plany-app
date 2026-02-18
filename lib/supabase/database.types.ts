@@ -16,40 +16,34 @@ export type Database = {
     Tables: {
       biblioteka_skladowe_materialy: {
         Row: {
-          cena_domyslna: number | null
           created_at: string | null
-          dostawca_id: string | null
+          dostawca_id: string
           id: string
           jednostka: string | null
           lp: number
-          nazwa: string
           norma_domyslna: number | null
           pozycja_biblioteka_id: string
-          produkt_id: string | null
+          produkt_id: string
         }
         Insert: {
-          cena_domyslna?: number | null
           created_at?: string | null
-          dostawca_id?: string | null
+          dostawca_id: string
           id?: string
           jednostka?: string | null
           lp?: number
-          nazwa: string
           norma_domyslna?: number | null
           pozycja_biblioteka_id: string
-          produkt_id?: string | null
+          produkt_id: string
         }
         Update: {
-          cena_domyslna?: number | null
           created_at?: string | null
-          dostawca_id?: string | null
+          dostawca_id?: string
           id?: string
           jednostka?: string | null
           lp?: number
-          nazwa?: string
           norma_domyslna?: number | null
           pozycja_biblioteka_id?: string
-          produkt_id?: string | null
+          produkt_id?: string
         }
         Relationships: [
           {
@@ -81,27 +75,27 @@ export type Database = {
           created_at: string | null
           id: string
           lp: number
-          opis: string
-          podwykonawca_id: string | null
+          podwykonawca_id: string
           pozycja_biblioteka_id: string
+          typ_robocizny_id: string
         }
         Insert: {
           cena?: number
           created_at?: string | null
           id?: string
           lp?: number
-          opis: string
-          podwykonawca_id?: string | null
+          podwykonawca_id: string
           pozycja_biblioteka_id: string
+          typ_robocizny_id: string
         }
         Update: {
           cena?: number
           created_at?: string | null
           id?: string
           lp?: number
-          opis?: string
-          podwykonawca_id?: string | null
+          podwykonawca_id?: string
           pozycja_biblioteka_id?: string
+          typ_robocizny_id?: string
         }
         Relationships: [
           {
@@ -116,6 +110,13 @@ export type Database = {
             columns: ["pozycja_biblioteka_id"]
             isOneToOne: false
             referencedRelation: "pozycje_biblioteka"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "biblioteka_skladowe_robocizna_typ_robocizny_id_fkey"
+            columns: ["typ_robocizny_id"]
+            isOneToOne: false
+            referencedRelation: "typy_robocizny"
             referencedColumns: ["id"]
           },
         ]
@@ -392,47 +393,47 @@ export type Database = {
       kosztorys_skladowe_materialy: {
         Row: {
           cena: number
+          cena_manualna: number | null
           created_at: string | null
-          dostawca_id: string | null
+          dostawca_id: string
           id: string
           ilosc: number | null
           is_manual: boolean
           jednostka: string | null
           kosztorys_pozycja_id: string
           lp: number
-          nazwa: string
           norma: number
-          produkt_id: string | null
+          produkt_id: string
           updated_at: string | null
         }
         Insert: {
           cena: number
+          cena_manualna?: number | null
           created_at?: string | null
-          dostawca_id?: string | null
+          dostawca_id: string
           id?: string
           ilosc?: number | null
           is_manual?: boolean
           jednostka?: string | null
           kosztorys_pozycja_id: string
           lp?: number
-          nazwa: string
           norma?: number
-          produkt_id?: string | null
+          produkt_id: string
           updated_at?: string | null
         }
         Update: {
           cena?: number
+          cena_manualna?: number | null
           created_at?: string | null
-          dostawca_id?: string | null
+          dostawca_id?: string
           id?: string
           ilosc?: number | null
           is_manual?: boolean
           jednostka?: string | null
           kosztorys_pozycja_id?: string
           lp?: number
-          nazwa?: string
           norma?: number
-          produkt_id?: string | null
+          produkt_id?: string
           updated_at?: string | null
         }
         Relationships: [
@@ -474,8 +475,9 @@ export type Database = {
           id: string
           kosztorys_pozycja_id: string
           lp: number
-          opis: string
-          podwykonawca_id: string | null
+          podwykonawca_id: string
+          stawka_manualna: number | null
+          typ_robocizny_id: string
           updated_at: string | null
         }
         Insert: {
@@ -485,8 +487,9 @@ export type Database = {
           id?: string
           kosztorys_pozycja_id: string
           lp?: number
-          opis: string
-          podwykonawca_id?: string | null
+          podwykonawca_id: string
+          stawka_manualna?: number | null
+          typ_robocizny_id: string
           updated_at?: string | null
         }
         Update: {
@@ -496,8 +499,9 @@ export type Database = {
           id?: string
           kosztorys_pozycja_id?: string
           lp?: number
-          opis?: string
-          podwykonawca_id?: string | null
+          podwykonawca_id?: string
+          stawka_manualna?: number | null
+          typ_robocizny_id?: string
           updated_at?: string | null
         }
         Relationships: [
@@ -520,6 +524,13 @@ export type Database = {
             columns: ["podwykonawca_id"]
             isOneToOne: false
             referencedRelation: "podwykonawcy"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kosztorys_skladowe_robocizna_typ_robocizny_id_fkey"
+            columns: ["typ_robocizny_id"]
+            isOneToOne: false
+            referencedRelation: "typy_robocizny"
             referencedColumns: ["id"]
           },
         ]
@@ -987,24 +998,24 @@ export type Database = {
           created_at: string | null
           id: string
           podwykonawca_id: string
-          pozycja_biblioteka_id: string
           stawka: number
+          typ_robocizny_id: string
         }
         Insert: {
           aktywny?: boolean | null
           created_at?: string | null
           id?: string
           podwykonawca_id: string
-          pozycja_biblioteka_id: string
           stawka: number
+          typ_robocizny_id: string
         }
         Update: {
           aktywny?: boolean | null
           created_at?: string | null
           id?: string
           podwykonawca_id?: string
-          pozycja_biblioteka_id?: string
           stawka?: number
+          typ_robocizny_id?: string
         }
         Relationships: [
           {
@@ -1015,10 +1026,48 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "stawki_podwykonawcow_pozycja_biblioteka_id_fkey"
-            columns: ["pozycja_biblioteka_id"]
+            foreignKeyName: "stawki_podwykonawcow_typ_robocizny_id_fkey"
+            columns: ["typ_robocizny_id"]
             isOneToOne: false
-            referencedRelation: "pozycje_biblioteka"
+            referencedRelation: "typy_robocizny"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      typy_robocizny: {
+        Row: {
+          aktywny: boolean | null
+          created_at: string | null
+          id: string
+          jednostka: string | null
+          nazwa: string
+          opis: string | null
+          organization_id: string
+        }
+        Insert: {
+          aktywny?: boolean | null
+          created_at?: string | null
+          id?: string
+          jednostka?: string | null
+          nazwa: string
+          opis?: string | null
+          organization_id: string
+        }
+        Update: {
+          aktywny?: boolean | null
+          created_at?: string | null
+          id?: string
+          jednostka?: string | null
+          nazwa?: string
+          opis?: string | null
+          organization_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "typy_robocizny_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
         ]
@@ -1030,10 +1079,11 @@ export type Database = {
           ilosc: number
           ilosc_wykonana: number | null
           jednostka: string | null
+          kosztorys_skladowa_robocizna_id: string | null
           nazwa: string
-          pozycja_biblioteka_id: string | null
           procent_wykonania: number | null
           stawka: number
+          typ_robocizny_id: string | null
           umowa_id: string
           wartosc: number | null
         }
@@ -1043,10 +1093,11 @@ export type Database = {
           ilosc: number
           ilosc_wykonana?: number | null
           jednostka?: string | null
+          kosztorys_skladowa_robocizna_id?: string | null
           nazwa: string
-          pozycja_biblioteka_id?: string | null
           procent_wykonania?: number | null
           stawka: number
+          typ_robocizny_id?: string | null
           umowa_id: string
           wartosc?: number | null
         }
@@ -1056,19 +1107,27 @@ export type Database = {
           ilosc?: number
           ilosc_wykonana?: number | null
           jednostka?: string | null
+          kosztorys_skladowa_robocizna_id?: string | null
           nazwa?: string
-          pozycja_biblioteka_id?: string | null
           procent_wykonania?: number | null
           stawka?: number
+          typ_robocizny_id?: string | null
           umowa_id?: string
           wartosc?: number | null
         }
         Relationships: [
           {
-            foreignKeyName: "umowa_pozycje_pozycja_biblioteka_id_fkey"
-            columns: ["pozycja_biblioteka_id"]
+            foreignKeyName: "umowa_pozycje_kosztorys_skladowa_robocizna_id_fkey"
+            columns: ["kosztorys_skladowa_robocizna_id"]
             isOneToOne: false
-            referencedRelation: "pozycje_biblioteka"
+            referencedRelation: "kosztorys_skladowe_robocizna"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "umowa_pozycje_typ_robocizny_id_fkey"
+            columns: ["typ_robocizny_id"]
+            isOneToOne: false
+            referencedRelation: "typy_robocizny"
             referencedColumns: ["id"]
           },
           {
@@ -1399,8 +1458,9 @@ export type Database = {
           ilosc_dostarczona: number | null
           ilosc_zamowiona: number
           jednostka: string | null
+          kosztorys_skladowa_material_id: string | null
           nazwa: string
-          produkt_id: string | null
+          produkt_id: string
           wartosc: number | null
           zamowienie_id: string
         }
@@ -1411,8 +1471,9 @@ export type Database = {
           ilosc_dostarczona?: number | null
           ilosc_zamowiona: number
           jednostka?: string | null
+          kosztorys_skladowa_material_id?: string | null
           nazwa: string
-          produkt_id?: string | null
+          produkt_id: string
           wartosc?: number | null
           zamowienie_id: string
         }
@@ -1423,12 +1484,20 @@ export type Database = {
           ilosc_dostarczona?: number | null
           ilosc_zamowiona?: number
           jednostka?: string | null
+          kosztorys_skladowa_material_id?: string | null
           nazwa?: string
-          produkt_id?: string | null
+          produkt_id?: string
           wartosc?: number | null
           zamowienie_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "zamowienie_pozycje_kosztorys_skladowa_material_id_fkey"
+            columns: ["kosztorys_skladowa_material_id"]
+            isOneToOne: false
+            referencedRelation: "kosztorys_skladowe_materialy"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "zamowienie_pozycje_produkt_id_fkey"
             columns: ["produkt_id"]
