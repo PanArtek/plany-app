@@ -24,6 +24,7 @@ export interface PodwykonawcaWithCount {
   specjalizacja: string | null;
   kontakt: string | null;
   aktywny: boolean;
+  pozycjeCount: number;
   stawkiCount: number;
   minStawka: number | null;
   maxStawka: number | null;
@@ -84,8 +85,10 @@ export async function getPodwykonawcy(filters: PodwykonawcyFilters): Promise<Pod
   const offset = (page - 1) * PAGE_SIZE;
 
   const { data, error } = await supabase.rpc('get_podwykonawcy_aggregated', {
+    p_branza: filters.branza || null,
+    p_kategoria: filters.kategoria || null,
+    p_podkategoria: filters.podkategoria || null,
     p_search: filters.search || null,
-    p_specjalizacja: filters.specjalizacja || null,
     p_show_inactive: filters.showInactive || false,
     p_sort: filters.sort || 'nazwa',
     p_order: filters.order || 'asc',
@@ -101,6 +104,7 @@ export async function getPodwykonawcy(filters: PodwykonawcyFilters): Promise<Pod
     specjalizacja: string | null;
     kontakt: string | null;
     aktywny: boolean;
+    pozycje_count: number;
     stawki_count: number;
     min_stawka: number | null;
     max_stawka: number | null;
@@ -116,6 +120,7 @@ export async function getPodwykonawcy(filters: PodwykonawcyFilters): Promise<Pod
       specjalizacja: r.specjalizacja,
       kontakt: r.kontakt,
       aktywny: r.aktywny,
+      pozycjeCount: Number(r.pozycje_count),
       stawkiCount: Number(r.stawki_count),
       minStawka: r.min_stawka !== null ? Number(r.min_stawka) : null,
       maxStawka: r.max_stawka !== null ? Number(r.max_stawka) : null,
@@ -242,22 +247,6 @@ export async function getPodwykonawcyStats(): Promise<PodwykonawcyStats> {
     totalStawki: Number(row?.total_stawki ?? 0),
     avgStawka: row?.avg_stawka != null ? Number(row.avg_stawka) : null,
   };
-}
-
-// --- DISTINCT SPECJALIZACJE ---
-
-export async function getDistinctSpecjalizacje(): Promise<string[]> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from('podwykonawcy')
-    .select('specjalizacja')
-    .eq('aktywny', true)
-    .not('specjalizacja', 'is', null)
-    .order('specjalizacja');
-
-  if (error) throw error;
-  const unique = [...new Set((data || []).map((d: { specjalizacja: string }) => d.specjalizacja))];
-  return unique;
 }
 
 // --- CREATE podwykonawca ---

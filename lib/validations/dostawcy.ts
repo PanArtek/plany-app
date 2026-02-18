@@ -49,6 +49,9 @@ export const updateCenaSchema = z.object({
 
 // Schema dla filtrów URL
 export const dostawcyFiltersSchema = z.object({
+  branza: z.string().optional(),
+  kategoria: z.string().optional(),
+  podkategoria: z.string().optional(),
   search: z.string().optional(),
   showInactive: z.coerce.boolean().optional().default(false),
   sort: z.string().optional(),

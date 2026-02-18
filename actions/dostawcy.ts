@@ -25,7 +25,8 @@ export interface DostawcaWithCount {
   kontakt: string | null;
   aktywny: boolean;
   produktyCount: number;
-  totalWartosc: number;
+  pozycjeCount: number;
+  najnizszaCena: number | null;
 }
 
 export interface DostawcyResult {
@@ -83,6 +84,9 @@ export async function getDostawcy(filters: DostawcyFilters): Promise<DostawcyRes
   const offset = (page - 1) * PAGE_SIZE;
 
   const { data, error } = await supabase.rpc('get_dostawcy_aggregated', {
+    p_branza: filters.branza || null,
+    p_kategoria: filters.kategoria || null,
+    p_podkategoria: filters.podkategoria || null,
     p_search: filters.search || null,
     p_show_inactive: filters.showInactive || false,
     p_sort: filters.sort || 'nazwa',
@@ -100,7 +104,8 @@ export async function getDostawcy(filters: DostawcyFilters): Promise<DostawcyRes
     kontakt: string | null;
     aktywny: boolean;
     produkty_count: number;
-    total_wartosc: number;
+    pozycje_count: number;
+    najnizsza_cena: number | null;
     total_count: number;
   }>;
 
@@ -114,7 +119,8 @@ export async function getDostawcy(filters: DostawcyFilters): Promise<DostawcyRes
       kontakt: r.kontakt,
       aktywny: r.aktywny,
       produktyCount: Number(r.produkty_count),
-      totalWartosc: Number(r.total_wartosc),
+      pozycjeCount: Number(r.pozycje_count),
+      najnizszaCena: r.najnizsza_cena !== null ? Number(r.najnizsza_cena) : null,
     })),
     totalCount,
     page,

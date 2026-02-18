@@ -1598,48 +1598,41 @@ export type Database = {
         Args: { p_projekt_id: string; p_rewizja_id: string }
         Returns: number
       }
-      get_dostawcy_aggregated:
-        | {
-            Args: {
-              p_branza?: string
-              p_kategoria?: string
-              p_limit?: number
-              p_offset?: number
-              p_podkategoria?: string
-              p_search?: string
-            }
-            Returns: {
-              aktywny: boolean
-              id: string
-              kod: string
-              kontakt: string
-              najnizsza_cena: number
-              nazwa: string
-              pozycje_count: number
-              produkty_count: number
-              total_count: number
-            }[]
-          }
-        | {
-            Args: {
-              p_limit?: number
-              p_offset?: number
-              p_order?: string
-              p_search?: string
-              p_show_inactive?: boolean
-              p_sort?: string
-            }
-            Returns: {
-              aktywny: boolean
-              id: string
-              kod: string
-              kontakt: string
-              nazwa: string
-              produkty_count: number
-              total_count: number
-              total_wartosc: number
-            }[]
-          }
+      get_dostawca_historia: {
+        Args: { p_dostawca_id: string }
+        Returns: {
+          data_realizacji: string
+          materialy_count: number
+          projekt_id: string
+          projekt_nazwa: string
+          projekt_status: Database["public"]["Enums"]["project_status"]
+          suma: number
+        }[]
+      }
+      get_dostawcy_aggregated: {
+        Args: {
+          p_branza?: string
+          p_kategoria?: string
+          p_limit?: number
+          p_offset?: number
+          p_order?: string
+          p_podkategoria?: string
+          p_search?: string
+          p_show_inactive?: boolean
+          p_sort?: string
+        }
+        Returns: {
+          aktywny: boolean
+          id: string
+          kod: string
+          kontakt: string
+          najnizsza_cena: number
+          nazwa: string
+          pozycje_count: number
+          produkty_count: number
+          total_count: number
+        }[]
+      }
       get_dostawcy_stats: {
         Args: never
         Returns: {
@@ -1705,50 +1698,42 @@ export type Database = {
           without_suppliers: number
         }[]
       }
-      get_podwykonawcy_aggregated:
-        | {
-            Args: {
-              p_branza?: string
-              p_kategoria?: string
-              p_limit?: number
-              p_offset?: number
-              p_podkategoria?: string
-              p_search?: string
-            }
-            Returns: {
-              aktywny: boolean
-              id: string
-              kontakt: string
-              najnizsza_stawka: number
-              najwyzsza_stawka: number
-              nazwa: string
-              pozycje_count: number
-              specjalizacja: string
-              total_count: number
-            }[]
-          }
-        | {
-            Args: {
-              p_limit?: number
-              p_offset?: number
-              p_order?: string
-              p_search?: string
-              p_show_inactive?: boolean
-              p_sort?: string
-              p_specjalizacja?: string
-            }
-            Returns: {
-              aktywny: boolean
-              id: string
-              kontakt: string
-              max_stawka: number
-              min_stawka: number
-              nazwa: string
-              specjalizacja: string
-              stawki_count: number
-              total_count: number
-            }[]
-          }
+      get_podwykonawca_historia: {
+        Args: { p_podwykonawca_id: string }
+        Returns: {
+          data_realizacji: string
+          pozycje_count: number
+          projekt_id: string
+          projekt_nazwa: string
+          projekt_status: Database["public"]["Enums"]["project_status"]
+          suma: number
+        }[]
+      }
+      get_podwykonawcy_aggregated: {
+        Args: {
+          p_branza?: string
+          p_kategoria?: string
+          p_limit?: number
+          p_offset?: number
+          p_order?: string
+          p_podkategoria?: string
+          p_search?: string
+          p_show_inactive?: boolean
+          p_sort?: string
+        }
+        Returns: {
+          aktywny: boolean
+          id: string
+          kontakt: string
+          max_stawka: number
+          min_stawka: number
+          nazwa: string
+          pozycje_count: number
+          specjalizacja: string
+          stawki_count: number
+          total_count: number
+        }[]
+      }
       get_podwykonawcy_stats: {
         Args: never
         Returns: {

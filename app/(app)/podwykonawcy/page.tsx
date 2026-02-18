@@ -1,11 +1,13 @@
-import { getPodwykonawcy, getPodwykonawcyStats, getDistinctSpecjalizacje } from '@/actions/podwykonawcy';
+import { getPodwykonawcy, getPodwykonawcyStats } from '@/actions/podwykonawcy';
 import { PodwykonawcyView } from './_components/podwykonawcy-view';
 import { type PodwykonawcyFilters } from '@/lib/validations/podwykonawcy';
 
 interface PageProps {
   searchParams: Promise<{
+    branza?: string;
+    kategoria?: string;
+    podkategoria?: string;
     search?: string;
-    specjalizacja?: string;
     showInactive?: string;
     sort?: string;
     order?: string;
@@ -17,23 +19,24 @@ export default async function PodwykonawcyPage({ searchParams }: PageProps) {
   const params = await searchParams;
 
   const filters: PodwykonawcyFilters = {
+    branza: params.branza,
+    kategoria: params.kategoria,
+    podkategoria: params.podkategoria,
     search: params.search,
-    specjalizacja: params.specjalizacja,
     showInactive: params.showInactive === 'true',
     sort: params.sort,
     order: params.order as 'asc' | 'desc' | undefined,
     page: params.page ? Number(params.page) : 1,
   };
 
-  const [result, stats, specjalizacje] = await Promise.all([
+  const [result, stats] = await Promise.all([
     getPodwykonawcy(filters),
     getPodwykonawcyStats(),
-    getDistinctSpecjalizacje(),
   ]);
 
   return (
     <div className="p-6">
-      <PodwykonawcyView initialData={result} stats={stats} specjalizacje={specjalizacje} />
+      <PodwykonawcyView initialData={result} stats={stats} />
     </div>
   );
 }

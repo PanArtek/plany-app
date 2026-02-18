@@ -23,6 +23,7 @@ const columnHelper = createColumnHelper<PodwykonawcaWithCount>();
 const SORT_KEYS: Record<string, string> = {
   nazwa: 'nazwa',
   specjalizacja: 'specjalizacja',
+  pozycjeCount: 'pozycje',
   stawki: 'stawki',
 };
 
@@ -61,6 +62,14 @@ const columns = [
           {spec}
         </span>
       );
+    },
+  }),
+  columnHelper.accessor('pozycjeCount', {
+    header: 'Pozycje',
+    cell: (info) => {
+      const val = info.getValue();
+      if (val === 0) return <span className="text-white/30">0</span>;
+      return <span className="font-mono">{val}</span>;
     },
   }),
   columnHelper.display({

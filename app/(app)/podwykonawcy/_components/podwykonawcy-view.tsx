@@ -25,7 +25,6 @@ import { DeleteConfirmPanel } from '../../kategorie/_components/panels/delete-co
 interface PodwykonawcyViewProps {
   initialData: PodwykonawcyResult;
   stats: PodwykonawcyStats;
-  specjalizacje: string[];
 }
 
 interface FormPanelState {
@@ -33,7 +32,7 @@ interface FormPanelState {
   mode: 'add' | 'edit';
 }
 
-function PodwykonawcyViewContent({ initialData, stats, specjalizacje }: PodwykonawcyViewProps) {
+function PodwykonawcyViewContent({ initialData, stats }: PodwykonawcyViewProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [detailPanel, setDetailPanel] = useState<{ open: boolean; podwykonawcaId: string | null }>({
@@ -153,7 +152,7 @@ function PodwykonawcyViewContent({ initialData, stats, specjalizacje }: Podwykon
 
       <StatsBar items={statsItems} />
 
-      <PodwykonawcyFilters specjalizacje={specjalizacje} />
+      <PodwykonawcyFilters />
 
       {initialData.data.length === 0 ? (
         <div className="flex items-center justify-center" style={{ height: 'calc(100vh - 380px)' }}>
