@@ -23,12 +23,12 @@ const columnHelper = createColumnHelper<DostawcaWithCount>();
 const SORT_KEYS: Record<string, string> = {
   nazwa: 'nazwa',
   kod: 'kod',
+  pozycjeCount: 'pozycje',
   produktyCount: 'produkty',
-  totalWartosc: 'wartosc',
+  najnizszaCena: 'cena',
 };
 
-function formatWartosc(value: number): string {
-  if (value === 0) return '—';
+function formatCena(value: number): string {
   return value
     .toFixed(2)
     .replace('.', ',')
@@ -46,20 +46,28 @@ const columns = [
       <span className="font-mono text-xs text-amber-500">{info.getValue() || '—'}</span>
     ),
   }),
+  columnHelper.accessor('pozycjeCount', {
+    header: 'Pozycje',
+    cell: (info) => {
+      const val = info.getValue();
+      if (val === 0) return <span className="text-white/30">0</span>;
+      return <span className="font-mono">{val}</span>;
+    },
+  }),
   columnHelper.accessor('produktyCount', {
     header: 'Produkty',
     cell: (info) => (
       <span className="font-mono">
-        {info.getValue() > 0 ? `${info.getValue()} produktów` : '0'}
+        {info.getValue() > 0 ? String(info.getValue()) : '0'}
       </span>
     ),
   }),
-  columnHelper.accessor('totalWartosc', {
-    header: 'Wartość cennika',
+  columnHelper.accessor('najnizszaCena', {
+    header: 'Najniższa cena',
     cell: (info) => {
       const val = info.getValue();
-      if (val === 0) return <span className="text-white/30">—</span>;
-      return <span className="font-mono text-amber-500">{formatWartosc(val)}</span>;
+      if (val === null || val === 0) return <span className="text-white/30">—</span>;
+      return <span className="font-mono text-amber-500">{formatCena(val)}</span>;
     },
   }),
   columnHelper.accessor('kontakt', {

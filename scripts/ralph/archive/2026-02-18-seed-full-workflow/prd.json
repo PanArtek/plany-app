@@ -1,0 +1,403 @@
+{
+  "project": "PLANY App",
+  "branchName": "ralph/business-logic-redesign",
+  "description": "Redesign business logic: position = complete package with symmetric material/labor model. New typy_robocizny catalog, cennik as single source of truth, supplier/subcontractor selection in kosztorys. See docs/plans/2026-02-18-business-logic-redesign.md",
+  "baseBranch": "ralph/seed-full-workflow",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Create typy_robocizny table with RLS policies",
+      "description": "Apply migration via Supabase MCP `apply_migration`. Create new table `typy_robocizny` — the labor type catalog (symmetric to `produkty` for materials).\n\n```sql\nCREATE TABLE typy_robocizny (\n  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),\n  organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,\n  nazwa TEXT NOT NULL,\n  jednostka VARCHAR(20) DEFAULT 'm2',\n  opis TEXT,\n  aktywny BOOLEAN DEFAULT TRUE,\n  created_at TIMESTAMPTZ DEFAULT NOW()\n);\n\nCREATE INDEX idx_typy_robocizny_org ON typy_robocizny(organization_id);\n```\n\nAdd RLS policies (same 4-policy pattern as `produkty`):\n- Enable RLS\n- SELECT: org members can read\n- INSERT: org members can insert with their org_id\n- UPDATE: org members can update their org's rows\n- DELETE: org members can delete their org's rows\n\nThe RLS check pattern: `organization_id IN (SELECT organization_id FROM organization_members WHERE user_id = auth.uid())`",
+      "acceptanceCriteria": [
+        "Table typy_robocizny exists with columns: id, organization_id, nazwa, jednostka, opis, aktywny, created_at",
+        "RLS is enabled with 4 policies (select, insert, update, delete)",
+        "Index on organization_id exists",
+        "Typecheck passes"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": "",
+      "dependsOn": []
+    },
+    {
+      "id": "US-002",
+      "title": "Rebuild stawki_podwykonawcow — key on typ_robocizny instead of pozycja_biblioteka",
+      "description": "Apply migration via `apply_migration`. Rebuild `stawki_podwykonawcow` to use `typ_robocizny_id` instead of `pozycja_biblioteka_id`.\n\nSince table has seed data, TRUNCATE first:\n```sql\nTRUNCATE TABLE stawki_podwykonawcow CASCADE;\n\nALTER TABLE stawki_podwykonawcow\n  DROP CONSTRAINT IF EXISTS stawki_podwykonawcow_unique;\n\nALTER TABLE stawki_podwykonawcow\n  DROP COLUMN IF EXISTS pozycja_biblioteka_id;\n\nALTER TABLE stawki_podwykonawcow\n  ADD COLUMN typ_robocizny_id UUID NOT NULL REFERENCES typy_robocizny(id) ON DELETE CASCADE;\n\nALTER TABLE stawki_podwykonawcow\n  ADD CONSTRAINT stawki_podwykonawcow_unique UNIQUE (podwykonawca_id, typ_robocizny_id);\n\nCREATE INDEX idx_stawki_typ ON stawki_podwykonawcow(typ_robocizny_id);\n```\n\nVerify with: `SELECT column_name, data_type, is_nullable FROM information_schema.columns WHERE table_name = 'stawki_podwykonawcow' ORDER BY ordinal_position;`",
+      "acceptanceCriteria": [
+        "Column pozycja_biblioteka_id no longer exists",
+        "Column typ_robocizny_id exists, NOT NULL, FK to typy_robocizny",
+        "UNIQUE constraint on (podwykonawca_id, typ_robocizny_id)",
+        "Table is empty (truncated)",
+        "Typecheck passes"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-001"]
+    },
+    {
+      "id": "US-003",
+      "title": "Alter biblioteka_skladowe_robocizna — add typ_robocizny_id, require podwykonawca_id",
+      "description": "Apply migration via `apply_migration`. Alter `biblioteka_skladowe_robocizna` for the new schema.\n\nTRUNCATE first (data will be reseeded):\n```sql\nTRUNCATE TABLE biblioteka_skladowe_robocizna CASCADE;\n\n-- Drop old columns\nALTER TABLE biblioteka_skladowe_robocizna\n  DROP COLUMN IF EXISTS opis,\n  DROP COLUMN IF EXISTS stawka_domyslna;\n\n-- Add typ_robocizny_id\nALTER TABLE biblioteka_skladowe_robocizna\n  ADD COLUMN typ_robocizny_id UUID NOT NULL REFERENCES typy_robocizny(id) ON DELETE CASCADE;\n\n-- Make podwykonawca_id NOT NULL (was nullable)\nALTER TABLE biblioteka_skladowe_robocizna\n  ALTER COLUMN podwykonawca_id SET NOT NULL;\n\n-- Change ON DELETE behavior from SET NULL to CASCADE\nALTER TABLE biblioteka_skladowe_robocizna\n  DROP CONSTRAINT IF EXISTS biblioteka_skladowe_robocizna_podwykonawca_id_fkey;\nALTER TABLE biblioteka_skladowe_robocizna\n  ADD CONSTRAINT biblioteka_skladowe_robocizna_podwykonawca_id_fkey\n  FOREIGN KEY (podwykonawca_id) REFERENCES podwykonawcy(id) ON DELETE CASCADE;\n\nCREATE INDEX idx_bib_rob_typ ON biblioteka_skladowe_robocizna(typ_robocizny_id);\n```\n\nFinal columns: id, pozycja_biblioteka_id, lp, typ_robocizny_id, podwykonawca_id, norma_domyslna, jednostka, created_at",
+      "acceptanceCriteria": [
+        "Column opis no longer exists",
+        "Column stawka_domyslna no longer exists",
+        "Column typ_robocizny_id exists, NOT NULL, FK to typy_robocizny",
+        "Column podwykonawca_id is NOT NULL",
+        "Table is empty (truncated)",
+        "Typecheck passes"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-001"]
+    },
+    {
+      "id": "US-004",
+      "title": "Alter biblioteka_skladowe_materialy — require produkt_id + dostawca_id, drop cena_domyslna",
+      "description": "Apply migration via `apply_migration`. Alter `biblioteka_skladowe_materialy` for the new schema.\n\nTRUNCATE first:\n```sql\nTRUNCATE TABLE biblioteka_skladowe_materialy CASCADE;\n\n-- Drop old columns\nALTER TABLE biblioteka_skladowe_materialy\n  DROP COLUMN IF EXISTS nazwa,\n  DROP COLUMN IF EXISTS cena_domyslna;\n\n-- Make produkt_id NOT NULL\nALTER TABLE biblioteka_skladowe_materialy\n  ALTER COLUMN produkt_id SET NOT NULL;\n\n-- Change ON DELETE from SET NULL to CASCADE\nALTER TABLE biblioteka_skladowe_materialy\n  DROP CONSTRAINT IF EXISTS biblioteka_skladowe_materialy_produkt_id_fkey;\nALTER TABLE biblioteka_skladowe_materialy\n  ADD CONSTRAINT biblioteka_skladowe_materialy_produkt_id_fkey\n  FOREIGN KEY (produkt_id) REFERENCES produkty(id) ON DELETE CASCADE;\n\n-- Make dostawca_id NOT NULL\nALTER TABLE biblioteka_skladowe_materialy\n  ALTER COLUMN dostawca_id SET NOT NULL;\n\nALTER TABLE biblioteka_skladowe_materialy\n  DROP CONSTRAINT IF EXISTS biblioteka_skladowe_materialy_dostawca_id_fkey;\nALTER TABLE biblioteka_skladowe_materialy\n  ADD CONSTRAINT biblioteka_skladowe_materialy_dostawca_id_fkey\n  FOREIGN KEY (dostawca_id) REFERENCES dostawcy(id) ON DELETE CASCADE;\n```\n\nFinal columns: id, pozycja_biblioteka_id, lp, produkt_id (NOT NULL), dostawca_id (NOT NULL), norma_domyslna, jednostka, created_at",
+      "acceptanceCriteria": [
+        "Column nazwa no longer exists",
+        "Column cena_domyslna no longer exists",
+        "Column produkt_id is NOT NULL",
+        "Column dostawca_id is NOT NULL",
+        "Table is empty (truncated)",
+        "Typecheck passes"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "",
+      "dependsOn": []
+    },
+    {
+      "id": "US-005",
+      "title": "Alter kosztorys_skladowe tables — add manual prices, typ_robocizny_id",
+      "description": "Apply migration via `apply_migration`. Update both kosztorys_skladowe tables.\n\nTRUNCATE cascade from kosztorys_pozycje (will clear both tables + downstream):\n```sql\nTRUNCATE TABLE kosztorys_pozycje CASCADE;\n```\n\n### kosztorys_skladowe_materialy:\n```sql\nALTER TABLE kosztorys_skladowe_materialy\n  DROP COLUMN IF EXISTS nazwa;\n\nALTER TABLE kosztorys_skladowe_materialy\n  ALTER COLUMN produkt_id SET NOT NULL,\n  ALTER COLUMN dostawca_id SET NOT NULL;\n\nALTER TABLE kosztorys_skladowe_materialy\n  ADD COLUMN cena_manualna DECIMAL(12,2);\n```\n\n### kosztorys_skladowe_robocizna:\n```sql\nALTER TABLE kosztorys_skladowe_robocizna\n  DROP COLUMN IF EXISTS opis;\n\nALTER TABLE kosztorys_skladowe_robocizna\n  ADD COLUMN typ_robocizny_id UUID NOT NULL REFERENCES typy_robocizny(id) ON DELETE CASCADE;\n\nALTER TABLE kosztorys_skladowe_robocizna\n  ALTER COLUMN podwykonawca_id SET NOT NULL;\n\nALTER TABLE kosztorys_skladowe_robocizna\n  ADD COLUMN stawka_manualna DECIMAL(12,2);\n```\n\nUpdate FK constraints to CASCADE where they were SET NULL.",
+      "acceptanceCriteria": [
+        "kosztorys_skladowe_materialy: nazwa dropped, produkt_id NOT NULL, dostawca_id NOT NULL, cena_manualna added (nullable)",
+        "kosztorys_skladowe_robocizna: opis dropped, typ_robocizny_id added NOT NULL, podwykonawca_id NOT NULL, stawka_manualna added (nullable)",
+        "Both tables are empty",
+        "Typecheck passes"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-001"]
+    },
+    {
+      "id": "US-006",
+      "title": "Alter zamowienie_pozycje + umowa_pozycje — add source FK for traceability",
+      "description": "Apply migration via `apply_migration`. Add FK columns linking order/contract lines back to kosztorys.\n\nTRUNCATE first (cascade from zamowienia/umowy):\n```sql\nTRUNCATE TABLE zamowienia CASCADE;\nTRUNCATE TABLE umowy CASCADE;\n```\n\n### zamowienie_pozycje:\n```sql\nALTER TABLE zamowienie_pozycje\n  ADD COLUMN kosztorys_skladowa_material_id UUID REFERENCES kosztorys_skladowe_materialy(id) ON DELETE SET NULL;\n\nALTER TABLE zamowienie_pozycje\n  ALTER COLUMN produkt_id SET NOT NULL;\n```\n\n### umowa_pozycje:\n```sql\nALTER TABLE umowa_pozycje\n  ADD COLUMN kosztorys_skladowa_robocizna_id UUID REFERENCES kosztorys_skladowe_robocizna(id) ON DELETE SET NULL;\n\nALTER TABLE umowa_pozycje\n  ADD COLUMN typ_robocizny_id UUID REFERENCES typy_robocizny(id) ON DELETE SET NULL;\n\n-- Drop old pozycja_biblioteka_id (no longer relevant here)\nALTER TABLE umowa_pozycje\n  DROP COLUMN IF EXISTS pozycja_biblioteka_id;\n```",
+      "acceptanceCriteria": [
+        "zamowienie_pozycje has kosztorys_skladowa_material_id column",
+        "zamowienie_pozycje.produkt_id is NOT NULL",
+        "umowa_pozycje has kosztorys_skladowa_robocizna_id and typ_robocizny_id columns",
+        "umowa_pozycje no longer has pozycja_biblioteka_id column",
+        "Both tables are empty",
+        "Typecheck passes"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-005"]
+    },
+    {
+      "id": "US-007",
+      "title": "Regenerate TypeScript types from updated schema",
+      "description": "Use Supabase MCP `generate_typescript_types` to regenerate `lib/supabase/database.types.ts` with the new schema.\n\nAfter generating, verify the types reflect:\n- typy_robocizny table\n- stawki_podwykonawcow.typ_robocizny_id (no pozycja_biblioteka_id)\n- biblioteka_skladowe_robocizna.typ_robocizny_id (no opis, no stawka_domyslna)\n- biblioteka_skladowe_materialy without nazwa, cena_domyslna\n- kosztorys_skladowe_materialy.cena_manualna\n- kosztorys_skladowe_robocizna.typ_robocizny_id, stawka_manualna\n\nWrite the generated types to `lib/supabase/database.types.ts`.\n\nProject ID: use `list_projects` to find it.",
+      "acceptanceCriteria": [
+        "database.types.ts is regenerated and written to lib/supabase/database.types.ts",
+        "Types include typy_robocizny table definition",
+        "Types reflect all schema changes (new columns, dropped columns)",
+        "Typecheck passes (npm run build may fail due to code referencing old columns — that is expected and OK for this story)",
+        "Typecheck passes"
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-006"]
+    },
+    {
+      "id": "US-008",
+      "title": "Seed typy_robocizny + base data (org, categories, narzuty)",
+      "description": "Execute via `execute_sql`. First TRUNCATE all application data, then seed base tables.\n\nReuse clean pattern from existing `scripts/seeds/00-clean.sql`. Then seed:\n\n## typy_robocizny (catalog of labor types):\n| nazwa | jednostka | opis |\n|-------|-----------|------|\n| Montaz scianek g-k | m2 | Montaz scian z plyt gipsowo-kartonowych na profilach |\n| Montaz szkla | m2 | Montaz scianek szklanych hartowanych |\n| Ukladanie wykladdziny | m2 | Ukladanie wykladdzin obiektowych z klejeniem |\n| Ukladanie gresu | m2 | Ukladanie plytek gresowych z fugowaniem |\n| Aplikacja zywicy | m2 | Aplikacja posadzki zywicznej epoksydowej |\n| Montaz sufitu | m2 | Montaz sufitow podwieszanych modulowych |\n| Montaz drzwi | szt | Montaz drzwi wewnetrznych z oscieznica |\n| Montaz zabudowy | mb | Montaz zabudow meblowych |\n| Instalacja punktu elektrycznego | szt | Kompletna instalacja punktu elektrycznego |\n| Montaz rozdzielni | szt | Montaz i podlaczenie rozdzielni elektrycznej |\n| Montaz osprzetu elektrycznego | szt | Montaz gniazdek, wylacznikow z ramkami |\n| Montaz panelu LED | szt | Montaz paneli oswietleniowych LED |\n| Montaz oprawy dekoracyjnej | szt | Montaz opraw dekoracyjnych wiszacych |\n| Wykonanie podejscia wod-kan | szt | Wykonanie podejscia wodno-kanalizacyjnego |\n| Montaz umywalki | kpl | Montaz umywalki z bateria i syfonem |\n| Montaz WC | kpl | Montaz miski WC z deska i spluczka |\n| Montaz hydrantu | szt | Montaz hydrantu wewnetrznego z szafka |\n| Montaz rury stalowej | mb | Montaz instalacji stalowej ocynkowanej |\n\nAlso reseed: organization (demo-fit-out), categories (35), narzuty_domyslne (3) — same as existing `01-base.sql`.\n\nUpdate seed file: `scripts/seeds/00-clean.sql` and `scripts/seeds/01-base.sql`.",
+      "acceptanceCriteria": [
+        "All application tables are empty before seeding",
+        "SELECT count(*) FROM typy_robocizny returns 18",
+        "SELECT count(*) FROM organizations returns 1",
+        "SELECT count(*) FROM kategorie returns 35",
+        "SELECT count(*) FROM narzuty_domyslne returns 3",
+        "Seed files updated at scripts/seeds/",
+        "Typecheck passes"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-007"]
+    },
+    {
+      "id": "US-009",
+      "title": "Seed kontrahenci + produkty + ceny_dostawcow + stawki_podwykonawcow",
+      "description": "Execute via `execute_sql`. Seed suppliers, subcontractors, products, and BOTH price lists.\n\nReuse data from existing seeds (`02-kontrahenci.sql`, `03-produkty.sql`) but update stawki_podwykonawcow for new schema.\n\n## Dostawcy (6) + Podwykonawcy (5)\nSame as existing seed data (MAT-BUD, FLOOR-EX, ELEKTRO, SANTECH, HYDRO, STOLAR + BudMont, FloorTeam, ElektroPro, AquaInstal, HydroProtect).\n\n## Produkty (~41) + ceny_dostawcow (~82)\nSame as existing seed data.\n\n## stawki_podwykonawcow (NEW SCHEMA — per typ_robocizny)\nNow links podwykonawca + typ_robocizny instead of pozycja_biblioteka:\n\n| Podwykonawca | Typ robocizny | Stawka |\n|---|---|---|\n| BudMont Ekipa | Montaz scianek g-k | 45 |\n| BudMont Ekipa | Montaz szkla | 55 |\n| BudMont Ekipa | Montaz sufitu | 42 |\n| BudMont Ekipa | Montaz drzwi | 45 |\n| BudMont Ekipa | Montaz zabudowy | 50 |\n| FloorTeam | Ukladanie wykladdziny | 40 |\n| FloorTeam | Ukladanie gresu | 50 |\n| FloorTeam | Aplikacja zywicy | 55 |\n| ElektroPro | Instalacja punktu elektrycznego | 55 |\n| ElektroPro | Montaz rozdzielni | 65 |\n| ElektroPro | Montaz osprzetu elektrycznego | 50 |\n| ElektroPro | Montaz panelu LED | 50 |\n| ElektroPro | Montaz oprawy dekoracyjnej | 55 |\n| AquaInstal | Wykonanie podejscia wod-kan | 60 |\n| AquaInstal | Montaz umywalki | 55 |\n| AquaInstal | Montaz WC | 55 |\n| HydroProtect | Montaz hydrantu | 65 |\n| HydroProtect | Montaz rury stalowej | 65 |\n\nUse INSERT...SELECT with JOINs on nazwa (podwykonawcy.nazwa, typy_robocizny.nazwa).\n\nUpdate seed files: `scripts/seeds/02-kontrahenci.sql`, `scripts/seeds/03-produkty.sql`.",
+      "acceptanceCriteria": [
+        "SELECT count(*) FROM dostawcy returns 6",
+        "SELECT count(*) FROM podwykonawcy returns 5",
+        "SELECT count(*) FROM produkty returns at least 40",
+        "SELECT count(*) FROM ceny_dostawcow returns at least 80",
+        "SELECT count(*) FROM stawki_podwykonawcow returns 18",
+        "Each stawka links to typ_robocizny_id (not pozycja_biblioteka_id)",
+        "Seed files updated",
+        "Typecheck passes"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-008"]
+    },
+    {
+      "id": "US-010",
+      "title": "Seed pozycje_biblioteka + skladowe with new schema",
+      "description": "Execute via `execute_sql`. Seed 18 library positions with updated skladowe that use typ_robocizny_id.\n\nSame 18 positions as existing `04-pozycje-stawki.sql` but skladowe use new schema:\n\n### biblioteka_skladowe_materialy (new schema — no nazwa, no cena_domyslna):\nColumns: pozycja_biblioteka_id, lp, produkt_id (NOT NULL), dostawca_id (NOT NULL), norma_domyslna, jednostka\n\nResolve produkt_id by SKU, dostawca_id by cheapest price in ceny_dostawcow for that product.\n\n### biblioteka_skladowe_robocizna (new schema — no opis, no stawka_domyslna):\nColumns: pozycja_biblioteka_id, lp, typ_robocizny_id (NOT NULL), podwykonawca_id (NOT NULL), norma_domyslna, jednostka\n\nResolve typ_robocizny_id by nazwa (e.g., 'Montaz scianek g-k'), podwykonawca_id by nazwa.\n\nMapping from positions to labor types (same as existing but using typ_robocizny names):\n- BUD.01.01.001 → Montaz scianek g-k → BudMont\n- BUD.01.03.001 → Montaz szkla → BudMont\n- BUD.02.01.001 → Ukladanie wykladdziny → FloorTeam\n- BUD.02.02.001 → Ukladanie gresu → FloorTeam\n- BUD.02.03.001 → Aplikacja zywicy → FloorTeam\n- BUD.03.01.001 → Montaz sufitu → BudMont\n- BUD.04.01.001 → Montaz drzwi → BudMont\n- BUD.04.02.001 → Montaz zabudowy → BudMont\n- ELE.01.01.001 → Instalacja punktu elektrycznego → ElektroPro\n- ELE.01.02.001 → Montaz rozdzielni → ElektroPro\n- ELE.02.01.001 → Montaz osprzetu elektrycznego → ElektroPro\n- ELE.03.01.001 → Montaz panelu LED → ElektroPro\n- ELE.03.02.001 → Montaz oprawy dekoracyjnej → ElektroPro\n- SAN.01.01.001 → Wykonanie podejscia wod-kan → AquaInstal\n- SAN.02.01.001 → Montaz umywalki → AquaInstal\n- SAN.02.02.001 → Montaz WC → AquaInstal\n- SAN.03.01.001 → Montaz hydrantu → HydroProtect\n- SAN.03.02.001 → Montaz rury stalowej → HydroProtect\n\nUpdate seed file: `scripts/seeds/04-pozycje-stawki.sql`.",
+      "acceptanceCriteria": [
+        "SELECT count(*) FROM pozycje_biblioteka returns 18",
+        "SELECT count(*) FROM biblioteka_skladowe_robocizna returns 18",
+        "SELECT count(*) FROM biblioteka_skladowe_materialy returns at least 38",
+        "All robocizna rows have typ_robocizny_id NOT NULL",
+        "All robocizna rows have podwykonawca_id NOT NULL",
+        "All materialy rows have produkt_id NOT NULL and dostawca_id NOT NULL",
+        "Seed file updated",
+        "Typecheck passes"
+      ],
+      "priority": 6,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-009"]
+    },
+    {
+      "id": "US-011",
+      "title": "CRUD action + validation schema for typy_robocizny",
+      "description": "Create new server action and validation schema for the typy_robocizny entity.\n\n### Validation schema: `lib/validations/typy-robocizny.ts`\nFollow pattern from `lib/validations/produkty.ts`:\n- formSchema: nazwa (string, required), jednostka (string, default 'm2'), opis (string, optional)\n- serverSchema: same but with defaults for server-side\n- searchSchema: query (string, optional), page, perPage\n\n### Server action: `actions/typy-robocizny.ts`\nFollow pattern from `actions/materialy.ts`:\n- `getTypyRobocizny(params)` — list with search, pagination, sorting\n- `getTypRobociznyById(id)` — single record\n- `createTypRobocizny(data)` — insert\n- `updateTypRobocizny(id, data)` — update\n- `deleteTypRobocizny(id)` — soft delete (aktywny=false) or hard delete\n\nAll actions use `createClient` from `lib/supabase/server.ts`, include `revalidatePath('/typy-robocizny')` after mutations.",
+      "acceptanceCriteria": [
+        "File lib/validations/typy-robocizny.ts exists with form + search schemas",
+        "File actions/typy-robocizny.ts exists with 'use server' directive",
+        "getTypyRobocizny returns paginated list with search",
+        "createTypRobocizny inserts and revalidates",
+        "updateTypRobocizny updates and revalidates",
+        "deleteTypRobocizny deletes and revalidates",
+        "Typecheck passes"
+      ],
+      "priority": 7,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-007"]
+    },
+    {
+      "id": "US-012",
+      "title": "Typy robocizny page — list + create/edit/delete panels + sidebar nav",
+      "description": "Create the UI page for typy_robocizny. Follow the exact pattern from `/materialy` or `/dostawcy` page.\n\n### Files to create:\n- `app/(app)/typy-robocizny/page.tsx` — Server Component, reads searchParams, calls getTypyRobocizny\n- `app/(app)/typy-robocizny/_components/typy-robocizny-view.tsx` — 'use client' view with panel state\n- `app/(app)/typy-robocizny/_components/typy-robocizny-table.tsx` — table with columns: nazwa, jednostka, opis, aktywny\n- `app/(app)/typy-robocizny/_components/panels/typ-robocizny-form-panel.tsx` — create/edit form (SlidePanel)\n- `app/(app)/typy-robocizny/_components/panels/typ-robocizny-delete-panel.tsx` — delete confirmation\n\n### Sidebar navigation:\nUpdate sidebar component (check `components/layout/` for the sidebar file) to add 'Typy robocizny' link between 'Materialy' and 'Dostawcy'. Use a wrench or hammer icon.\n\n### Table columns:\n| Column | Label |\n|--------|-------|\n| nazwa | Nazwa |\n| jednostka | Jednostka |\n| opis | Opis |\n| aktywny | Status |\n\nInclude search bar and pagination (follow existing pattern).",
+      "acceptanceCriteria": [
+        "Page renders at /typy-robocizny",
+        "Table shows list of typy_robocizny with search and pagination",
+        "Create panel opens, form submits, new typ appears in list",
+        "Edit panel opens with existing data, saves changes",
+        "Delete panel shows confirmation, deletes on confirm",
+        "Sidebar has 'Typy robocizny' link between Materialy and Dostawcy",
+        "Verify in browser using dev-browser skill",
+        "Typecheck passes"
+      ],
+      "priority": 8,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-011", "US-008"]
+    },
+    {
+      "id": "US-013",
+      "title": "Update skladowe actions for new schema",
+      "description": "Update server actions that manage biblioteka skladowe (components of library positions) to work with the new schema.\n\nRead current `actions/skladowe.ts` and update:\n\n### Material components (biblioteka_skladowe_materialy):\n- Remove references to `nazwa` column (dropped)\n- Remove references to `cena_domyslna` column (dropped)\n- When creating/updating: require `produkt_id` and `dostawca_id` (NOT NULL)\n- When reading: JOIN with `produkty` to get nazwa, and `dostawcy` to get dostawca name\n- When reading: JOIN with `ceny_dostawcow` to get current price for (produkt_id, dostawca_id)\n\n### Labor components (biblioteka_skladowe_robocizna):\n- Remove references to `opis` column (dropped)\n- Remove references to `stawka_domyslna` column (dropped)\n- Add `typ_robocizny_id` (NOT NULL) to create/update\n- When reading: JOIN with `typy_robocizny` to get nazwa, and `podwykonawcy` to get name\n- When reading: JOIN with `stawki_podwykonawcow` to get current stawka for (podwykonawca_id, typ_robocizny_id)\n\n### Validation schemas:\nUpdate `lib/validations/skladowe.ts` (or wherever skladowe schemas are):\n- Material form: produkt_id (required), dostawca_id (required), norma (number)\n- Labor form: typ_robocizny_id (required), podwykonawca_id (required), norma (number)\n- Remove: nazwa, opis, cena_domyslna, stawka_domyslna fields",
+      "acceptanceCriteria": [
+        "skladowe actions compile without errors",
+        "Material component create/update requires produkt_id + dostawca_id",
+        "Labor component create/update requires typ_robocizny_id + podwykonawca_id",
+        "No references to dropped columns (nazwa, opis, cena_domyslna, stawka_domyslna)",
+        "Read queries JOIN to get names and prices from related tables",
+        "Typecheck passes"
+      ],
+      "priority": 9,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-007", "US-010"]
+    },
+    {
+      "id": "US-014",
+      "title": "Update pozycje skladowe forms — require typ_robocizny/produkt/dostawca/podwykonawca",
+      "description": "Update the UI forms for managing skladowe (components) within library positions.\n\nFind the existing skladowe form components (likely in `app/(app)/pozycje/_components/panels/` or similar) and update them:\n\n### Material component form:\n- Replace free-text `nazwa` with a `produkt_id` dropdown (select from produkty)\n- Replace optional `dostawca_id` with required dropdown (select from dostawcy)\n- Remove `cena_domyslna` field\n- Show current price from cennik: when produkt + dostawca selected, display the price from ceny_dostawcow\n- Keep: norma, jednostka\n\n### Labor component form:\n- Replace free-text `opis` with `typ_robocizny_id` dropdown (select from typy_robocizny)\n- Replace optional `podwykonawca_id` with required dropdown (select from podwykonawcy)\n- Remove `stawka_domyslna` field\n- Show current rate from cennik: when typ + podwykonawca selected, display the stawka from stawki_podwykonawcow\n- Keep: norma, jednostka\n\nNeed actions to fetch dropdown data:\n- getProduktOptions() — id, nazwa, sku for dropdown\n- getDostawcaOptions() — id, nazwa, kod for dropdown\n- getTypRobociznyOptions() — id, nazwa for dropdown\n- getPodwykonawcaOptions() — id, nazwa for dropdown\n\nAdd these to respective actions if they don't exist.",
+      "acceptanceCriteria": [
+        "Material form has produkt dropdown (required) instead of text nazwa",
+        "Material form has dostawca dropdown (required)",
+        "Material form shows price from cennik when both selected",
+        "Labor form has typ_robocizny dropdown (required) instead of text opis",
+        "Labor form has podwykonawca dropdown (required)",
+        "Labor form shows stawka from cennik when both selected",
+        "Verify in browser using dev-browser skill",
+        "Typecheck passes"
+      ],
+      "priority": 10,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-013", "US-012"]
+    },
+    {
+      "id": "US-015",
+      "title": "Pozycja detail panel — full package view with prices from cennik",
+      "description": "Update the pozycja biblioteczna detail panel to show the complete package with live prices.\n\nFind the existing pozycja detail component and update/replace it:\n\n### Package view layout:\n```\nPozycja: Malowanie scian (BUD.03.01.001)\n\nMATERIALY\n| Produkt       | Dostawca  | Norma  | Cena (cennik) |\n| Farba Dulux   | MAT-BUD   | 0.15   | 45 zl         |\n| Grunt akryl.  | MAT-BUD   | 0.05   | 12 zl         |\n\nROBOCIZNA\n| Typ pracy     | Podwyk.   | Norma  | Stawka (cennik) |\n| Montaz...     | BudMont   | 0.8    | 45 zl/m2        |\n\nPODSUMOWANIE\nMaterialy: XX zl | Robocizna: YY zl | Razem: ZZ zl\n```\n\nPrices must come from cennik tables (ceny_dostawcow, stawki_podwykonawcow), NOT from stored defaults.\n\nThe action fetching pozycja detail should return skladowe with JOINed data:\n- Material: produkt.nazwa, produkt.sku, dostawca.nazwa, dostawca.kod, cena from ceny_dostawcow\n- Labor: typ_robocizny.nazwa, podwykonawca.nazwa, stawka from stawki_podwykonawcow\n\nIf price not found in cennik, show 'brak w cenniku' warning.",
+      "acceptanceCriteria": [
+        "Pozycja detail shows MATERIALY table with produkt name, dostawca name, norma, cena from cennik",
+        "Pozycja detail shows ROBOCIZNA table with typ name, podwykonawca name, norma, stawka from cennik",
+        "Podsumowanie shows calculated totals",
+        "Missing cennik entries show warning",
+        "Verify in browser using dev-browser skill",
+        "Typecheck passes"
+      ],
+      "priority": 11,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-014"]
+    },
+    {
+      "id": "US-016",
+      "title": "Dostawca detail — 'used in positions' section",
+      "description": "Add a new section to the dostawca (supplier) detail panel showing which library positions use products from this supplier.\n\nQuery: JOIN biblioteka_skladowe_materialy (where dostawca_id = this supplier) → pozycje_biblioteka to get position names and codes.\n\n### Section layout:\n```\nUZYWANY W POZYCJACH\n| Pozycja              | Produkt          |\n| BUD.01.01.001 Sciany | Plyta g-k 12.5mm |\n| BUD.01.01.001 Sciany | Profil CW75      |\n| BUD.03.01.001 Sufit  | Plyta sufitowa   |\n```\n\nGroup by pozycja for cleaner display if desired.\n\nUpdate the action (in `actions/dostawcy.ts` or similar) to include this data when fetching dostawca detail. Use a separate query or extend the existing one.",
+      "acceptanceCriteria": [
+        "Dostawca detail panel has 'Uzywany w pozycjach' section",
+        "Section lists positions with their codes and the products used",
+        "Section is empty with message when supplier not used in any position",
+        "Verify in browser using dev-browser skill",
+        "Typecheck passes"
+      ],
+      "priority": 11,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-013", "US-010"]
+    },
+    {
+      "id": "US-017",
+      "title": "Podwykonawca detail — 'used in positions' section",
+      "description": "Add a new section to the podwykonawca (subcontractor) detail panel showing which library positions use this subcontractor.\n\nQuery: JOIN biblioteka_skladowe_robocizna (where podwykonawca_id = this subcontractor) → pozycje_biblioteka and typy_robocizny.\n\n### Section layout:\n```\nUZYWANY W POZYCJACH\n| Pozycja                | Typ pracy        |\n| BUD.01.01.001 Sciany   | Montaz scianek   |\n| BUD.03.01.001 Sufit    | Montaz sufitu    |\n```\n\nUpdate the action (in `actions/podwykonawcy.ts`) to include this data. Also show the subcontractor's stawki from cennik (stawki_podwykonawcow with typ_robocizny names) in a separate 'CENNIK' section.",
+      "acceptanceCriteria": [
+        "Podwykonawca detail has 'Uzywany w pozycjach' section listing positions and labor types",
+        "Podwykonawca detail has 'Cennik' section showing stawki per typ_robocizny",
+        "Sections are empty with message when not used/no stawki",
+        "Verify in browser using dev-browser skill",
+        "Typecheck passes"
+      ],
+      "priority": 11,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-013", "US-010"]
+    },
+    {
+      "id": "US-018",
+      "title": "Rebuild addPositionFromLibrary — fetch prices from cennik",
+      "description": "Rewrite the `addPositionFromLibrary` function in `actions/kosztorys.ts` to use the new schema.\n\nCurrent function has a BUG (queries `cena_netto` instead of `stawka` on stawki_podwykonawcow). Replace entirely.\n\n### New flow:\n1. Fetch biblioteka_skladowe_materialy for the position (with produkt_id, dostawca_id)\n2. For each material: look up price from `ceny_dostawcow` WHERE produkt_id AND dostawca_id = the default dostawca\n3. INSERT into kosztorys_skladowe_materialy with: produkt_id, dostawca_id, cena (from cennik), norma, cena_manualna = NULL\n\n4. Fetch biblioteka_skladowe_robocizna (with typ_robocizny_id, podwykonawca_id)\n5. For each labor: look up stawka from `stawki_podwykonawcow` WHERE typ_robocizny_id AND podwykonawca_id\n6. INSERT into kosztorys_skladowe_robocizna with: typ_robocizny_id, podwykonawca_id, stawka (from cennik), norma, stawka_manualna = NULL\n\nAlso update the `resetPozycjaToLibrary` function with the same logic.\n\nDo NOT update any UI in this story — just the action layer.",
+      "acceptanceCriteria": [
+        "addPositionFromLibrary uses ceny_dostawcow for material prices (not cena_domyslna)",
+        "addPositionFromLibrary uses stawki_podwykonawcow for labor rates (correct column: stawka)",
+        "Kosztorys skladowe have correct produkt_id, dostawca_id, typ_robocizny_id, podwykonawca_id",
+        "No references to dropped columns (nazwa, opis, cena_domyslna, stawka_domyslna)",
+        "resetPozycjaToLibrary also updated",
+        "Typecheck passes"
+      ],
+      "priority": 12,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-013"]
+    },
+    {
+      "id": "US-019",
+      "title": "Kosztorys skladowe UI — supplier/subcontractor dropdowns + manual price override",
+      "description": "Update the kosztorys estimate UI to show and allow changing suppliers/subcontractors per component.\n\nFind the kosztorys skladowe display components (in `app/(app)/projekty/[projektId]/kosztorys/_components/`) and update:\n\n### Material component row:\n```\n| Produkt     | Dostawca [dropdown] | Norma | Cena    | Manual [checkbox] |\n| Farba Dulux | [MAT-BUD ▼]        | 0.15  | 45.00   | [ ]               |\n```\n- Dostawca dropdown: shows all dostawcy that have ceny_dostawcow for this produkt_id, with their prices\n- On change: call new action `changeDostawcaForSkladowa(skladowaId, newDostawcaId)` → updates dostawca_id, fetches new cena from cennik, resets cena_manualna to NULL\n- Manual price: if `cena_manualna` is set, show that instead of cennik price. Allow toggling.\n\n### Labor component row:\n```\n| Typ pracy   | Podwyk. [dropdown]  | Norma | Stawka  | Manual [checkbox] |\n| Montaz...   | [BudMont ▼]        | 0.8   | 45.00   | [ ]               |\n```\n- Same pattern: dropdown for podwykonawcy with stawki, change action, manual override\n\n### New actions needed:\n- `changeDostawcaForSkladowa(skladowaId, dostawcaId)` — update dostawca, fetch price, reset manual\n- `changePodwykonawcaForSkladowa(skladowaId, podwykonawcaId)` — update podwykonawca, fetch rate, reset manual\n- `setManualPrice(skladowaId, type: 'material'|'robocizna', price: number|null)` — set/clear manual override",
+      "acceptanceCriteria": [
+        "Each material row shows dostawca dropdown with prices from cennik",
+        "Changing dostawca updates price from cennik",
+        "Each labor row shows podwykonawca dropdown with stawki from cennik",
+        "Changing podwykonawca updates stawka from cennik",
+        "Manual price override works (set and clear)",
+        "Verify in browser using dev-browser skill",
+        "Typecheck passes"
+      ],
+      "priority": 13,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-018", "US-015"]
+    },
+    {
+      "id": "US-020",
+      "title": "Rebuild zamowienia generation — group by dostawca with source FK",
+      "description": "Update `actions/zamowienia.ts` to generate draft orders grouped by supplier with traceability.\n\nFind `generate_zamowienia_draft` (might be a Postgres function or action) and update:\n\n### New logic:\n1. Get accepted revision's kosztorys_skladowe_materialy (with dostawca_id, produkt_id, quantities)\n2. GROUP BY dostawca_id → one draft zamowienie per supplier\n3. For each group: INSERT zamowienie with dostawca_id\n4. For each skladowa in group: INSERT zamowienie_pozycje with:\n   - kosztorys_skladowa_material_id (traceability FK)\n   - produkt_id\n   - nazwa (from produkt JOIN — snapshot)\n   - cena_jednostkowa (from kosztorys cena or cena_manualna)\n   - ilosc_zamowiona (norma * pozycja.ilosc)\n   - jednostka\n\nIf there's a Postgres function `generate_zamowienia_draft`, it needs to be updated via `apply_migration` to match the new schema.\n\nAlso update the zamowienia UI if it references dropped columns.",
+      "acceptanceCriteria": [
+        "Draft zamowienia are generated grouped by dostawca",
+        "Each zamowienie_pozycja has kosztorys_skladowa_material_id set",
+        "Each zamowienie_pozycja has produkt_id NOT NULL",
+        "Prices come from kosztorys (cena_manualna ?? cena)",
+        "Typecheck passes"
+      ],
+      "priority": 14,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-018", "US-006"]
+    },
+    {
+      "id": "US-021",
+      "title": "Rebuild umowy generation — group by podwykonawca with source FK",
+      "description": "Update `actions/umowy.ts` to generate draft contracts grouped by subcontractor with traceability.\n\nFind `generate_umowy_draft` and update:\n\n### New logic:\n1. Get accepted revision's kosztorys_skladowe_robocizna (with podwykonawca_id, typ_robocizny_id, quantities)\n2. GROUP BY podwykonawca_id → one draft umowa per subcontractor\n3. For each group: INSERT umowa with podwykonawca_id\n4. For each skladowa in group: INSERT umowa_pozycje with:\n   - kosztorys_skladowa_robocizna_id (traceability FK)\n   - typ_robocizny_id\n   - nazwa (from typ_robocizny JOIN — snapshot)\n   - stawka (from kosztorys stawka or stawka_manualna)\n   - ilosc (norma * pozycja.ilosc)\n   - jednostka\n\nIf there's a Postgres function `generate_umowy_draft`, update it via `apply_migration`.\n\nAlso update umowy UI if it references dropped columns (pozycja_biblioteka_id).",
+      "acceptanceCriteria": [
+        "Draft umowy are generated grouped by podwykonawca",
+        "Each umowa_pozycja has kosztorys_skladowa_robocizna_id set",
+        "Each umowa_pozycja has typ_robocizny_id set",
+        "No references to pozycja_biblioteka_id in umowa code",
+        "Rates come from kosztorys (stawka_manualna ?? stawka)",
+        "Typecheck passes"
+      ],
+      "priority": 14,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-018", "US-006"]
+    },
+    {
+      "id": "US-022",
+      "title": "Seed demo projects with new schema",
+      "description": "Rewrite project seed files for the new schema. Create 5 projects (one per status).\n\nUpdate seed files `05-projekt-draft.sql` through `10-projekt-odrzucony.sql`.\n\n### Key changes from old seeds:\n- kosztorys_skladowe_materialy: no `nazwa` column, use produkt_id + dostawca_id (NOT NULL), add cena from cennik\n- kosztorys_skladowe_robocizna: no `opis` column, use typ_robocizny_id + podwykonawca_id (NOT NULL), add stawka from cennik\n- zamowienie_pozycje: add kosztorys_skladowa_material_id, produkt_id NOT NULL\n- umowa_pozycje: add kosztorys_skladowa_robocizna_id + typ_robocizny_id, no pozycja_biblioteka_id\n\n### Projects to create:\n1. DRAFT: Restauracja Smaczna (150m2, 8 positions)\n2. OFERTOWANIE: Biuro TechHub (300m2, 12 positions, 2 locked revisions)\n3. REALIZACJA: Klinika DentSmile (200m2, 10 positions, orders + contracts + invoices)\n4. ZAMKNIETY: Fashion Box (120m2, 8 positions, all completed)\n5. ODRZUCONY: Magazyn LogiStore (400m2, 6 positions)\n\nUse same position selections and quantities as existing seeds. Adapt skladowe copy pattern for new schema:\n```sql\n-- Copy materialy from library to kosztorys\nINSERT INTO kosztorys_skladowe_materialy (kosztorys_pozycja_id, lp, produkt_id, dostawca_id, cena, norma, jednostka)\nSELECT kp.id, bm.lp, bm.produkt_id, bm.dostawca_id,\n  COALESCE(cd.cena_netto, 0),\n  bm.norma_domyslna, bm.jednostka\nFROM kosztorys_pozycje kp\nJOIN biblioteka_skladowe_materialy bm ON bm.pozycja_biblioteka_id = kp.pozycja_biblioteka_id\nLEFT JOIN ceny_dostawcow cd ON cd.produkt_id = bm.produkt_id AND cd.dostawca_id = bm.dostawca_id\nWHERE kp.rewizja_id = <rev_id>;\n\n-- Copy robocizna from library to kosztorys\nINSERT INTO kosztorys_skladowe_robocizna (kosztorys_pozycja_id, lp, typ_robocizny_id, podwykonawca_id, stawka, norma, jednostka)\nSELECT kp.id, br.lp, br.typ_robocizny_id, br.podwykonawca_id,\n  COALESCE(sp.stawka, 0),\n  br.norma_domyslna, br.jednostka\nFROM kosztorys_pozycje kp\nJOIN biblioteka_skladowe_robocizna br ON br.pozycja_biblioteka_id = kp.pozycja_biblioteka_id\nLEFT JOIN stawki_podwykonawcow sp ON sp.typ_robocizny_id = br.typ_robocizny_id AND sp.podwykonawca_id = br.podwykonawca_id\nWHERE kp.rewizja_id = <rev_id>;\n```",
+      "acceptanceCriteria": [
+        "5 projects exist with statuses: draft, ofertowanie, realizacja, zamkniety, odrzucony",
+        "All kosztorys_skladowe_materialy have produkt_id and dostawca_id NOT NULL",
+        "All kosztorys_skladowe_robocizna have typ_robocizny_id and podwykonawca_id NOT NULL",
+        "Realizacja project has zamowienia and umowy with source FKs",
+        "Zamkniety project has completed orders/contracts",
+        "Seed files updated at scripts/seeds/",
+        "Typecheck passes"
+      ],
+      "priority": 15,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-020", "US-021", "US-010"]
+    },
+    {
+      "id": "US-023",
+      "title": "Final verification — data integrity + build + browser check",
+      "description": "Verify everything works end-to-end.\n\n## Data queries (execute_sql):\n```sql\nSELECT count(*) FROM typy_robocizny;         -- 18\nSELECT count(*) FROM stawki_podwykonawcow;    -- 18\nSELECT count(*) FROM projekty;                -- 5\nSELECT count(*) FROM pozycje_biblioteka;      -- 18\nSELECT count(*) FROM biblioteka_skladowe_materialy;  -- ~38\nSELECT count(*) FROM biblioteka_skladowe_robocizna;  -- 18\nSELECT slug, status FROM projekty ORDER BY created_at;\n\n-- Verify new schema integrity\nSELECT count(*) FROM biblioteka_skladowe_robocizna WHERE typ_robocizny_id IS NULL;  -- 0\nSELECT count(*) FROM biblioteka_skladowe_materialy WHERE produkt_id IS NULL;        -- 0\nSELECT count(*) FROM kosztorys_skladowe_robocizna WHERE typ_robocizny_id IS NULL;   -- 0\n```\n\n## Build:\n```bash\nnpm run build\n```\n\n## Browser:\n- /typy-robocizny — shows 18 labor types\n- /pozycje — click any position, see full package (materials + labor with prices)\n- /dostawcy — click MAT-BUD, see 'used in positions' section\n- /podwykonawcy — click BudMont, see 'used in positions' + cennik\n- /projekty — shows 5 projects\n- Open draft project kosztorys, add a position, verify prices from cennik\n- Change a supplier in kosztorys, verify price updates",
+      "acceptanceCriteria": [
+        "All data counts match expected values",
+        "No NULL values in required FK columns",
+        "npm run build passes with zero errors",
+        "Verify in browser using dev-browser skill: /typy-robocizny shows 18 types",
+        "Verify in browser: pozycja detail shows package with prices",
+        "Verify in browser: kosztorys supplier/subcontractor dropdowns work",
+        "Typecheck passes"
+      ],
+      "priority": 16,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-022"]
+    }
+  ]
+}

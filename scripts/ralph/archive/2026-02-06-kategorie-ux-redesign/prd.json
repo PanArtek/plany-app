@@ -1,0 +1,271 @@
+{
+  "project": "PLANY App",
+  "branchName": "ralph/phase4-materialy-dostawcy",
+  "description": "Phase 4: Materialy (produkty catalog) + Dostawcy (suppliers) with cennik management",
+  "mode": "feature",
+  "baseBranch": "main",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Zod schemas for produkty, dostawcy, and ceny_dostawcow",
+      "description": "As a developer, I need validation schemas for all Phase 4 entities so that server actions can validate input consistently.",
+      "acceptanceCriteria": [
+        "Create lib/validations/materialy.ts with: createProduktSchema (sku: string min 1, nazwa: string min 1 max 255, jednostka: enum ['m²','m','mb','szt','kpl','h','kg','m³','l','opak'] default 'szt', aktywny: boolean default true), updateProduktSchema (all fields optional), materialyFiltersSchema (branza?: string, kategoria?: string, podkategoria?: string, search?: string, page?: number default 1)",
+        "Create lib/validations/dostawcy.ts with: createDostawcaSchema (nazwa: string min 1 max 255, kod?: string max 50, kontakt?: string, aktywny: boolean default true), updateDostawcaSchema (all optional), createCenaSchema (dostawcaId: string uuid, produktId: string uuid, cenaNetto: number positive, aktywny: boolean default true), updateCenaSchema (cenaNetto?: number positive, aktywny?: boolean), dostawcyFiltersSchema (search?: string, showInactive?: boolean default false, page?: number default 1)",
+        "Export all types: CreateProduktInput, UpdateProduktInput, MaterialyFilters, CreateDostawcaInput, UpdateDostawcaInput, CreateCenaInput, UpdateCenaInput, DostawcyFilters",
+        "Export jednostkaOptions and other enum arrays for use in UI",
+        "Typecheck passes"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": "",
+      "dependsOn": []
+    },
+    {
+      "id": "US-002",
+      "title": "Server Actions - getMaterialy with aggregation and filtering",
+      "description": "As a developer, I need a server action that returns products with aggregated counts (positions, suppliers) and best price, filtered by position hierarchy.",
+      "acceptanceCriteria": [
+        "Create actions/materialy.ts with 'use server' directive",
+        "Export ActionResult<T> type (same pattern as actions/pozycje.ts)",
+        "Export interface ProduktWithAggregation: id, sku, nazwa, jednostka, aktywny, pozycjeCount: number, dostawcyCount: number, najlepszaCena: number | null",
+        "Export interface MaterialyResult: data: ProduktWithAggregation[], totalCount: number, page: number, pageSize: number",
+        "Implement getMaterialy(filters: MaterialyFilters): returns paginated (PAGE_SIZE=15) products with LEFT JOIN aggregation: COUNT DISTINCT biblioteka_skladowe_materialy for pozycjeCount, COUNT DISTINCT ceny_dostawcow for dostawcyCount, MIN ceny_dostawcow.cena_netto for najlepszaCena",
+        "When filters.branza is set: filter products that appear in biblioteka_skladowe_materialy → pozycje_biblioteka where kod LIKE '{branza}%'. When kategoria/podkategoria also set, extend the prefix (e.g. 'BUD.03%', 'BUD.03.01%'). Use Supabase RPC or raw SQL via supabase.rpc() since the JOIN chain is too complex for PostgREST query builder - create a Postgres function get_materialy_aggregated(p_branza text, p_kategoria text, p_podkategoria text, p_search text, p_limit int, p_offset int) that returns the aggregated result set",
+        "When search is set: ilike on produkty.nazwa and produkty.sku",
+        "Filter aktywny=true by default",
+        "Order by produkty.nazwa ASC",
+        "Typecheck passes"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "The aggregation query requires a Postgres function because PostgREST cannot handle the multi-table LEFT JOIN + GROUP BY + COUNT DISTINCT + MIN aggregation with filtered JOINs. Create the function via Supabase MCP apply_migration.",
+      "dependsOn": ["US-001"]
+    },
+    {
+      "id": "US-003",
+      "title": "Server Actions - CRUD produkty and detail queries",
+      "description": "As a developer, I need create/update/delete actions for produkty and detail queries for the material detail panel.",
+      "acceptanceCriteria": [
+        "Add to actions/materialy.ts: createProdukt(input) - validates with createProduktSchema, inserts into produkty table, checks unique constraint on (organization_id, sku) returning error 'Produkt o tym SKU już istnieje' on 23505, revalidatePath('/materialy')",
+        "Add updateProdukt(id, input) - validates with updateProduktSchema, updates produkty, handles 23505, revalidatePath('/materialy')",
+        "Add deleteProdukt(id) - checks usage in ceny_dostawcow (count) and biblioteka_skladowe_materialy (count). If used in ceny: error 'Nie można usunąć - produkt ma N wpisów w cennikach dostawców'. If used in positions: error 'Nie można usunąć - produkt jest używany w N pozycjach'. Otherwise delete, revalidatePath('/materialy')",
+        "Add getProdukt(id) - returns single produkt or null",
+        "Add getProduktDostawcy(produktId) - returns array of {id, dostawcaNazwa, dostawcaKod, cenaNetto, aktywny} from ceny_dostawcow JOIN dostawcy, ordered by cena_netto ASC",
+        "Add getProduktPozycje(produktId) - returns array of {id, kod, nazwa} from pozycje_biblioteka JOIN biblioteka_skladowe_materialy where produkt_id matches",
+        "Typecheck passes"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-001"]
+    },
+    {
+      "id": "US-004",
+      "title": "Server Actions - CRUD dostawcy and ceny_dostawcow",
+      "description": "As a developer, I need server actions for supplier management and price list CRUD.",
+      "acceptanceCriteria": [
+        "Create actions/dostawcy.ts with 'use server' directive",
+        "Export interface DostawcaWithCount: id, nazwa, kod, kontakt, aktywny, produktyCount: number",
+        "Export interface DostawcyResult: data: DostawcaWithCount[], totalCount: number, page: number, pageSize: number",
+        "Implement getDostawcy(filters: DostawcyFilters) - paginated (PAGE_SIZE=15), LEFT JOIN count on ceny_dostawcow for produktyCount. When search: ilike on nazwa and kod. When showInactive=false (default): filter aktywny=true. Order by nazwa ASC",
+        "Implement getDostawca(id) - single dostawca or null",
+        "Implement getDostawcaCennik(dostawcaId) - returns array of {id, produktId, produktSku, produktNazwa, produktJednostka, cenaNetto, aktywny} from ceny_dostawcow JOIN produkty, ordered by produkty.nazwa",
+        "Implement getDostawcaPozycje(dostawcaId) - returns array of {id, kod, nazwa} from pozycje_biblioteka JOIN biblioteka_skladowe_materialy where dostawca_id matches",
+        "Implement createDostawca(input) - validate, insert, revalidatePath('/dostawcy')",
+        "Implement updateDostawca(id, input) - validate, update, revalidatePath('/dostawcy')",
+        "Implement deleteDostawca(id) - check ceny_dostawcow count, if has prices: error 'Nie można usunąć - dostawca ma N produktów w cenniku'. Otherwise delete, revalidatePath('/dostawcy')",
+        "Implement createCena(input) - validate with createCenaSchema, insert into ceny_dostawcow, handle 23505 'Ten produkt jest już w cenniku tego dostawcy', revalidatePath('/dostawcy') AND revalidatePath('/materialy')",
+        "Implement updateCena(id, input) - validate, update ceny_dostawcow, revalidate both paths",
+        "Implement deleteCena(id) - delete from ceny_dostawcow, revalidate both paths",
+        "Typecheck passes"
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-001"]
+    },
+    {
+      "id": "US-005",
+      "title": "Materialy page layout with view, breadcrumb, and state management",
+      "description": "As a user, I want the Materialy page to follow the same layout pattern as Pozycje with breadcrumb, filters area, and table area.",
+      "acceptanceCriteria": [
+        "Create app/(app)/materialy/page.tsx as async Server Component: read searchParams (Promise<{branza?, kategoria?, podkategoria?, search?, page?}>), call getMaterialy(filters), resolve branza label from BRANZE_NAMES map for breadcrumb, pass data + filters to MaterialyView",
+        "Create app/(app)/materialy/_components/materialy-view.tsx as 'use client' component wrapped in Suspense (same pattern as pozycje-view.tsx): Props: initialData: MaterialyResult, initialBranza?: string, branzaLabel?: string",
+        "Breadcrumb row at top: 'Materiały' or 'Materiały / Budowlana' when branza selected. Segments separated by '/' in text-white/30, last segment text-foreground. Right side: 'Dodaj materiał' button (Plus icon, amber-500 bg)",
+        "Below breadcrumb: render MaterialyFilters component (placeholder div for now, implemented in US-006)",
+        "Below filters: render MaterialyTable component (placeholder div for now, implemented in US-007)",
+        "Below table: render MaterialyPagination (reuse pozycje-pagination pattern)",
+        "Manage state for slide panels: detailPanel (open/close + selected product id), formPanel (open/close + mode add/edit), deletePanel (open/close + selected product)",
+        "Clicking 'Dodaj materiał' button opens formPanel in 'add' mode",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill: /materialy loads with breadcrumb 'Materiały' and 'Dodaj materiał' button visible"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-002", "US-003"]
+    },
+    {
+      "id": "US-006",
+      "title": "Materialy filters with branza tabs and cascading dropdowns",
+      "description": "As a user, I want to filter materials by position hierarchy (branza/kategoria/podkategoria) and search by name/SKU.",
+      "acceptanceCriteria": [
+        "Create app/(app)/materialy/_components/materialy-filters.tsx as 'use client' component",
+        "Copy the exact filter pattern from pozycje-filters.tsx (same BRANZE array, same tab styling, same cascading dropdowns, same debounced search)",
+        "Branza tabs: full-width bg-[#1A1A24]/40, flex-1 buttons, amber glow on active. URL param: ?branza=BUD. Clicking active tab deselects",
+        "Kategoria dropdown (320px): appears when branza selected. Fetches options via getKategorieForBranza(). Shows 'Wszystkie kategorie' default",
+        "Podkategoria dropdown (320px): appears when kategoria selected. Fetches via getKategorieByPoziom(3, parentId). Shows 'Wszystkie podkategorie' default",
+        "Search input: flex-1, Search icon, debounce 300ms, placeholder 'Szukaj po nazwie lub SKU...'",
+        "Branza change resets kategoria, podkategoria, and page params",
+        "All filter changes push to URL: router.push('/materialy?...')",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill: branza tabs render, clicking BUD activates tab, dropdowns appear"
+      ],
+      "priority": 6,
+      "passes": false,
+      "notes": "This is nearly identical to pozycje-filters.tsx - only difference is route path (/materialy instead of /pozycje) and search placeholder text.",
+      "dependsOn": ["US-005"]
+    },
+    {
+      "id": "US-007",
+      "title": "Materialy table with TanStack Table and aggregation columns",
+      "description": "As a user, I want to see a table of products with their supplier count, position count, and best price.",
+      "acceptanceCriteria": [
+        "Create app/(app)/materialy/_components/materialy-table.tsx as 'use client' component using TanStack React Table",
+        "Props: data: ProduktWithAggregation[], onRowClick: (produkt) => void",
+        "5 columns: Nazwa (nazwa bold + sku below in font-mono text-amber-500 text-xs), Jednostka (text-white/50), Pozycje (font-mono, e.g. '3 pozycje' or '0'), Dostawcy (font-mono, e.g. '2 dostawców' or '0'), Najlepsza cena (font-mono text-amber-500, formatted as 'XX,XX zł' with Polish decimal comma, or '—' if null)",
+        "Table container: scrollable with height calc(100vh - 330px), sticky header with text-white/50 text-xs uppercase tracking-wider bg-[#0A0A0F]",
+        "Row styling: hover:bg-white/5, border-b border-white/[0.06], cursor-pointer",
+        "Row click calls onRowClick with the product data",
+        "Empty state: centered 'Brak materiałów' text-muted-foreground when data is empty",
+        "Wire into materialy-view.tsx: pass initialData.data, onRowClick opens detail panel",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill: table renders with column headers visible"
+      ],
+      "priority": 7,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-005"]
+    },
+    {
+      "id": "US-008",
+      "title": "Material detail panel (read-only: suppliers with prices, positions)",
+      "description": "As a user, I want to click a material row and see its suppliers with prices and which positions use it.",
+      "acceptanceCriteria": [
+        "Create app/(app)/materialy/_components/panels/material-detail-panel.tsx using SlidePanel/SlidePanelHeader/SlidePanelContent from @/components/ui/slide-panel",
+        "Props: produktId: string | null, open: boolean, onOpenChange, onEdit: () => void, onDelete: () => void",
+        "When open and produktId set: fetch data via getProdukt(id), getProduktDostawcy(id), getProduktPozycje(id) using useEffect + useState",
+        "Header: product nazwa + SKU badge (font-mono text-amber-500) + jednostka. Two icon buttons: Pencil (edit) and Trash2 (delete)",
+        "Section 1 'Dostawcy z cenami': list sorted by price ASC. Each row: dostawca nazwa + cena formatted 'XX,XX zł/{jednostka}'. Best price (first item) gets amber Badge 'NAJLEPSZA'. If empty: 'Brak dostawców w cenniku' in text-white/50",
+        "Section 2 'Używany w pozycjach (N)': list of positions. Each row: kod (font-mono text-amber-500 text-sm) + nazwa. Clicking navigates to /pozycje?selected={id}. If empty: 'Nie jest używany w żadnej pozycji' in text-white/50",
+        "Loading state: Loader2 spinner centered while fetching",
+        "Wire into materialy-view.tsx: row click sets produktId and opens panel",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill: clicking a material row opens slide panel with sections"
+      ],
+      "priority": 8,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-007"]
+    },
+    {
+      "id": "US-009",
+      "title": "Material form panel (add/edit product) and delete confirmation",
+      "description": "As a user, I want to add new products and edit existing ones via a slide panel form.",
+      "acceptanceCriteria": [
+        "Create app/(app)/materialy/_components/panels/material-form-panel.tsx using SlidePanel pattern (same as kategoria-form-panel.tsx)",
+        "Props: mode: 'add' | 'edit', produkt?: ProduktWithAggregation, open: boolean, onOpenChange",
+        "Form fields: SKU (text input, required, font-mono), Nazwa (text input, required), Jednostka (Select with options from jednostkaOptions: m², m, mb, szt, kpl, h, kg, m³, l, opak), Aktywny (checkbox, default true)",
+        "Use react-hook-form with zodResolver(createProduktSchema)",
+        "Edit mode: prefill form with produkt data",
+        "Submit: call createProdukt or updateProdukt server action. On success: toast.success + close panel. On error: toast.error with message",
+        "Reuse DeleteConfirmPanel from kategorie (copy to materialy/panels/ or import from shared location). On delete: call deleteProdukt. If blocked (used in positions/cennik): show blocked state with reason. If success: toast + close + clear selected",
+        "Wire both panels into materialy-view.tsx: 'Dodaj materiał' button opens form in add mode, detail panel edit button opens form in edit mode, detail panel delete button opens delete confirm",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill: can open add form, fill fields, submit (should show error or succeed depending on DB state)"
+      ],
+      "priority": 9,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-008"]
+    },
+    {
+      "id": "US-010",
+      "title": "Dostawcy page with view, table, and search filter",
+      "description": "As a user, I want a Dostawcy page with a searchable table of suppliers showing their product counts.",
+      "acceptanceCriteria": [
+        "Create app/(app)/dostawcy/page.tsx as async Server Component: read searchParams (search?, showInactive?, page?), call getDostawcy(filters), pass to DostawcyView",
+        "Create app/(app)/dostawcy/_components/dostawcy-view.tsx as 'use client' wrapped in Suspense. Breadcrumb: 'Dostawcy'. Right side: 'Dodaj dostawcę' button (Plus icon, amber bg). Manage state for: detailPanel, formPanel, cennikFormPanel, deletePanel",
+        "Create app/(app)/dostawcy/_components/dostawcy-filters.tsx: search input only (no branza tabs). Debounce 300ms, placeholder 'Szukaj po nazwie lub kodzie...'. Push to URL: /dostawcy?search=...",
+        "Create app/(app)/dostawcy/_components/dostawcy-table.tsx with TanStack Table. 4 columns: Nazwa (bold), Kod (font-mono text-amber-500, or '—'), Produkty (font-mono, e.g. '12 produktów'), Kontakt (text-white/50, truncated). Row click opens detail panel",
+        "Pagination: same pattern as materialy (15 items/page)",
+        "Empty state: 'Brak dostawców'",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill: /dostawcy loads with breadcrumb, search, table, and 'Dodaj dostawcę' button"
+      ],
+      "priority": 10,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-004"]
+    },
+    {
+      "id": "US-011",
+      "title": "Dostawca detail panel with cennik CRUD",
+      "description": "As a user, I want to see supplier details with their full price list and manage prices (add/edit/delete) from the detail panel.",
+      "acceptanceCriteria": [
+        "Create app/(app)/dostawcy/_components/panels/dostawca-detail-panel.tsx using SlidePanel",
+        "Props: dostawcaId: string | null, open: boolean, onOpenChange, onEdit, onDelete, onAddCena, onEditCena: (cena) => void, onDeleteCena: (cenaId) => void",
+        "Fetch: getDostawca(id), getDostawcaCennik(id), getDostawcaPozycje(id)",
+        "Header: nazwa + kod Badge (font-mono amber). Pencil + Trash2 buttons",
+        "Section 1 'Dane kontaktowe': kontakt text displayed (multi-line whitespace-pre-wrap). If empty: 'Brak danych kontaktowych'",
+        "Section 2 'Cennik produktów (N)': header row with '+ Dodaj produkt' button (amber text). List items: SKU (font-mono amber) + nazwa + cena 'XX,XX zł/{jednostka}'. Each row has Pencil and Trash2 icon buttons (h-7 w-7). Pencil calls onEditCena(cena), Trash2 calls onDeleteCena(cenaId) after inline confirm (window.confirm or small confirm UI). If empty: 'Brak produktów w cenniku'",
+        "Section 3 'Używany w pozycjach (N)': same pattern as material detail - list of positions with navigation links. Only shown if count > 0",
+        "Wire into dostawcy-view.tsx: row click opens detail panel",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill: clicking a supplier row opens detail panel with sections"
+      ],
+      "priority": 11,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-010"]
+    },
+    {
+      "id": "US-012",
+      "title": "Dostawca form panel, cennik form panel, and delete confirmation",
+      "description": "As a user, I want to add/edit suppliers, manage their price list entries, and delete with proper validation.",
+      "acceptanceCriteria": [
+        "Create app/(app)/dostawcy/_components/panels/dostawca-form-panel.tsx: SlidePanel form with fields: Nazwa (text, required), Kod (text, optional, font-mono), Kontakt (textarea), Aktywny (checkbox). Uses react-hook-form + zodResolver(createDostawcaSchema). Submit calls createDostawca/updateDostawca. Toast feedback",
+        "Create app/(app)/dostawcy/_components/panels/cennik-form-panel.tsx: SlidePanel form for adding/editing a price entry. Fields: Produkt (searchable Select from produkty list - fetch all active products, show 'SKU - Nazwa' format), Cena netto (number input, step 0.01, required), Aktywny (checkbox). In edit mode: produkt field is disabled (can't change product, only price). Submit calls createCena/updateCena. Toast feedback. On 23505 error: 'Ten produkt jest już w cenniku'",
+        "For cennik-form-panel: fetch product list using a new server action getAllProdukty() in actions/materialy.ts that returns [{id, sku, nazwa, jednostka}] without pagination (for select dropdown)",
+        "Copy DeleteConfirmPanel to dostawcy/panels/ (or share). For dostawca delete: call deleteDostawca, blocked if has cennik. For cena delete: call deleteCena directly (no block check needed)",
+        "Wire all panels into dostawcy-view.tsx: 'Dodaj dostawcę' opens dostawca form add mode, detail edit opens dostawca form edit mode, detail '+ Dodaj produkt' opens cennik form add mode, cennik row edit opens cennik form edit mode, cennik row delete calls deleteCena with toast, dostawca delete opens DeleteConfirmPanel",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill: can open all form panels, fields render correctly"
+      ],
+      "priority": 12,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-011"]
+    },
+    {
+      "id": "US-013",
+      "title": "Seed data for produkty, dostawcy, and ceny_dostawcow",
+      "description": "As a developer, I need sample data to test both modules end-to-end.",
+      "acceptanceCriteria": [
+        "Create seed data via Supabase MCP apply_migration (name: seed_materialy_dostawcy)",
+        "Insert 17 produkty from wireframe mock data: GK-PLYTA-125 (Płyta GK 12.5mm, m²), GK-CD60 (Profil CD 60x27, mb), GK-CW50 (Profil CW 50, mb), GK-WIESZAK-ES (Wieszak ES, szt), GK-WKRETY-KPL (Wkręty+taśma+masa, kpl), FRB-DULUX-10L (Dulux Latex Matt 10L, l), FRB-GRUNT-5L (Grunt penetrujący 5L, l), PLT-GRES-60X60 (Gres techniczny 60x60, m²), PLT-KLEJ-25KG (Klej Atlas Plus 25kg, kg), PLT-FUGA-5KG (Fuga Mapei 5kg, kg), ELE-KORYTKO-H100 (Korytko kablowe H100, szt), ELE-WSPORNIK (Wspornik montażowy, szt), ELE-LED-60X60 (Panel LED 60x60 40W, szt), ELE-YDYP-3X15 (Przewód YDYp 3x1.5, mb), ELE-WAGO-3 (Złączki WAGO 3-torowe, szt), ELE-GNIAZDO-2X (Gniazdo podwójne Legrand, szt), ELE-PUSZKA-60 (Puszka podtynkowa 60mm, szt). All with organization_id = NULL (system data)",
+        "Insert 5 dostawcy: Hurtownia Atlas (kod: ATL, kontakt: '22 123 45 67, atlas@hurtownia.pl'), Knauf Dystrybutor (kod: KNF, kontakt: '22 234 56 78, knauf@dystrybutor.pl'), Paradyż Hurt (kod: PRD, kontakt: '22 345 67 89, paradyz@hurt.pl'), Farby Premium (kod: FPR, kontakt: '22 456 78 90, premium@farby.pl'), Elektro-Hurt (kod: ELH, kontakt: '22 567 89 01, elektro@hurt.pl'). All with organization_id = NULL",
+        "Insert ~20 ceny_dostawcow entries linking suppliers to products with prices from wireframe: Atlas→GK-PLYTA(31.00), Atlas→PLT-KLEJ(1.92), Atlas→PLT-GRES(72.00), Atlas→FRB-GRUNT(8.40), Atlas→FRB-DULUX(21.00), Knauf→GK-PLYTA(28.50), Knauf→GK-CD60(4.20), Knauf→GK-CW50(5.80), Knauf→GK-WIESZAK(2.15), Knauf→GK-WKRETY(3.30), Paradyz→PLT-GRES(65.00), Paradyz→PLT-KLEJ(2.10), FarbyPremium→FRB-DULUX(18.90), FarbyPremium→FRB-GRUNT(9.20), ElektroHurt→ELE-KORYTKO(48.00), ElektroHurt→ELE-WSPORNIK(12.00), ElektroHurt→ELE-LED(185.00), ElektroHurt→ELE-YDYP(4.50), ElektroHurt→ELE-WAGO(1.80), ElektroHurt→ELE-GNIAZDO(42.00), ElektroHurt→ELE-PUSZKA(3.50)",
+        "Use INSERT with subqueries to link by SKU/nazwa (not hardcoded UUIDs)",
+        "Verify data appears in /materialy and /dostawcy pages",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill: /materialy shows products with dostawcy counts and best prices, /dostawcy shows suppliers with product counts"
+      ],
+      "priority": 13,
+      "passes": false,
+      "notes": "Seed uses organization_id = NULL for system-level data visible to all users. Use INSERT...SELECT pattern to reference products and suppliers by sku/nazwa instead of hardcoding UUIDs.",
+      "dependsOn": ["US-009", "US-012"]
+    }
+  ]
+}

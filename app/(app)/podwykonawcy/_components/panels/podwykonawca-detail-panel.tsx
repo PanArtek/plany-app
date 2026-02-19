@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Pencil, Trash2, Loader2, Plus } from 'lucide-react';
+import { Pencil, Trash2, Loader2, Plus, Star, ExternalLink, Mail } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -16,10 +16,13 @@ import {
   getPodwykonawca,
   getPodwykonawcaStawki,
   getPodwykonawcaPozycje,
+  getPodwykonawcaHistoria,
   type PodwykonawcaBase,
   type StawkaEntry,
   type PodwykonawcaPozycja,
+  type HistoriaEntry,
 } from '@/actions/podwykonawcy';
+import { CopyContractData } from '@/components/copy-contract-data';
 
 interface PodwykonawcaDetailPanelProps {
   podwykonawcaId: string | null;
@@ -51,6 +54,7 @@ export function PodwykonawcaDetailPanel({
   const [podwykonawca, setPodwykonawca] = useState<PodwykonawcaBase | null>(null);
   const [stawki, setStawki] = useState<StawkaEntry[]>([]);
   const [pozycje, setPozycje] = useState<PodwykonawcaPozycja[]>([]);
+  const [historia, setHistoria] = useState<HistoriaEntry[]>([]);
 
   useEffect(() => {
     if (open && podwykonawcaId) {
@@ -59,10 +63,12 @@ export function PodwykonawcaDetailPanel({
         getPodwykonawca(podwykonawcaId),
         getPodwykonawcaStawki(podwykonawcaId),
         getPodwykonawcaPozycje(podwykonawcaId),
-      ]).then(([p, s, poz]) => {
+        getPodwykonawcaHistoria(podwykonawcaId),
+      ]).then(([p, s, poz, hist]) => {
         setPodwykonawca(p);
         setStawki(s);
         setPozycje(poz);
+        setHistoria(hist);
       }).catch(() => {
         setPodwykonawca(null);
       }).finally(() => {
@@ -115,17 +121,66 @@ export function PodwykonawcaDetailPanel({
           </div>
         ) : podwykonawca ? (
           <>
+            {/* Ocena */}
+            {podwykonawca.ocena && (
+              <div className="flex items-center gap-1">
+                {Array.from({ length: 5 }, (_, i) => (
+                  <Star
+                    key={i}
+                    className={`h-4 w-4 ${i < podwykonawca.ocena! ? 'fill-amber-500 text-amber-500' : 'text-white/20'}`}
+                  />
+                ))}
+                <span className="text-sm text-white/60 ml-2">{podwykonawca.ocena}/5</span>
+              </div>
+            )}
+
             {/* Section 1: Dane kontaktowe */}
             <div className="space-y-3">
               <h4 className="text-sm font-medium text-white/50 uppercase tracking-wider">
                 Dane kontaktowe
               </h4>
-              {podwykonawca.kontakt ? (
-                <p className="text-sm text-white/80 whitespace-pre-wrap">{podwykonawca.kontakt}</p>
-              ) : (
-                <p className="text-sm text-white/50">Brak danych kontaktowych</p>
-              )}
+              <div className="space-y-2">
+                {podwykonawca.kontakt && (
+                  <p className="text-sm text-white/80">{podwykonawca.kontakt}</p>
+                )}
+                {podwykonawca.email && (
+                  <a href={`mailto:${podwykonawca.email}`} className="text-sm text-amber-500 hover:text-amber-400 flex items-center gap-1.5">
+                    <Mail className="h-3 w-3" />
+                    {podwykonawca.email}
+                  </a>
+                )}
+                {podwykonawca.strona_www && (
+                  <a href={podwykonawca.strona_www.startsWith('http') ? podwykonawca.strona_www : `https://${podwykonawca.strona_www}`} target="_blank" rel="noopener noreferrer" className="text-sm text-amber-500 hover:text-amber-400 flex items-center gap-1.5">
+                    <ExternalLink className="h-3 w-3" />
+                    {podwykonawca.strona_www}
+                  </a>
+                )}
+                {!podwykonawca.kontakt && !podwykonawca.email && !podwykonawca.strona_www && (
+                  <p className="text-sm text-white/50">Brak danych kontaktowych</p>
+                )}
+              </div>
             </div>
+
+            {/* Copy contract data */}
+            <CopyContractData
+              nazwaPelna={podwykonawca.nazwa_pelna}
+              nip={podwykonawca.nip}
+              regon={podwykonawca.regon}
+              krs={podwykonawca.krs}
+              adresSiedziby={podwykonawca.adres_siedziby}
+              osobaReprezentujaca={podwykonawca.osoba_reprezentujaca}
+              nrKonta={podwykonawca.nr_konta}
+            />
+
+            {/* Uwagi */}
+            {podwykonawca.uwagi && (
+              <div className="space-y-2">
+                <h4 className="text-sm font-medium text-white/50 uppercase tracking-wider">
+                  Uwagi
+                </h4>
+                <p className="text-sm text-white/70 whitespace-pre-wrap">{podwykonawca.uwagi}</p>
+              </div>
+            )}
 
             {/* Section 2: Cennik stawek */}
             <div className="space-y-3">
@@ -151,12 +206,11 @@ export function PodwykonawcaDetailPanel({
                       className="flex items-center justify-between px-3 py-2 rounded-md bg-white/[0.03] border border-white/[0.06]"
                     >
                       <div className="flex-1 min-w-0">
-                        <span className="font-mono text-amber-500 text-sm mr-2">{s.pozycjaKod}</span>
-                        <span className="text-sm text-white/80">{s.pozycjaNazwa}</span>
+                        <span className="text-sm text-white/80">{s.typRobociznyNazwa}</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="font-mono text-sm text-amber-500">
-                          {formatPrice(s.stawka, s.pozycjaJednostka)}
+                          {formatPrice(s.stawka, s.typRobociznyJednostka)}
                         </span>
                         <Button
                           variant="ghost"
@@ -181,26 +235,71 @@ export function PodwykonawcaDetailPanel({
               )}
             </div>
 
-            {/* Section 3: Używany w pozycjach (only if count > 0) */}
-            {pozycje.length > 0 && (
+            {/* Section 3: Historia realizacji */}
+            {historia.length > 0 && (
               <div className="space-y-3">
                 <h4 className="text-sm font-medium text-white/50 uppercase tracking-wider">
-                  Używany w pozycjach ({pozycje.length})
+                  Historia realizacji ({historia.length})
                 </h4>
-                <div className="space-y-1">
-                  {pozycje.map((p) => (
-                    <button
-                      key={p.id}
-                      onClick={() => router.push(`/pozycje?selected=${p.id}`)}
-                      className="w-full text-left px-3 py-2 rounded-md hover:bg-white/5 transition-colors"
+                <div className="space-y-2">
+                  {historia.map((h) => (
+                    <div
+                      key={h.projektId}
+                      className="flex items-center justify-between px-3 py-2 rounded-md bg-white/[0.03] border border-white/[0.06]"
                     >
-                      <span className="font-mono text-amber-500 text-sm mr-2">{p.kod}</span>
-                      <span className="text-sm text-white/80">{p.nazwa}</span>
-                    </button>
+                      <div className="flex-1 min-w-0">
+                        <span className="text-sm text-white/80">{h.projektNazwa}</span>
+                        <span className="text-xs text-white/40 ml-2">
+                          {new Date(h.data).toLocaleDateString('pl-PL', { year: 'numeric', month: 'short' })}
+                        </span>
+                      </div>
+                      <div className="text-right">
+                        <span className="font-mono text-sm text-amber-500">
+                          {h.suma.toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, ' ')} zł
+                        </span>
+                        <span className="text-xs text-white/40 ml-1">({h.count} poz.)</span>
+                      </div>
+                    </div>
                   ))}
+                </div>
+                <div className="flex items-center justify-between px-3 py-2 border-t border-white/10">
+                  <span className="text-xs text-white/50">Łącznie</span>
+                  <span className="font-mono text-sm font-medium text-amber-500">
+                    {historia.reduce((sum, h) => sum + h.suma, 0).toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, ' ')} zł z {historia.length} projektów
+                  </span>
                 </div>
               </div>
             )}
+
+            {/* Section 4: Używany w pozycjach */}
+            <div className="space-y-3">
+              <h4 className="text-sm font-medium text-white/50 uppercase tracking-wider">
+                Używany w pozycjach ({pozycje.length})
+              </h4>
+              {pozycje.length === 0 ? (
+                <p className="text-sm text-white/50">Podwykonawca nie jest używany w żadnej pozycji bibliotecznej</p>
+              ) : (
+                <div className="space-y-1">
+                  {pozycje.map((p, i) => (
+                    <button
+                      key={`${p.id}-${i}`}
+                      onClick={() => router.push(`/pozycje?selected=${p.id}`)}
+                      className="w-full text-left px-3 py-2 rounded-md hover:bg-white/5 transition-colors"
+                    >
+                      <div>
+                        <span className="font-mono text-amber-500 text-sm mr-2">{p.kod}</span>
+                        <span className="text-sm text-white/80">{p.nazwa}</span>
+                      </div>
+                      {p.typRobociznyNazwa && (
+                        <div className="text-xs text-white/40 mt-0.5 pl-1">
+                          {p.typRobociznyNazwa}
+                        </div>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </>
         ) : null}
       </SlidePanelContent>

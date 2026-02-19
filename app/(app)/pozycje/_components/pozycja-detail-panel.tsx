@@ -5,9 +5,8 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Pencil, Trash2 } from 'lucide-react';
-import { type Pozycja } from '@/actions/pozycje';
+import { type Pozycja, type CennikPrices } from '@/actions/pozycje';
 import { type SkladowaRobocizna, type SkladowaMaterial, deleteSkladowaRobocizna, deleteSkladowaMaterial } from '@/actions/skladowe';
-import { obliczCenePozycji } from '@/lib/utils/pozycje';
 import { SkladoweSection, type SkladowaItem } from './skladowe-section';
 import { SkladowaPanel } from './panels/skladowa-panel';
 import { DeleteConfirmPanel } from '../../kategorie/_components/panels/delete-confirm-panel';
@@ -28,6 +27,11 @@ interface PozycjaDetailPanelProps {
   onOpenChange: (open: boolean) => void;
   onEdit: () => void;
   onDelete: () => void;
+  produktOptions?: { id: string; nazwa: string; sku: string }[];
+  dostawcaOptions?: { id: string; nazwa: string; kod: string | null }[];
+  typRobociznyOptions?: { id: string; nazwa: string; jednostka: string | null }[];
+  podwykonawcaOptions?: { id: string; nazwa: string }[];
+  cennikPrices?: CennikPrices;
 }
 
 function formatCena(value: number): string {
@@ -38,8 +42,20 @@ function formatCena(value: number): string {
   }).format(value);
 }
 
-export function PozycjaDetailPanel({ pozycja, open, onOpenChange, onEdit, onDelete }: PozycjaDetailPanelProps) {
-  const { robocizna, material, cena } = obliczCenePozycji(pozycja);
+export function PozycjaDetailPanel({ pozycja, open, onOpenChange, onEdit, onDelete, produktOptions, dostawcaOptions, typRobociznyOptions, podwykonawcaOptions, cennikPrices }: PozycjaDetailPanelProps) {
+  // Calculate prices using cennik data
+  const robocizna = (pozycja.biblioteka_skladowe_robocizna ?? []).reduce((sum, s) => {
+    const stawka = cennikPrices?.robociznaPrices[s.id] ?? s.cena ?? 0;
+    return sum + stawka;
+  }, 0);
+
+  const material = (pozycja.biblioteka_skladowe_materialy ?? []).reduce((sum, s) => {
+    const cenaJedn = cennikPrices?.materialPrices[s.id] ?? null;
+    const norma = s.norma_domyslna ?? 1;
+    return sum + (cenaJedn !== null ? cenaJedn * norma : 0);
+  }, 0);
+
+  const cena = robocizna + material;
 
   // Składowe panel state
   const [panelType, setPanelType] = useState<'robocizna' | 'material' | null>(null);
@@ -73,7 +89,8 @@ export function PozycjaDetailPanel({ pozycja, open, onOpenChange, onEdit, onDele
   };
 
   const handleDeleteRobocizna = (item: SkladowaItem) => {
-    setDeletingSkladowa({ id: item.id, nazwa: item.opis || '—' });
+    const label = item.typy_robocizny?.nazwa || '—';
+    setDeletingSkladowa({ id: item.id, nazwa: label });
     setDeletingSkladowaType('robocizna');
     setDeletePanelOpen(true);
   };
@@ -95,7 +112,8 @@ export function PozycjaDetailPanel({ pozycja, open, onOpenChange, onEdit, onDele
   };
 
   const handleDeleteMaterial = (item: SkladowaItem) => {
-    setDeletingSkladowa({ id: item.id, nazwa: item.nazwa || '—' });
+    const label = item.produkty?.nazwa || '—';
+    setDeletingSkladowa({ id: item.id, nazwa: label });
     setDeletingSkladowaType('material');
     setDeletePanelOpen(true);
   };
@@ -154,6 +172,7 @@ export function PozycjaDetailPanel({ pozycja, open, onOpenChange, onEdit, onDele
             onAdd={handleAddRobocizna}
             onEdit={handleEditRobocizna}
             onDelete={handleDeleteRobocizna}
+            cennikPrices={cennikPrices?.robociznaPrices}
           />
 
           <SkladoweSection
@@ -165,6 +184,7 @@ export function PozycjaDetailPanel({ pozycja, open, onOpenChange, onEdit, onDele
             onAdd={handleAddMaterial}
             onEdit={handleEditMaterial}
             onDelete={handleDeleteMaterial}
+            cennikPrices={cennikPrices?.materialPrices}
           />
 
           {pozycja.opis && (
@@ -176,9 +196,19 @@ export function PozycjaDetailPanel({ pozycja, open, onOpenChange, onEdit, onDele
         </SlidePanelContent>
 
         <SlidePanelFooter>
-          <div className="flex items-center justify-between mb-4">
-            <span className="text-sm text-white/50">Cena jednostkowa NETTO</span>
-            <span className="text-xl font-mono font-semibold text-amber-500">{formatCena(cena)}</span>
+          <div className="space-y-2 mb-4">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-white/40">Robocizna</span>
+              <span className="font-mono text-white/60">{formatCena(robocizna)}</span>
+            </div>
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-white/40">Materiały</span>
+              <span className="font-mono text-white/60">{formatCena(material)}</span>
+            </div>
+            <div className="border-t border-white/10 pt-2 flex items-center justify-between">
+              <span className="text-sm text-white/50">Cena jednostkowa NETTO</span>
+              <span className="text-xl font-mono font-semibold text-amber-500">{formatCena(cena)}</span>
+            </div>
           </div>
           <div className="flex items-center gap-2">
             <Button
@@ -209,6 +239,8 @@ export function PozycjaDetailPanel({ pozycja, open, onOpenChange, onEdit, onDele
           mode={panelMode}
           pozycjaId={pozycja.id}
           skladowa={editingRobocizna}
+          typRobociznyOptions={typRobociznyOptions}
+          podwykonawcaOptions={podwykonawcaOptions}
         />
       )}
 
@@ -220,6 +252,8 @@ export function PozycjaDetailPanel({ pozycja, open, onOpenChange, onEdit, onDele
           mode={panelMode}
           pozycjaId={pozycja.id}
           skladowa={editingMaterial}
+          produktOptions={produktOptions}
+          dostawcaOptions={dostawcaOptions}
         />
       )}
 

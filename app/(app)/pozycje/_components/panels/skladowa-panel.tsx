@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
-import { Package, Hammer } from 'lucide-react';
+import { Package, Hammer, Info } from 'lucide-react';
 import {
   SlidePanel,
   SlidePanelHeader,
@@ -31,18 +31,19 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import {
-  createSkladowaMaterialSchema,
-  createSkladowaRobociznaSchema,
+  skladowaMaterialFormSchema,
+  skladowaRobociznaFormSchema,
   jednostkaMaterialOptions,
-  jednostkaRobociznaOptions,
-  type CreateSkladowaMaterialInput,
-  type CreateSkladowaRobociznaInput,
+  type SkladowaMaterialFormInput,
+  type SkladowaRobociznaFormInput,
 } from '@/lib/validations/skladowe';
 import {
   createSkladowaMaterial,
   updateSkladowaMaterial,
   createSkladowaRobocizna,
   updateSkladowaRobocizna,
+  getCenaCennik,
+  getStawkaCennik,
   type SkladowaMaterial,
   type SkladowaRobocizna,
 } from '@/actions/skladowe';
@@ -56,6 +57,8 @@ interface MaterialProps {
   skladowa?: SkladowaMaterial;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  produktOptions?: { id: string; nazwa: string; sku: string }[];
+  dostawcaOptions?: { id: string; nazwa: string; kod: string | null }[];
 }
 
 interface RobociznaProps {
@@ -65,6 +68,8 @@ interface RobociznaProps {
   skladowa?: SkladowaRobocizna;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  typRobociznyOptions?: { id: string; nazwa: string; jednostka?: string | null }[];
+  podwykonawcaOptions?: { id: string; nazwa: string }[];
 }
 
 type Props = MaterialProps | RobociznaProps;
@@ -89,93 +94,141 @@ const TYPE_CONFIG: Record<SkladowaType, {
   },
 };
 
+function formatCena(value: number): string {
+  return new Intl.NumberFormat('pl-PL', {
+    style: 'currency',
+    currency: 'PLN',
+    minimumFractionDigits: 2,
+  }).format(value);
+}
+
 export function SkladowaPanel(props: Props) {
   const { type, mode, pozycjaId, open, onOpenChange } = props;
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [cennikPrice, setCennikPrice] = useState<number | null>(null);
+  const [cennikLoading, setCennikLoading] = useState(false);
   const isEdit = mode === 'edit';
   const config = TYPE_CONFIG[type];
   const Icon = config.icon;
 
   // Material form
-  const materialForm = useForm<CreateSkladowaMaterialInput>({
-    resolver: zodResolver(createSkladowaMaterialSchema),
+  const materialForm = useForm<SkladowaMaterialFormInput>({
+    resolver: zodResolver(skladowaMaterialFormSchema),
     defaultValues: {
-      nazwa: '',
+      produkt_id: '',
+      dostawca_id: '',
       norma_domyslna: 1,
-      jednostka: undefined,
-      cena_domyslna: undefined,
+      jednostka: null,
     },
   });
 
   // Robocizna form
-  const robociznaForm = useForm<CreateSkladowaRobociznaInput>({
-    resolver: zodResolver(createSkladowaRobociznaSchema),
+  const robociznaForm = useForm<SkladowaRobociznaFormInput>({
+    resolver: zodResolver(skladowaRobociznaFormSchema),
     defaultValues: {
-      opis: '',
-      norma_domyslna: 1,
-      jednostka: 'h',
-      stawka_domyslna: undefined,
+      typ_robocizny_id: '',
+      podwykonawca_id: '',
+      cena: 0,
     },
   });
+
+  // Watch form values for cennik lookup
+  const watchedProduktId = materialForm.watch('produkt_id');
+  const watchedDostawcaId = materialForm.watch('dostawca_id');
+  const watchedTypRobociznyId = robociznaForm.watch('typ_robocizny_id');
+  const watchedPodwykonawcaId = robociznaForm.watch('podwykonawca_id');
+
+  // Cennik lookup for material
+  const lookupMaterialPrice = useCallback(async (produktId: string, dostawcaId: string) => {
+    if (!produktId || !dostawcaId) {
+      setCennikPrice(null);
+      return;
+    }
+    setCennikLoading(true);
+    try {
+      const result = await getCenaCennik(produktId, dostawcaId);
+      setCennikPrice(result?.cena_netto ?? null);
+    } finally {
+      setCennikLoading(false);
+    }
+  }, []);
+
+  // Cennik lookup for robocizna
+  const lookupRobociznaPrice = useCallback(async (typId: string, podwykonawcaId: string) => {
+    if (!typId || !podwykonawcaId) {
+      setCennikPrice(null);
+      return;
+    }
+    setCennikLoading(true);
+    try {
+      const result = await getStawkaCennik(typId, podwykonawcaId);
+      if (result?.stawka != null) {
+        setCennikPrice(result.stawka);
+        // Auto-fill cena field with stawka from cennik
+        robociznaForm.setValue('cena', result.stawka);
+      } else {
+        setCennikPrice(null);
+      }
+    } finally {
+      setCennikLoading(false);
+    }
+  }, [robociznaForm]);
+
+  // Trigger cennik lookup when material dropdowns change
+  useEffect(() => {
+    if (type === 'material' && open) {
+      lookupMaterialPrice(watchedProduktId, watchedDostawcaId);
+    }
+  }, [type, open, watchedProduktId, watchedDostawcaId, lookupMaterialPrice]);
+
+  // Trigger cennik lookup when robocizna dropdowns change
+  useEffect(() => {
+    if (type === 'robocizna' && open) {
+      lookupRobociznaPrice(watchedTypRobociznyId, watchedPodwykonawcaId);
+    }
+  }, [type, open, watchedTypRobociznyId, watchedPodwykonawcaId, lookupRobociznaPrice]);
 
   // Reset forms when panel opens
   useEffect(() => {
     if (open) {
+      setCennikPrice(null);
       if (type === 'material') {
         const skladowa = props.skladowa as SkladowaMaterial | undefined;
         if (isEdit && skladowa) {
           materialForm.reset({
-            nazwa: skladowa.nazwa || '',
+            produkt_id: skladowa.produkt_id || '',
+            dostawca_id: skladowa.dostawca_id || '',
             norma_domyslna: skladowa.norma_domyslna || 1,
-            jednostka: (skladowa.jednostka as CreateSkladowaMaterialInput['jednostka']) || undefined,
-            cena_domyslna: skladowa.cena_domyslna ?? undefined,
+            jednostka: (skladowa.jednostka as SkladowaMaterialFormInput['jednostka']) || null,
           });
         } else {
           materialForm.reset({
-            nazwa: '',
+            produkt_id: '',
+            dostawca_id: '',
             norma_domyslna: 1,
-            jednostka: undefined,
-            cena_domyslna: undefined,
+            jednostka: null,
           });
         }
       } else {
         const skladowa = props.skladowa as SkladowaRobocizna | undefined;
         if (isEdit && skladowa) {
           robociznaForm.reset({
-            opis: skladowa.opis || '',
-            norma_domyslna: skladowa.norma_domyslna || 1,
-            jednostka: (skladowa.jednostka as CreateSkladowaRobociznaInput['jednostka']) || 'h',
-            stawka_domyslna: skladowa.stawka_domyslna ?? undefined,
+            typ_robocizny_id: skladowa.typ_robocizny_id || '',
+            podwykonawca_id: skladowa.podwykonawca_id || '',
+            cena: skladowa.cena || 0,
           });
         } else {
           robociznaForm.reset({
-            opis: '',
-            norma_domyslna: 1,
-            jednostka: 'h',
-            stawka_domyslna: undefined,
+            typ_robocizny_id: '',
+            podwykonawca_id: '',
+            cena: 0,
           });
         }
       }
     }
   }, [open, type, isEdit, props.skladowa, materialForm, robociznaForm]);
 
-  // Live price calculation
-  const materialValues = materialForm.watch();
-  const robociznaValues = robociznaForm.watch();
-
-  const pricePreview = useMemo(() => {
-    if (type === 'material') {
-      const norma = materialValues.norma_domyslna || 0;
-      const cena = materialValues.cena_domyslna || 0;
-      return norma * cena;
-    } else {
-      const norma = robociznaValues.norma_domyslna || 0;
-      const stawka = robociznaValues.stawka_domyslna || 0;
-      return norma * stawka;
-    }
-  }, [type, materialValues, robociznaValues]);
-
-  async function onSubmitMaterial(data: CreateSkladowaMaterialInput) {
+  async function onSubmitMaterial(data: SkladowaMaterialFormInput) {
     setIsSubmitting(true);
     try {
       const skladowa = props.skladowa as SkladowaMaterial | undefined;
@@ -201,7 +254,7 @@ export function SkladowaPanel(props: Props) {
     }
   }
 
-  async function onSubmitRobocizna(data: CreateSkladowaRobociznaInput) {
+  async function onSubmitRobocizna(data: SkladowaRobociznaFormInput) {
     setIsSubmitting(true);
     try {
       const skladowa = props.skladowa as SkladowaRobocizna | undefined;
@@ -228,6 +281,27 @@ export function SkladowaPanel(props: Props) {
   }
 
   const panelTitle = isEdit ? `Edytuj składową` : `Dodaj składową`;
+  const inputClass = "bg-white/5 border-white/10 text-white placeholder:text-white/30";
+
+  const produktOptions = type === 'material' ? (props as MaterialProps).produktOptions ?? [] : [];
+  const dostawcaOptions = type === 'material' ? (props as MaterialProps).dostawcaOptions ?? [] : [];
+  const typRobociznyOptions = type === 'robocizna' ? (props as RobociznaProps).typRobociznyOptions ?? [] : [];
+  const podwykonawcaOptions = type === 'robocizna' ? (props as RobociznaProps).podwykonawcaOptions ?? [] : [];
+
+  // Cennik info badge
+  const cennikBadge = cennikLoading ? (
+    <div className="text-xs text-white/40 animate-pulse">Szukam w cenniku...</div>
+  ) : cennikPrice !== null ? (
+    <div className="flex items-center gap-1.5 text-xs text-emerald-400 bg-emerald-500/10 rounded px-2 py-1">
+      <Info className="w-3 h-3" />
+      Cennik: {formatCena(cennikPrice)}
+    </div>
+  ) : (watchedProduktId && watchedDostawcaId && type === 'material') || (watchedTypRobociznyId && watchedPodwykonawcaId && type === 'robocizna') ? (
+    <div className="flex items-center gap-1.5 text-xs text-white/40">
+      <Info className="w-3 h-3" />
+      Brak ceny w cenniku
+    </div>
+  ) : null;
 
   return (
     <SlidePanel open={open} onOpenChange={onOpenChange} variant="narrow">
@@ -247,21 +321,57 @@ export function SkladowaPanel(props: Props) {
             <form id="skladowa-form" onSubmit={materialForm.handleSubmit(onSubmitMaterial)} className="space-y-6">
               <FormField
                 control={materialForm.control}
-                name="nazwa"
+                name="produkt_id"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-white/80">Nazwa</FormLabel>
-                    <FormControl>
-                      <Input
-                        {...field}
-                        placeholder="Nazwa materiału"
-                        className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
-                      />
-                    </FormControl>
+                    <FormLabel className="text-white/80">Produkt *</FormLabel>
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <FormControl>
+                        <SelectTrigger className={inputClass}>
+                          <SelectValue placeholder="Wybierz produkt" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {produktOptions.map((p) => (
+                          <SelectItem key={p.id} value={p.id}>
+                            <span className="font-mono text-xs text-amber-500 mr-2">{p.sku}</span>
+                            {p.nazwa}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                     <FormMessage />
                   </FormItem>
                 )}
               />
+
+              <FormField
+                control={materialForm.control}
+                name="dostawca_id"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-white/80">Dostawca *</FormLabel>
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <FormControl>
+                        <SelectTrigger className={inputClass}>
+                          <SelectValue placeholder="Wybierz dostawcę" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {dostawcaOptions.map((d) => (
+                          <SelectItem key={d.id} value={d.id}>
+                            {d.kod && <span className="font-mono text-xs text-amber-500 mr-2">{d.kod}</span>}
+                            {d.nazwa}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {cennikBadge && <div>{cennikBadge}</div>}
 
               <div className="grid grid-cols-2 gap-4">
                 <FormField
@@ -275,7 +385,7 @@ export function SkladowaPanel(props: Props) {
                           type="number"
                           step="0.01"
                           min="0.01"
-                          className="bg-white/5 border-white/10 text-white"
+                          className={inputClass}
                           {...field}
                           onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
                           value={field.value}
@@ -297,7 +407,7 @@ export function SkladowaPanel(props: Props) {
                         value={field.value ?? ''}
                       >
                         <FormControl>
-                          <SelectTrigger className="w-full bg-white/5 border-white/10 text-white">
+                          <SelectTrigger className={`w-full ${inputClass}`}>
                             <SelectValue placeholder="Wybierz" />
                           </SelectTrigger>
                         </FormControl>
@@ -314,42 +424,6 @@ export function SkladowaPanel(props: Props) {
                   )}
                 />
               </div>
-
-              <FormField
-                control={materialForm.control}
-                name="cena_domyslna"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-white/80">Cena (opcjonalnie)</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        placeholder="zł/jednostka"
-                        className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
-                        {...field}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          field.onChange(val === '' ? undefined : parseFloat(val));
-                        }}
-                        value={field.value ?? ''}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              {/* Live price calculation preview */}
-              {pricePreview > 0 && (
-                <div className="p-3 rounded-md bg-blue-500/10 border border-blue-500/20">
-                  <div className="text-xs text-white/50 mb-1">Szacunkowy koszt</div>
-                  <div className="text-lg font-medium text-blue-400">
-                    {pricePreview.toFixed(2)} zł
-                  </div>
-                </div>
-              )}
             </form>
           </Form>
         ) : (
@@ -357,106 +431,78 @@ export function SkladowaPanel(props: Props) {
             <form id="skladowa-form" onSubmit={robociznaForm.handleSubmit(onSubmitRobocizna)} className="space-y-6">
               <FormField
                 control={robociznaForm.control}
-                name="opis"
+                name="typ_robocizny_id"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-white/80">Opis</FormLabel>
-                    <FormControl>
-                      <Input
-                        {...field}
-                        placeholder="Opis pracy"
-                        className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
-                      />
-                    </FormControl>
+                    <FormLabel className="text-white/80">Typ robocizny *</FormLabel>
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <FormControl>
+                        <SelectTrigger className={inputClass}>
+                          <SelectValue placeholder="Wybierz typ robocizny" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {typRobociznyOptions.map((t) => (
+                          <SelectItem key={t.id} value={t.id}>
+                            {t.nazwa}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                     <FormMessage />
                   </FormItem>
                 )}
               />
 
-              <div className="grid grid-cols-2 gap-4">
-                <FormField
-                  control={robociznaForm.control}
-                  name="norma_domyslna"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-white/80">Norma</FormLabel>
+              <FormField
+                control={robociznaForm.control}
+                name="podwykonawca_id"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-white/80">Podwykonawca *</FormLabel>
+                    <Select value={field.value} onValueChange={field.onChange}>
                       <FormControl>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          min="0.01"
-                          className="bg-white/5 border-white/10 text-white"
-                          {...field}
-                          onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
-                          value={field.value}
-                        />
+                        <SelectTrigger className={inputClass}>
+                          <SelectValue placeholder="Wybierz podwykonawcę" />
+                        </SelectTrigger>
                       </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                      <SelectContent>
+                        {podwykonawcaOptions.map((p) => (
+                          <SelectItem key={p.id} value={p.id}>
+                            {p.nazwa}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-                <FormField
-                  control={robociznaForm.control}
-                  name="jednostka"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-white/80">Jednostka</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger className="w-full bg-white/5 border-white/10 text-white">
-                            <SelectValue placeholder="Wybierz" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {jednostkaRobociznaOptions.map((j) => (
-                            <SelectItem key={j} value={j}>
-                              {j}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
+              {cennikBadge && <div>{cennikBadge}</div>}
 
               <FormField
                 control={robociznaForm.control}
-                name="stawka_domyslna"
+                name="cena"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-white/80">Stawka (opcjonalnie)</FormLabel>
+                    <FormLabel className="text-white/80">Cena</FormLabel>
                     <FormControl>
                       <Input
                         type="number"
                         step="0.01"
                         min="0"
-                        placeholder="zł/jednostka"
-                        className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
+                        placeholder="zł"
+                        className={inputClass}
                         {...field}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          field.onChange(val === '' ? undefined : parseFloat(val));
-                        }}
-                        value={field.value ?? ''}
+                        onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                        value={field.value}
                       />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-
-              {/* Live price calculation preview */}
-              {pricePreview > 0 && (
-                <div className="p-3 rounded-md bg-emerald-500/10 border border-emerald-500/20">
-                  <div className="text-xs text-white/50 mb-1">Szacunkowy koszt</div>
-                  <div className="text-lg font-medium text-emerald-400">
-                    {pricePreview.toFixed(2)} zł
-                  </div>
-                </div>
-              )}
             </form>
           </Form>
         )}

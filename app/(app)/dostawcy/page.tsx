@@ -4,6 +4,9 @@ import { type DostawcyFilters } from '@/lib/validations/dostawcy';
 
 interface PageProps {
   searchParams: Promise<{
+    branza?: string;
+    kategoria?: string;
+    podkategoria?: string;
     search?: string;
     showInactive?: string;
     sort?: string;
@@ -16,6 +19,9 @@ export default async function DostawcyPage({ searchParams }: PageProps) {
   const params = await searchParams;
 
   const filters: DostawcyFilters = {
+    branza: params.branza,
+    kategoria: params.kategoria,
+    podkategoria: params.podkategoria,
     search: params.search,
     showInactive: params.showInactive === 'true',
     sort: params.sort,

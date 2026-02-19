@@ -1,0 +1,189 @@
+{
+  "project": "PLANY App",
+  "branchName": "ralph/phase7-projekty",
+  "description": "Phase 7: Projekty + Rewizje - CRUD for projects and revisions with table view, filters, pagination, detail panel, and revision management",
+  "mode": "feature",
+  "baseBranch": "main",
+  "userStories": [
+    {
+      "id": "PROJ-001",
+      "title": "Server Actions for projekty CRUD",
+      "description": "Create actions/projekty.ts with full CRUD: getProjekty (list with filters: status, search + pagination 15/page), getProjekt (single), createProjekt, updateProjekt, deleteProjekt (set aktywny=false soft delete). Follow pattern from actions/dostawcy.ts exactly: ActionResult<T> type, createClient() from lib/supabase/server, revalidatePath after mutations. DB columns: id, organization_id, nazwa, slug, klient, adres, powierzchnia, status (project_status enum: draft/ofertowanie/realizacja/zamkniety/odrzucony), notatki, created_at, updated_at. getProjekty should also return rewizja count per project. Use separate query for count. Slug auto-generated from nazwa (lowercase, spaces to dashes, no special chars). Note: DB column is 'powierzchnia' not 'powierzchnia_m2'.",
+      "acceptanceCriteria": [
+        "getProjekty returns paginated list with filters (status, search) and rewizja count",
+        "getProjekt returns single project by id",
+        "createProjekt inserts new project with auto-generated slug",
+        "updateProjekt updates fields selectively",
+        "deleteProjekt soft-deletes by deleting row (DB has no aktywny column, so just delete)",
+        "revalidatePath('/projekty') called after every mutation",
+        "Typecheck passes"
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": "Implemented in actions/projekty.ts. Slug generation handles Polish chars. Uses separate rewizje count query.",
+      "dependsOn": []
+    },
+    {
+      "id": "PROJ-002",
+      "title": "Validation schemas for projekty",
+      "description": "Create lib/validations/projekty.ts with Zod schemas. Follow pattern from lib/validations/dostawcy.ts. Schemas: createProjektSchema (nazwa required min(1), klient optional, adres optional, powierzchnia optional number positive, notatki optional), updateProjektSchema (all optional), projektyFiltersSchema (search optional, status optional string, page coerce number default 1). Export TypeScript types. Remember: NO .default() on fields used with zodResolver - create separate form schema if needed.",
+      "acceptanceCriteria": [
+        "createProjektSchema validates nazwa as required min(1)",
+        "updateProjektSchema has all fields optional",
+        "projektyFiltersSchema has search, status, page fields",
+        "TypeScript types exported (CreateProjektInput, UpdateProjektInput, ProjektyFilters)",
+        "Typecheck passes"
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": "Implemented in lib/validations/projekty.ts. updateProjektSchema includes status field.",
+      "dependsOn": []
+    },
+    {
+      "id": "PROJ-003",
+      "title": "Projekty page with table, filters and pagination",
+      "description": "Rewrite app/(app)/projekty/page.tsx from stub to full server component (async, reads searchParams, calls getProjekty, passes to ProjektyView). Create _components/projekty-view.tsx ('use client', manages panel states like dostawcy-view.tsx pattern), _components/projekty-table.tsx (TanStack Table with columns: Nazwa, Klient, Status, Rewizje count, Data created_at formatted), _components/projekty-filters.tsx (search input with debounce 300ms + status Select dropdown with options: all/draft/ofertowanie/realizacja/zamkniety/odrzucony), _components/projekty-pagination.tsx (reuse pagination pattern from dostawcy, hardcoded route '/projekty'). Layout in View: breadcrumb row with '+ Nowy projekt' button (amber), filters, table in scrollable area, pagination at bottom.",
+      "acceptanceCriteria": [
+        "Page server component reads searchParams and calls getProjekty",
+        "Table shows columns: Nazwa, Klient, Status, Rewizje, Data",
+        "Search filter works with debounce (300ms)",
+        "Status filter dropdown filters by project_status enum values",
+        "Pagination works (15 items per page)",
+        "Row click opens detail panel",
+        "'+ Nowy projekt' button opens form panel",
+        "Verify at localhost:3000/projekty",
+        "Typecheck passes"
+      ],
+      "priority": 2,
+      "passes": true,
+      "notes": "Full page with all components. Follows dostawcy pattern exactly.",
+      "dependsOn": ["PROJ-001", "PROJ-002"]
+    },
+    {
+      "id": "PROJ-004",
+      "title": "Status badges for projekty",
+      "description": "In projekty-table.tsx, render Status column with colored Badge component from @/components/ui/badge. Create a utility mapping object for status colors and Polish labels. Colors: draft → zinc (bg-zinc-500/10 text-zinc-400 border-zinc-500/20), ofertowanie → amber (bg-amber-500/10 text-amber-400 border-amber-500/20), realizacja → blue (bg-blue-500/10 text-blue-400 border-blue-500/20), zamkniety → emerald (bg-emerald-500/10 text-emerald-400 border-emerald-500/20), odrzucony → red (bg-red-500/10 text-red-400 border-red-500/20). Polish labels: draft='Szkic', ofertowanie='Ofertowanie', realizacja='Realizacja', zamkniety='Zamknięty', odrzucony='Odrzucony'. Export the mapping so it can be reused in detail panel.",
+      "acceptanceCriteria": [
+        "Each status value renders with correct color badge",
+        "Polish labels displayed (Szkic, Ofertowanie, Realizacja, Zamknięty, Odrzucony)",
+        "Badge uses appropriate color classes per status",
+        "Status config exported for reuse in other components",
+        "Typecheck passes"
+      ],
+      "priority": 2,
+      "passes": true,
+      "notes": "Shared config in lib/projekty/status-config.ts. StatusBadge exported from projekty-table.tsx, reused in detail panel.",
+      "dependsOn": ["PROJ-003"]
+    },
+    {
+      "id": "PROJ-005",
+      "title": "Projekt form panel (create/edit)",
+      "description": "Create _components/panels/projekt-form-panel.tsx following dostawca-form-panel.tsx pattern exactly. SlidePanel with react-hook-form + zodResolver. Fields: nazwa (Input, required), klient (Input, optional), adres (Textarea, optional), powierzchnia (Input type='number', optional, use valueAsNumber on onChange), notatki (Textarea, optional). Form schema: projektFormSchema without .default() per zodResolver gotcha (nazwa: z.string().min(1), klient: z.string().optional().or(z.literal('')), adres: z.string().optional().or(z.literal('')), powierzchnia: z.number().positive().optional().or(z.literal(0)).or(z.literal(undefined)), notatki: z.string().optional().or(z.literal(''))). useEffect resets form on open (empty for add, pre-filled for edit). Mode 'add' calls createProjekt, 'edit' calls updateProjekt. Toast success/error. Wire into projekty-view.tsx.",
+      "acceptanceCriteria": [
+        "SlidePanel opens for add mode (empty form) and edit mode (pre-filled)",
+        "Form validates nazwa as required",
+        "powierzchnia uses number input",
+        "createProjekt called in add mode, updateProjekt in edit mode",
+        "Toast shows success/error after submit",
+        "Panel closes after successful submit",
+        "Verify at localhost:3000/projekty - click '+ Nowy projekt'",
+        "Typecheck passes"
+      ],
+      "priority": 3,
+      "passes": true,
+      "notes": "Form schema uses .or(z.literal('')) pattern. Powierzchnia uses valueAsNumber.",
+      "dependsOn": ["PROJ-003"]
+    },
+    {
+      "id": "PROJ-006",
+      "title": "Projekt detail panel",
+      "description": "Create _components/panels/projekt-detail-panel.tsx following dostawca-detail-panel.tsx pattern. SlidePanel variant='wide'. Props: projektId, open, onOpenChange, onEdit, onDelete. Loads data on open via getProjekt + getRewizje (from PROJ-007, but wire placeholder for now). Sections: 1) Header: nazwa + status badge (reuse from PROJ-004) + edit/delete icon buttons, 2) Dane projektu section: klient (or 'Brak'), adres (or 'Brak'), powierzchnia with 'm²' suffix, created_at formatted as date, 3) Rewizja section (placeholder: 'Brak rewizji' text until PROJ-008), 4) Action button: 'Otwórz kosztorys' (disabled, placeholder). Wire into projekty-view.tsx: row click sets detailPanel state, edit/delete handlers.",
+      "acceptanceCriteria": [
+        "Detail panel opens on row click with loading spinner",
+        "Shows project info: nazwa, klient, adres, powierzchnia, status badge",
+        "Edit button triggers edit mode in form panel",
+        "Delete button triggers delete confirm panel",
+        "Rewizja section shows placeholder until PROJ-008 is done",
+        "'Otwórz kosztorys' button visible (disabled placeholder)",
+        "Verify at localhost:3000/projekty - click a row",
+        "Typecheck passes"
+      ],
+      "priority": 3,
+      "passes": true,
+      "notes": "Detail panel fully wired with edit/delete handlers. Rewizje loaded from start (upgraded in PROJ-008).",
+      "dependsOn": ["PROJ-003", "PROJ-004"]
+    },
+    {
+      "id": "PROJ-007",
+      "title": "Server Actions for rewizje CRUD",
+      "description": "Create actions/rewizje.ts with: getRewizje(projektId: string) - list all revisions for a project ordered by numer ASC, returns array of {id, numer, nazwa, is_locked, locked_at, is_accepted, accepted_at, created_at}. createRewizja(projektId: string, nazwa?: string) - creates new revision with auto-incremented numer (SELECT COALESCE(MAX(numer), -1) + 1 from rewizje WHERE projekt_id). lockRewizja(id: string) - sets is_locked=true, locked_at=NOW(). unlockRewizja(id: string) - sets is_locked=false, locked_at=null. Returns ActionResult. revalidatePath('/projekty') after all mutations. Note: prevent_unlock_accepted trigger in DB will block unlocking accepted revisions automatically.",
+      "acceptanceCriteria": [
+        "getRewizje returns list of revisions for a project, ordered by numer",
+        "createRewizja auto-increments numer (0, 1, 2...)",
+        "lockRewizja sets is_locked=true and locked_at=NOW()",
+        "unlockRewizja sets is_locked=false (DB trigger blocks if is_accepted=true)",
+        "revalidatePath called after mutations",
+        "Typecheck passes"
+      ],
+      "priority": 3,
+      "passes": true,
+      "notes": "Uses MAX(numer)+1 approach for auto-increment. DB trigger handles accepted revision protection.",
+      "dependsOn": ["PROJ-001"]
+    },
+    {
+      "id": "PROJ-008",
+      "title": "Rewizja selector in detail panel",
+      "description": "Update _components/panels/projekt-detail-panel.tsx to add revision management. Load revisions via getRewizje on panel open. Show revision section with: horizontal list of revision badges (R0, R1, R2...) as clickable buttons, active one highlighted amber, locked ones show Lock icon, accepted ones show Check icon. Selected revision shows: numer, nazwa, status text, dates. Buttons below: '+ Nowa rewizja' (calls createRewizja), 'Zablokuj' or 'Odblokuj' toggle (conditionally shown based on is_locked state, calls lockRewizja/unlockRewizja). Auto-select latest revision on load. Show toast on errors (e.g., trying to unlock accepted revision).",
+      "acceptanceCriteria": [
+        "Revision list shown as horizontal badges/buttons (R0, R1, R2...)",
+        "Active revision highlighted with amber color",
+        "Lock icon shown for locked revisions, Check icon for accepted",
+        "'+ Nowa rewizja' button creates new revision and selects it",
+        "Lock/Unlock button toggles revision lock state with toast feedback",
+        "Unlocking accepted revision shows error toast (DB trigger blocks it)",
+        "Verify at localhost:3000/projekty - open detail, see revision selector",
+        "Typecheck passes"
+      ],
+      "priority": 4,
+      "passes": true,
+      "notes": "Full revision management with badges, selection, create, lock/unlock. Auto-selects latest.",
+      "dependsOn": ["PROJ-006", "PROJ-007"]
+    },
+    {
+      "id": "PROJ-009",
+      "title": "Delete projekt with confirmation",
+      "description": "Wire up delete flow in projekty-view.tsx using reusable DeleteConfirmPanel from app/(app)/kategorie/_components/panels/delete-confirm-panel.tsx. Import path: '../../kategorie/_components/panels/delete-confirm-panel'. Real delete (not soft delete - DB has no aktywny column). Warning message: 'Ta operacja jest nieodwracalna. Projekt i wszystkie powiązane dane (rewizje, kosztorys) zostaną usunięte.' Show project name and slug in confirmation. After delete: close detail panel, toast success. Note: DB has ON DELETE CASCADE on rewizje→projekt, so revisions auto-delete.",
+      "acceptanceCriteria": [
+        "Delete button in detail panel opens DeleteConfirmPanel",
+        "Warning message shown about consequences",
+        "Confirm deletes project permanently (CASCADE deletes revisions)",
+        "Toast success after deletion",
+        "Detail panel closes after deletion",
+        "Project disappears from list after page revalidation",
+        "Typecheck passes"
+      ],
+      "priority": 4,
+      "passes": true,
+      "notes": "Wired in PROJ-003 view. Uses reusable DeleteConfirmPanel from kategorie. Shows slug as itemKod.",
+      "dependsOn": ["PROJ-006"]
+    },
+    {
+      "id": "PROJ-010",
+      "title": "Seed sample projekty and rewizje data",
+      "description": "Use Supabase MCP apply_migration tool to create a migration that inserts sample projects and revisions. Insert 4 projects with different statuses using the first organization from organizations table. Use INSERT...SELECT pattern. Projects: 1) 'Biuro Acme - Marszałkowska 100' (klient='Acme Corp', status='realizacja', powierzchnia=450), 2) 'Klinika Dental Care' (klient='MedGroup', status='ofertowanie', powierzchnia=280), 3) 'Coworking TechHub' (klient='TechHub Sp. z o.o.', status='draft', powierzchnia=620), 4) 'Restauracja Gusto' (klient='Gusto Gastro', status='zamkniety', powierzchnia=180). Add 1-3 rewizje per project. Lock some revisions. Use ON CONFLICT DO NOTHING for idempotency (conflict on slug unique constraint).",
+      "acceptanceCriteria": [
+        "4 sample projects inserted with different statuses",
+        "Each project has 1-3 revisions (R0, R1, etc.)",
+        "At least one project has a locked revision",
+        "Data visible at localhost:3000/projekty",
+        "ON CONFLICT for idempotency",
+        "Migration applies without errors",
+        "Typecheck passes"
+      ],
+      "priority": 5,
+      "passes": true,
+      "notes": "Created Demo Organization first (org table was empty). Migration uses ON CONFLICT and NOT EXISTS for idempotency. Data visible after user logs in and is added to org.",
+      "dependsOn": ["PROJ-001"]
+    }
+  ]
+}

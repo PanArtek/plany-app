@@ -25,7 +25,8 @@ export interface DostawcaWithCount {
   kontakt: string | null;
   aktywny: boolean;
   produktyCount: number;
-  totalWartosc: number;
+  pozycjeCount: number;
+  najnizszaCena: number | null;
 }
 
 export interface DostawcyResult {
@@ -41,6 +42,17 @@ export interface DostawcaBase {
   kod: string | null;
   kontakt: string | null;
   aktywny: boolean;
+  nazwa_pelna: string | null;
+  nip: string | null;
+  regon: string | null;
+  krs: string | null;
+  adres_siedziby: string | null;
+  osoba_reprezentujaca: string | null;
+  email: string | null;
+  strona_www: string | null;
+  nr_konta: string | null;
+  uwagi: string | null;
+  ocena: number | null;
 }
 
 export interface CennikEntry {
@@ -53,10 +65,16 @@ export interface CennikEntry {
   aktywny: boolean;
 }
 
+export interface DostawcaPozycjaProdukt {
+  produktNazwa: string;
+  produktSku: string;
+}
+
 export interface DostawcaPozycja {
   id: string;
   kod: string;
   nazwa: string;
+  produkty: DostawcaPozycjaProdukt[];
 }
 
 // --- Pagination ---
@@ -72,6 +90,9 @@ export async function getDostawcy(filters: DostawcyFilters): Promise<DostawcyRes
   const offset = (page - 1) * PAGE_SIZE;
 
   const { data, error } = await supabase.rpc('get_dostawcy_aggregated', {
+    p_branza: filters.branza || null,
+    p_kategoria: filters.kategoria || null,
+    p_podkategoria: filters.podkategoria || null,
     p_search: filters.search || null,
     p_show_inactive: filters.showInactive || false,
     p_sort: filters.sort || 'nazwa',
@@ -89,7 +110,8 @@ export async function getDostawcy(filters: DostawcyFilters): Promise<DostawcyRes
     kontakt: string | null;
     aktywny: boolean;
     produkty_count: number;
-    total_wartosc: number;
+    pozycje_count: number;
+    najnizsza_cena: number | null;
     total_count: number;
   }>;
 
@@ -103,7 +125,8 @@ export async function getDostawcy(filters: DostawcyFilters): Promise<DostawcyRes
       kontakt: r.kontakt,
       aktywny: r.aktywny,
       produktyCount: Number(r.produkty_count),
-      totalWartosc: Number(r.total_wartosc),
+      pozycjeCount: Number(r.pozycje_count),
+      najnizszaCena: r.najnizsza_cena !== null ? Number(r.najnizsza_cena) : null,
     })),
     totalCount,
     page,
@@ -118,7 +141,7 @@ export async function getDostawca(id: string): Promise<DostawcaBase | null> {
 
   const { data, error } = await supabase
     .from('dostawcy')
-    .select('id, nazwa, kod, kontakt, aktywny')
+    .select('id, nazwa, kod, kontakt, aktywny, nazwa_pelna, nip, regon, krs, adres_siedziby, osoba_reprezentujaca, email, strona_www, nr_konta, uwagi, ocena')
     .eq('id', id)
     .single();
 
@@ -171,23 +194,27 @@ export async function getDostawcaPozycje(dostawcaId: string): Promise<DostawcaPo
   const { data, error } = await supabase
     .from('biblioteka_skladowe_materialy')
     .select(`
-      pozycje_biblioteka!pozycja_biblioteka_id(id, kod, nazwa)
+      pozycje_biblioteka!pozycja_biblioteka_id(id, kod, nazwa),
+      produkty!produkt_id(nazwa, sku)
     `)
     .eq('dostawca_id', dostawcaId);
 
   if (error) throw error;
 
-  // Deduplicate by pozycja id
-  const seen = new Set<string>();
-  const result: DostawcaPozycja[] = [];
+  // Group products by pozycja
+  const grouped = new Map<string, DostawcaPozycja>();
   for (const row of (data || []) as Record<string, unknown>[]) {
     const pozycja = row.pozycje_biblioteka as { id: string; kod: string; nazwa: string };
-    if (!seen.has(pozycja.id)) {
-      seen.add(pozycja.id);
-      result.push({ id: pozycja.id, kod: pozycja.kod, nazwa: pozycja.nazwa });
+    const produkt = row.produkty as { nazwa: string; sku: string } | null;
+
+    if (!grouped.has(pozycja.id)) {
+      grouped.set(pozycja.id, { id: pozycja.id, kod: pozycja.kod, nazwa: pozycja.nazwa, produkty: [] });
+    }
+    if (produkt) {
+      grouped.get(pozycja.id)!.produkty.push({ produktNazwa: produkt.nazwa, produktSku: produkt.sku });
     }
   }
-  return result;
+  return Array.from(grouped.values()).sort((a, b) => a.kod.localeCompare(b.kod));
 }
 
 // --- STATS ---
@@ -229,8 +256,19 @@ export async function createDostawca(input: unknown): Promise<ActionResult<Dosta
       kod: parsed.data.kod,
       kontakt: parsed.data.kontakt,
       aktywny: parsed.data.aktywny,
+      nazwa_pelna: parsed.data.nazwa_pelna || null,
+      nip: parsed.data.nip || null,
+      regon: parsed.data.regon || null,
+      krs: parsed.data.krs || null,
+      adres_siedziby: parsed.data.adres_siedziby || null,
+      osoba_reprezentujaca: parsed.data.osoba_reprezentujaca || null,
+      email: parsed.data.email || null,
+      strona_www: parsed.data.strona_www || null,
+      nr_konta: parsed.data.nr_konta || null,
+      uwagi: parsed.data.uwagi || null,
+      ocena: parsed.data.ocena ?? null,
     })
-    .select('id, nazwa, kod, kontakt, aktywny')
+    .select('id, nazwa, kod, kontakt, aktywny, nazwa_pelna, nip, regon, krs, adres_siedziby, osoba_reprezentujaca, email, strona_www, nr_konta, uwagi, ocena')
     .single();
 
   if (error) {
@@ -256,12 +294,23 @@ export async function updateDostawca(id: string, input: unknown): Promise<Action
   if (parsed.data.kod !== undefined) updateData.kod = parsed.data.kod;
   if (parsed.data.kontakt !== undefined) updateData.kontakt = parsed.data.kontakt;
   if (parsed.data.aktywny !== undefined) updateData.aktywny = parsed.data.aktywny;
+  if (parsed.data.nazwa_pelna !== undefined) updateData.nazwa_pelna = parsed.data.nazwa_pelna || null;
+  if (parsed.data.nip !== undefined) updateData.nip = parsed.data.nip || null;
+  if (parsed.data.regon !== undefined) updateData.regon = parsed.data.regon || null;
+  if (parsed.data.krs !== undefined) updateData.krs = parsed.data.krs || null;
+  if (parsed.data.adres_siedziby !== undefined) updateData.adres_siedziby = parsed.data.adres_siedziby || null;
+  if (parsed.data.osoba_reprezentujaca !== undefined) updateData.osoba_reprezentujaca = parsed.data.osoba_reprezentujaca || null;
+  if (parsed.data.email !== undefined) updateData.email = parsed.data.email || null;
+  if (parsed.data.strona_www !== undefined) updateData.strona_www = parsed.data.strona_www || null;
+  if (parsed.data.nr_konta !== undefined) updateData.nr_konta = parsed.data.nr_konta || null;
+  if (parsed.data.uwagi !== undefined) updateData.uwagi = parsed.data.uwagi || null;
+  if (parsed.data.ocena !== undefined) updateData.ocena = parsed.data.ocena ?? null;
 
   const { data, error } = await supabase
     .from('dostawcy')
     .update(updateData)
     .eq('id', id)
-    .select('id, nazwa, kod, kontakt, aktywny')
+    .select('id, nazwa, kod, kontakt, aktywny, nazwa_pelna, nip, regon, krs, adres_siedziby, osoba_reprezentujaca, email, strona_www, nr_konta, uwagi, ocena')
     .single();
 
   if (error) {
@@ -270,6 +319,51 @@ export async function updateDostawca(id: string, input: unknown): Promise<Action
 
   revalidatePath('/dostawcy');
   return { success: true, data: data as DostawcaBase };
+}
+
+// --- READ: Historia realizacji ---
+
+export interface DostawcaHistoriaEntry {
+  projektId: string;
+  projektNazwa: string;
+  projektStatus: string;
+  data: string;
+  suma: number;
+  count: number;
+}
+
+export async function getDostawcaHistoria(dostawcaId: string): Promise<DostawcaHistoriaEntry[]> {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase.rpc('get_dostawca_historia', {
+    p_dostawca_id: dostawcaId,
+  });
+
+  if (error) throw error;
+
+  return (data || []).map((row: Record<string, unknown>) => ({
+    projektId: row.projekt_id as string,
+    projektNazwa: row.projekt_nazwa as string,
+    projektStatus: row.projekt_status as string,
+    data: row.data_realizacji as string,
+    suma: Number(row.suma),
+    count: Number(row.materialy_count),
+  }));
+}
+
+// --- READ: All active dostawcy (for dropdowns) ---
+
+export async function getAllDostawcy(): Promise<{ id: string; nazwa: string; kod: string | null }[]> {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from('dostawcy')
+    .select('id, nazwa, kod')
+    .eq('aktywny', true)
+    .order('nazwa');
+
+  if (error) throw error;
+  return (data || []) as { id: string; nazwa: string; kod: string | null }[];
 }
 
 // --- DELETE dostawca ---

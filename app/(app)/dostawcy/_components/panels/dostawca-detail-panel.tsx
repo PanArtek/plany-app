@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Pencil, Trash2, Loader2, Plus } from 'lucide-react';
+import { Pencil, Trash2, Loader2, Plus, Star, ExternalLink, Mail } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -16,10 +16,13 @@ import {
   getDostawca,
   getDostawcaCennik,
   getDostawcaPozycje,
+  getDostawcaHistoria,
   type DostawcaBase,
   type CennikEntry,
   type DostawcaPozycja,
+  type DostawcaHistoriaEntry,
 } from '@/actions/dostawcy';
+import { CopyContractData } from '@/components/copy-contract-data';
 
 interface DostawcaDetailPanelProps {
   dostawcaId: string | null;
@@ -51,6 +54,7 @@ export function DostawcaDetailPanel({
   const [dostawca, setDostawca] = useState<DostawcaBase | null>(null);
   const [cennik, setCennik] = useState<CennikEntry[]>([]);
   const [pozycje, setPozycje] = useState<DostawcaPozycja[]>([]);
+  const [historia, setHistoria] = useState<DostawcaHistoriaEntry[]>([]);
 
   useEffect(() => {
     if (open && dostawcaId) {
@@ -59,10 +63,12 @@ export function DostawcaDetailPanel({
         getDostawca(dostawcaId),
         getDostawcaCennik(dostawcaId),
         getDostawcaPozycje(dostawcaId),
-      ]).then(([d, c, p]) => {
+        getDostawcaHistoria(dostawcaId),
+      ]).then(([d, c, p, hist]) => {
         setDostawca(d);
         setCennik(c);
         setPozycje(p);
+        setHistoria(hist);
       }).catch(() => {
         setDostawca(null);
       }).finally(() => {
@@ -115,17 +121,66 @@ export function DostawcaDetailPanel({
           </div>
         ) : dostawca ? (
           <>
+            {/* Ocena */}
+            {dostawca.ocena && (
+              <div className="flex items-center gap-1">
+                {Array.from({ length: 5 }, (_, i) => (
+                  <Star
+                    key={i}
+                    className={`h-4 w-4 ${i < dostawca.ocena! ? 'fill-amber-500 text-amber-500' : 'text-white/20'}`}
+                  />
+                ))}
+                <span className="text-sm text-white/60 ml-2">{dostawca.ocena}/5</span>
+              </div>
+            )}
+
             {/* Section 1: Dane kontaktowe */}
             <div className="space-y-3">
               <h4 className="text-sm font-medium text-white/50 uppercase tracking-wider">
                 Dane kontaktowe
               </h4>
-              {dostawca.kontakt ? (
-                <p className="text-sm text-white/80 whitespace-pre-wrap">{dostawca.kontakt}</p>
-              ) : (
-                <p className="text-sm text-white/50">Brak danych kontaktowych</p>
-              )}
+              <div className="space-y-2">
+                {dostawca.kontakt && (
+                  <p className="text-sm text-white/80">{dostawca.kontakt}</p>
+                )}
+                {dostawca.email && (
+                  <a href={`mailto:${dostawca.email}`} className="text-sm text-amber-500 hover:text-amber-400 flex items-center gap-1.5">
+                    <Mail className="h-3 w-3" />
+                    {dostawca.email}
+                  </a>
+                )}
+                {dostawca.strona_www && (
+                  <a href={dostawca.strona_www.startsWith('http') ? dostawca.strona_www : `https://${dostawca.strona_www}`} target="_blank" rel="noopener noreferrer" className="text-sm text-amber-500 hover:text-amber-400 flex items-center gap-1.5">
+                    <ExternalLink className="h-3 w-3" />
+                    {dostawca.strona_www}
+                  </a>
+                )}
+                {!dostawca.kontakt && !dostawca.email && !dostawca.strona_www && (
+                  <p className="text-sm text-white/50">Brak danych kontaktowych</p>
+                )}
+              </div>
             </div>
+
+            {/* Copy contract data */}
+            <CopyContractData
+              nazwaPelna={dostawca.nazwa_pelna}
+              nip={dostawca.nip}
+              regon={dostawca.regon}
+              krs={dostawca.krs}
+              adresSiedziby={dostawca.adres_siedziby}
+              osobaReprezentujaca={dostawca.osoba_reprezentujaca}
+              nrKonta={dostawca.nr_konta}
+            />
+
+            {/* Uwagi */}
+            {dostawca.uwagi && (
+              <div className="space-y-2">
+                <h4 className="text-sm font-medium text-white/50 uppercase tracking-wider">
+                  Uwagi
+                </h4>
+                <p className="text-sm text-white/70 whitespace-pre-wrap">{dostawca.uwagi}</p>
+              </div>
+            )}
 
             {/* Section 2: Cennik produktów */}
             <div className="space-y-3">
@@ -181,12 +236,50 @@ export function DostawcaDetailPanel({
               )}
             </div>
 
-            {/* Section 3: Używany w pozycjach (only if count > 0) */}
-            {pozycje.length > 0 && (
+            {/* Section 3: Historia realizacji */}
+            {historia.length > 0 && (
               <div className="space-y-3">
                 <h4 className="text-sm font-medium text-white/50 uppercase tracking-wider">
-                  Używany w pozycjach ({pozycje.length})
+                  Historia realizacji ({historia.length})
                 </h4>
+                <div className="space-y-2">
+                  {historia.map((h) => (
+                    <div
+                      key={h.projektId}
+                      className="flex items-center justify-between px-3 py-2 rounded-md bg-white/[0.03] border border-white/[0.06]"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <span className="text-sm text-white/80">{h.projektNazwa}</span>
+                        <span className="text-xs text-white/40 ml-2">
+                          {new Date(h.data).toLocaleDateString('pl-PL', { year: 'numeric', month: 'short' })}
+                        </span>
+                      </div>
+                      <div className="text-right">
+                        <span className="font-mono text-sm text-amber-500">
+                          {h.suma.toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, ' ')} zł
+                        </span>
+                        <span className="text-xs text-white/40 ml-1">({h.count} mat.)</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="flex items-center justify-between px-3 py-2 border-t border-white/10">
+                  <span className="text-xs text-white/50">Łącznie</span>
+                  <span className="font-mono text-sm font-medium text-amber-500">
+                    {historia.reduce((sum, h) => sum + h.suma, 0).toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, ' ')} zł z {historia.length} projektów
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {/* Section 4: Używany w pozycjach */}
+            <div className="space-y-3">
+              <h4 className="text-sm font-medium text-white/50 uppercase tracking-wider">
+                Używany w pozycjach ({pozycje.length})
+              </h4>
+              {pozycje.length === 0 ? (
+                <p className="text-sm text-white/50">Dostawca nie jest używany w żadnej pozycji bibliotecznej</p>
+              ) : (
                 <div className="space-y-1">
                   {pozycje.map((p) => (
                     <button
@@ -194,13 +287,20 @@ export function DostawcaDetailPanel({
                       onClick={() => router.push(`/pozycje?selected=${p.id}`)}
                       className="w-full text-left px-3 py-2 rounded-md hover:bg-white/5 transition-colors"
                     >
-                      <span className="font-mono text-amber-500 text-sm mr-2">{p.kod}</span>
-                      <span className="text-sm text-white/80">{p.nazwa}</span>
+                      <div>
+                        <span className="font-mono text-amber-500 text-sm mr-2">{p.kod}</span>
+                        <span className="text-sm text-white/80">{p.nazwa}</span>
+                      </div>
+                      {p.produkty.length > 0 && (
+                        <div className="text-xs text-white/40 mt-0.5 pl-1">
+                          {p.produkty.map((pr) => pr.produktNazwa).join(', ')}
+                        </div>
+                      )}
                     </button>
                   ))}
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </>
         ) : null}
       </SlidePanelContent>

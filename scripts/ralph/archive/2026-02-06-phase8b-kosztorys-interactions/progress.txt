@@ -1,0 +1,20 @@
+# Ralph Progress Log
+Started: pending
+---
+
+## Phase 10/11: Zamówienia + Umowy
+
+### Stories
+- US-001: Create shared project layout with tab bar
+- US-002: Remove project header duplication from kosztorys-view
+- US-003: Create status configs and validation schemas
+- US-004: Create zamówienia server actions
+- US-005: Create umowy server actions
+- US-006: Auto-generate drafts on acceptance
+- US-007: Zamówienia page, empty state, table
+- US-008: Zamówienia view + detail panel
+- US-009: Dostawa form
+- US-010: Umowy page, empty state, table
+- US-011: Umowy view + detail panel
+- US-012: Wykonanie form
+- US-013: Final verification

@@ -1,0 +1,34 @@
+# Ralph Progress Log
+Started: Fri Feb 13 07:47:08 CET 2026
+---
+
+## US-001: DB migration — add new columns, type, migrate data
+- Applied migration `017_flatten_labor_pricing` via Supabase
+- Created TYPE cena_robocizny_zrodlo (biblioteka, podwykonawca, reczna)
+- Added cena_robocizny to pozycje_biblioteka (nullable)
+- Added cena_robocizny, cena_robocizny_zrodlowa, cena_robocizny_zrodlo, podwykonawca_id to kosztorys_pozycje
+- Migrated biblioteka data: SUM(stawka_domyslna * norma_domyslna) → cena_robocizny
+- Migrated kosztorys data: auto + manual → per-unit cena_robocizny
+- Migrated podwykonawca_id from first skladowa (lp=1)
+- Old tables preserved (biblioteka_skladowe_robocizna, kosztorys_skladowe_robocizna)
+- npm run build passes
+- Status: DONE
+
+## US-002: DB migration — recreate views and copy_revision
+- Applied migration `018_flatten_labor_views` via Supabase
+- Dropped and recreated kosztorys_pozycje_view with flat R formula (r_jednostkowy = cena_robocizny)
+- View exposes cena_robocizny_zrodlowa, cena_robocizny_zrodlo, podwykonawca_id, r_is_override
+- Dropped and recreated rewizje_summary with flat R sum, includes is_accepted + accepted_at
+- Recreated private.copy_revision() — copies 4 new columns, no robocizna copy
+- View calculations match pre-migration values
+- npm run build passes
+- Status: DONE
+
+## US-003: DB migration — drop robocizna tables, triggers, policies
+- Applied migration `019_drop_robocizna_tables` via Supabase
+- Dropped 2 triggers (ksz_skladowe_r_check_locked, kosztorys_skladowe_r_updated_at)
+- Dropped 8 RLS policies (4 bib_skladowe_r_*, 4 ksz_skladowe_r_*)
+- Dropped tables kosztorys_skladowe_robocizna and biblioteka_skladowe_robocizna (CASCADE)
+- Views still return correct data (63 view rows, 6 summary rows)
+- npm run build passes
+- Status: DONE

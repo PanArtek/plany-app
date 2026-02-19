@@ -27,7 +27,7 @@ export interface UmowaRow {
 
 export interface UmowaPozycja {
   id: string;
-  pozycja_biblioteka_id: string | null;
+  typ_robocizny_id: string | null;
   nazwa: string;
   jednostka: string | null;
   ilosc: number;
@@ -123,13 +123,13 @@ export async function getUmowa(id: string): Promise<UmowaDetail | null> {
   // Fetch pozycje
   const { data: pozycjeData } = await supabase
     .from('umowa_pozycje')
-    .select('id, pozycja_biblioteka_id, nazwa, jednostka, ilosc, stawka, wartosc, ilosc_wykonana, procent_wykonania')
+    .select('id, typ_robocizny_id, nazwa, jednostka, ilosc, stawka, wartosc, ilosc_wykonana, procent_wykonania')
     .eq('umowa_id', id)
     .order('nazwa', { ascending: true });
 
   const pozycje: UmowaPozycja[] = (pozycjeData || []).map((p: Record<string, unknown>) => ({
     id: p.id as string,
-    pozycja_biblioteka_id: p.pozycja_biblioteka_id as string | null,
+    typ_robocizny_id: p.typ_robocizny_id as string | null,
     nazwa: p.nazwa as string,
     jednostka: p.jednostka as string | null,
     ilosc: Number(p.ilosc),

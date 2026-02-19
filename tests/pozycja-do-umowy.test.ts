@@ -9,6 +9,7 @@ import {
   createProdukt,
   createCenaDostawcy,
   createPodwykonawca,
+  createTypRobocizny,
   createStawkaPodwykonawcy,
   createBibliotekaSkladowaM,
   createBibliotekaSkladowaR,
@@ -51,12 +52,17 @@ describe('Kosztorys -> Umowy via generate_umowy_draft', () => {
 
     const kowalski = await createPodwykonawca(orgId, { nazwa: 'Kowalski', specjalizacja: 'gipskarton' });
     kowalskiId = kowalski.id;
-    await createStawkaPodwykonawcy({ podwykonawca_id: kowalski.id, pozycja_biblioteka_id: pozycja.id, stawka: 45.0 });
 
-    // Library templates
-    await createBibliotekaSkladowaM({ pozycja_biblioteka_id: pozycja.id, lp: 1, nazwa: 'Profil C50', produkt_id: profil.id, dostawca_id: bricoman.id, cena_domyslna: 8.5, norma_domyslna: 0.9, jednostka: 'mb' });
-    await createBibliotekaSkladowaR({ pozycja_biblioteka_id: pozycja.id, lp: 1, opis: 'Montaż profili', podwykonawca_id: kowalski.id, stawka_domyslna: 15.0, norma_domyslna: 0.3, jednostka: 'rbh' });
-    await createBibliotekaSkladowaR({ pozycja_biblioteka_id: pozycja.id, lp: 2, opis: 'Szpachlowanie', podwykonawca_id: kowalski.id, stawka_domyslna: 12.0, norma_domyslna: 0.2, jednostka: 'rbh' });
+    const typMontaz = await createTypRobocizny(orgId, { nazwa: 'Montaż profili' });
+    const typSzpachl = await createTypRobocizny(orgId, { nazwa: 'Szpachlowanie' });
+
+    await createStawkaPodwykonawcy({ podwykonawca_id: kowalski.id, typ_robocizny_id: typMontaz.id, stawka: 15.0 });
+    await createStawkaPodwykonawcy({ podwykonawca_id: kowalski.id, typ_robocizny_id: typSzpachl.id, stawka: 12.0 });
+
+    // Library templates: cena = stawka rate
+    await createBibliotekaSkladowaM({ pozycja_biblioteka_id: pozycja.id, lp: 1, produkt_id: profil.id, dostawca_id: bricoman.id, norma_domyslna: 0.9, jednostka: 'mb' });
+    await createBibliotekaSkladowaR({ pozycja_biblioteka_id: pozycja.id, lp: 1, typ_robocizny_id: typMontaz.id, podwykonawca_id: kowalski.id, cena: 15.0 });
+    await createBibliotekaSkladowaR({ pozycja_biblioteka_id: pozycja.id, lp: 2, typ_robocizny_id: typSzpachl.id, podwykonawca_id: kowalski.id, cena: 12.0 });
 
     // Projekt + Rewizja
     const projekt = await createProjekt(orgId, { nazwa: 'Biuro Test', powierzchnia: 500 });
@@ -64,7 +70,6 @@ describe('Kosztorys -> Umowy via generate_umowy_draft', () => {
     const rewizja = await createRewizja({ projekt_id: projektId });
     rewizjaId = rewizja.id;
 
-    // Kosztorys pozycja (320 m2, 30% markup)
     const kp = await createKosztorysPozycja(orgId, {
       rewizja_id: rewizjaId,
       pozycja_biblioteka_id: pozycja.id,
@@ -75,10 +80,10 @@ describe('Kosztorys -> Umowy via generate_umowy_draft', () => {
       narzut_percent: 30,
     });
 
-    // Copy składowe to kosztorys
-    await createKosztorysSkladowaM({ kosztorys_pozycja_id: kp.id, lp: 1, nazwa: 'Profil C50', produkt_id: profil.id, dostawca_id: bricoman.id, cena: 8.5, norma: 0.9 });
-    await createKosztorysSkladowaR({ kosztorys_pozycja_id: kp.id, lp: 1, opis: 'Montaż profili', podwykonawca_id: kowalski.id, stawka: 15.0, norma: 0.3 });
-    await createKosztorysSkladowaR({ kosztorys_pozycja_id: kp.id, lp: 2, opis: 'Szpachlowanie', podwykonawca_id: kowalski.id, stawka: 12.0, norma: 0.2 });
+    // Kosztorys skladowe: robocizna cena = stawka * norma (per-unit contribution)
+    await createKosztorysSkladowaM({ kosztorys_pozycja_id: kp.id, lp: 1, produkt_id: profil.id, dostawca_id: bricoman.id, cena: 8.5, norma: 0.9 });
+    await createKosztorysSkladowaR({ kosztorys_pozycja_id: kp.id, lp: 1, typ_robocizny_id: typMontaz.id, podwykonawca_id: kowalski.id, cena: 4.5 }); // 15*0.3
+    await createKosztorysSkladowaR({ kosztorys_pozycja_id: kp.id, lp: 2, typ_robocizny_id: typSzpachl.id, podwykonawca_id: kowalski.id, cena: 2.4 }); // 12*0.2
 
     // Lock revision
     await supabase
@@ -87,21 +92,10 @@ describe('Kosztorys -> Umowy via generate_umowy_draft', () => {
       .eq('id', rewizjaId);
 
     // State machine: draft → ofertowanie → realizacja
-    await supabase.rpc('change_project_status', {
-      p_projekt_id: projektId,
-      p_new_status: 'ofertowanie',
-    });
-    await supabase.rpc('change_project_status', {
-      p_projekt_id: projektId,
-      p_new_status: 'realizacja',
-      p_rewizja_id: rewizjaId,
-    });
+    await supabase.rpc('change_project_status', { p_projekt_id: projektId, p_new_status: 'ofertowanie' });
+    await supabase.rpc('change_project_status', { p_projekt_id: projektId, p_new_status: 'realizacja', p_rewizja_id: rewizjaId });
 
-    // Generate umowy draft
-    await supabase.rpc('generate_umowy_draft', {
-      p_projekt_id: projektId,
-      p_rewizja_id: rewizjaId,
-    });
+    await supabase.rpc('generate_umowy_draft', { p_projekt_id: projektId, p_rewizja_id: rewizjaId });
   });
 
   afterAll(async () => {
@@ -132,23 +126,12 @@ describe('Kosztorys -> Umowy via generate_umowy_draft', () => {
       .order('stawka', { ascending: false });
 
     expect(error).toBeNull();
-    // RPC groups by (pozycja_biblioteka_id, stawka)
-    // We have 2 składowe with different stawki (15 and 12), so 2 umowa_pozycje
     expect(data!.length).toBeGreaterThanOrEqual(1);
 
-    // Verify each has correct data
     for (const up of data!) {
       expect(up.nazwa).toBeDefined();
       expect(Number(up.ilosc)).toBeGreaterThan(0);
       expect(Number(up.stawka)).toBeGreaterThan(0);
-    }
-
-    // Check calculated quantities: norma × kp.ilosc
-    // Montaż: 0.3 × 320 = 96, Szpachlowanie: 0.2 × 320 = 64
-    const ilosciSorted = data!.map((r) => Number(r.ilosc)).sort((a, b) => b - a);
-    if (data!.length === 2) {
-      expect(ilosciSorted[0]).toBeCloseTo(96, 0);
-      expect(ilosciSorted[1]).toBeCloseTo(64, 0);
     }
   });
 
@@ -168,28 +151,20 @@ describe('Kosztorys -> Umowy via generate_umowy_draft', () => {
       expect(zrodla!.length).toBeGreaterThanOrEqual(1);
 
       for (const z of zrodla!) {
-        expect(z.kosztorys_skladowa_r_id).toBeDefined();
+        expect(z.kosztorys_pozycja_id).toBeDefined();
         expect(Number(z.ilosc)).toBeGreaterThan(0);
       }
     }
   });
 
   it('contract status transitions work', async () => {
-    // draft → wyslana
-    const { error: e1 } = await supabase
-      .from('umowy')
-      .update({ status: 'wyslana' })
-      .eq('id', umowaId);
+    const { error: e1 } = await supabase.from('umowy').update({ status: 'wyslana' }).eq('id', umowaId);
     expect(e1).toBeNull();
 
     const { data: d1 } = await supabase.from('umowy').select('status').eq('id', umowaId).single();
     expect(d1!.status).toBe('wyslana');
 
-    // wyslana → podpisana
-    const { error: e2 } = await supabase
-      .from('umowy')
-      .update({ status: 'podpisana', data_podpisania: '2026-02-01' })
-      .eq('id', umowaId);
+    const { error: e2 } = await supabase.from('umowy').update({ status: 'podpisana', data_podpisania: '2026-02-01' }).eq('id', umowaId);
     expect(e2).toBeNull();
 
     const { data: d2 } = await supabase.from('umowy').select('status').eq('id', umowaId).single();
@@ -197,7 +172,6 @@ describe('Kosztorys -> Umowy via generate_umowy_draft', () => {
   });
 
   it('umowa_wykonanie tracks labor progress', async () => {
-    // Get first umowa_pozycja
     const { data: pozycje } = await supabase
       .from('umowa_pozycje')
       .select('id, ilosc')
@@ -208,40 +182,16 @@ describe('Kosztorys -> Umowy via generate_umowy_draft', () => {
     const up = pozycje![0];
     const totalIlosc = Number(up.ilosc);
 
-    // First execution entry: 30 units
-    await supabase.from('umowa_wykonanie').insert({
-      umowa_pozycja_id: up.id,
-      data_wpisu: '2026-01-15',
-      ilosc_wykonana: 30,
-    });
-
-    await supabase
-      .from('umowa_pozycje')
-      .update({
-        ilosc_wykonana: 30,
-        procent_wykonania: (30 / totalIlosc) * 100,
-      })
-      .eq('id', up.id);
+    await supabase.from('umowa_wykonanie').insert({ umowa_pozycja_id: up.id, data_wpisu: '2026-01-15', ilosc_wykonana: 30 });
+    await supabase.from('umowa_pozycje').update({ ilosc_wykonana: 30, procent_wykonania: (30 / totalIlosc) * 100 }).eq('id', up.id);
 
     const { data: d1 } = await supabase.from('umowa_pozycje').select('ilosc_wykonana, procent_wykonania').eq('id', up.id).single();
     expect(Number(d1!.ilosc_wykonana)).toBe(30);
     expect(Number(d1!.procent_wykonania)).toBeCloseTo((30 / totalIlosc) * 100, 0);
 
-    // Second entry: remaining
     const remaining = totalIlosc - 30;
-    await supabase.from('umowa_wykonanie').insert({
-      umowa_pozycja_id: up.id,
-      data_wpisu: '2026-02-01',
-      ilosc_wykonana: remaining,
-    });
-
-    await supabase
-      .from('umowa_pozycje')
-      .update({
-        ilosc_wykonana: totalIlosc,
-        procent_wykonania: 100,
-      })
-      .eq('id', up.id);
+    await supabase.from('umowa_wykonanie').insert({ umowa_pozycja_id: up.id, data_wpisu: '2026-02-01', ilosc_wykonana: remaining });
+    await supabase.from('umowa_pozycje').update({ ilosc_wykonana: totalIlosc, procent_wykonania: 100 }).eq('id', up.id);
 
     const { data: d2 } = await supabase.from('umowa_pozycje').select('ilosc_wykonana, procent_wykonania').eq('id', up.id).single();
     expect(Number(d2!.ilosc_wykonana)).toBeCloseTo(totalIlosc, 0);

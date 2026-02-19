@@ -1,0 +1,137 @@
+{
+  "project": "PLANY App",
+  "branchName": "ralph/pozycje-filters-ux",
+  "description": "Pozycje - kaskadowe filtrowanie po kategoriach, pusty stan domyślny, badge'e typu R+M/R/M z kolorami",
+  "mode": "feature",
+  "baseBranch": "ralph/pozycje-kategorie-ux-v2",
+  "userStories": [
+    {
+      "id": "PF-001",
+      "title": "Empty state when no branza selected",
+      "description": "As a user, when I open /pozycje without any branza selected, I see an empty table with a message prompting me to select a branza.",
+      "acceptanceCriteria": [
+        "In page.tsx: do NOT call getPozycje() when branza filter is missing - pass empty array to PozycjeView",
+        "In pozycje-view.tsx: when initialData is empty AND no branza is selected in initialFilters, show empty state message instead of table",
+        "Empty state message: 'Wybierz branżę aby wyświetlić pozycje' centered in the table area",
+        "Message styled with text-muted-foreground, centered vertically and horizontally",
+        "Dodaj pozycję button and search input still visible",
+        "npm run build passes",
+        "Verify at localhost:3000/pozycje - no table rows, message visible"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": "",
+      "dependsOn": []
+    },
+    {
+      "id": "PF-002",
+      "title": "Add cascading category dropdowns to filters",
+      "description": "As a user, after selecting a branza I want to see two dropdown selects (Kategoria, Podkategoria) to narrow down the list of pozycje.",
+      "acceptanceCriteria": [
+        "In pozycje-filters.tsx: add a second row below branza tabs containing two Select dropdowns",
+        "Second row only visible when a branza is selected (currentBranza is truthy)",
+        "First Select: label 'Kategoria', default option 'Wszystkie kategorie'",
+        "Second Select: label 'Podkategoria', default option 'Wszystkie podkategorie', disabled when no kategoria selected",
+        "Use shadcn Select component (already in project)",
+        "Dropdowns styled consistently with existing dark theme (bg-[#1A1A24]/40, border-white/[0.08])",
+        "Both selects placed inline (flex row) with gap-2",
+        "npm run build passes"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["PF-001"]
+    },
+    {
+      "id": "PF-003",
+      "title": "Fetch and populate kategoria dropdown",
+      "description": "As a user, the Kategoria dropdown should show categories from the selected branza.",
+      "acceptanceCriteria": [
+        "Add server action getKategorieForBranza(branzaKod: string) in actions/pozycje.ts that fetches kategorie at poziom=2 for given branza",
+        "Action queries kategorie table: poziom=2, parent kategoria has kod=branzaKod, returns {id, kod, nazwa}[]",
+        "OR reuse existing getKategorieByPoziom from actions/kategorie.ts if suitable - need to get branza's kategoria ID first",
+        "In pozycje-filters.tsx: fetch categories when branza changes using useEffect + startTransition",
+        "Populate Kategoria select with fetched data, format: 'kod - nazwa' (e.g. '01 - Roboty rozbiórkowe')",
+        "When branza changes, reset both dropdowns and clear kategoria/podkategoria URL params",
+        "npm run build passes"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": "Existing getKategorieByPoziom(2, parentId) works but needs the branza's category ID. May need a helper to get branza ID by kod.",
+      "dependsOn": ["PF-002"]
+    },
+    {
+      "id": "PF-004",
+      "title": "Fetch and populate podkategoria dropdown",
+      "description": "As a user, after selecting a kategoria, the Podkategoria dropdown becomes active and shows subcategories.",
+      "acceptanceCriteria": [
+        "In pozycje-filters.tsx: when kategoria is selected, fetch podkategorie (poziom=3, parent_id=selected kategoria ID)",
+        "Use getKategorieByPoziom(3, kategoriaId) from actions/kategorie.ts",
+        "Populate Podkategoria select with fetched data, format: 'kod - nazwa'",
+        "Podkategoria select disabled (opacity-50, pointer-events-none) when no kategoria is selected",
+        "When kategoria changes, reset podkategoria and clear podkategoria URL param",
+        "npm run build passes"
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["PF-003"]
+    },
+    {
+      "id": "PF-005",
+      "title": "Wire dropdown selections to URL params and filtering",
+      "description": "As a user, selecting a category in the dropdown should filter the pozycje table via URL params.",
+      "acceptanceCriteria": [
+        "Selecting a kategoria updates URL param ?kategoria=XX (where XX is the kod like '01')",
+        "Selecting a podkategoria updates URL param ?podkategoria=YY (where YY is the kod like '01')",
+        "Selecting 'Wszystkie kategorie' removes kategoria and podkategoria URL params",
+        "Selecting 'Wszystkie podkategorie' removes podkategoria URL param",
+        "page.tsx passes these filters to getPozycje() which already handles kod prefix filtering",
+        "Table updates correctly: branza only -> all positions, branza+kategoria -> narrowed, branza+kategoria+podkategoria -> most narrow",
+        "npm run build passes",
+        "Verify at localhost:3000/pozycje - select BUD, then kategoria, verify table filters correctly"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["PF-004"]
+    },
+    {
+      "id": "PF-006",
+      "title": "Update typ badges to R+M / R / M with colors",
+      "description": "As a user, I want to see short typ labels (R+M, R, M) with distinct colors instead of full words.",
+      "acceptanceCriteria": [
+        "In pozycje-columns.tsx: update TYP_LABELS to: komplet='R+M', robocizna='R', material='M'",
+        "Update TYP_COLORS to: komplet='bg-amber-500/10 text-amber-400 border-amber-500/20', robocizna='bg-blue-500/10 text-blue-400 border-blue-500/20', material='bg-green-500/10 text-green-400 border-green-500/20'",
+        "Badge size reduced if needed (shorter labels need less space), column size can be reduced from 100 to 70",
+        "Also update typ display in pozycja-detail-panel.tsx if it uses the same labels",
+        "npm run build passes",
+        "Verify at localhost:3000/pozycje - badges show R+M (amber), R (blue), M (green)"
+      ],
+      "priority": 6,
+      "passes": false,
+      "notes": "",
+      "dependsOn": []
+    },
+    {
+      "id": "PF-007",
+      "title": "Final verification and build",
+      "description": "As a developer, verify all changes work together end-to-end.",
+      "acceptanceCriteria": [
+        "npm run build passes without errors",
+        "Verify /pozycje: empty state shown when no branza selected",
+        "Verify /pozycje?branza=BUD: shows all BUD pozycje, kategoria dropdown populated",
+        "Verify selecting kategoria filters the table correctly",
+        "Verify selecting podkategoria narrows further",
+        "Verify changing branza resets both dropdowns",
+        "Verify typ badges: R+M amber, R blue, M green",
+        "Verify search still works alongside category filters",
+        "No console errors"
+      ],
+      "priority": 7,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["PF-005", "PF-006"]
+    }
+  ]
+}

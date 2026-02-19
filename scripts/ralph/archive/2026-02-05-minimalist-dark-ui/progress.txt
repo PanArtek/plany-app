@@ -1,0 +1,5 @@
+# Ralph Progress Log
+Started: Thu Feb  5 2026
+Feature: Slide Panel UX
+---
+

@@ -1,0 +1,193 @@
+{
+  "project": "PLANY App",
+  "branchName": "ralph/slide-panel-ux",
+  "description": "Replace all modals with slide-out panels from right side - Minimalist Dark styling",
+  "mode": "feature",
+  "baseBranch": "ralph/phase3a-kategorie",
+  "userStories": [
+    {
+      "id": "SP-001",
+      "title": "Install shadcn Sheet component",
+      "description": "As a developer, I need the Sheet component as foundation for slide panels.",
+      "acceptanceCriteria": [
+        "Run: npx shadcn@latest add sheet",
+        "Verify components/ui/sheet.tsx exists",
+        "Typecheck passes"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": "",
+      "dependsOn": []
+    },
+    {
+      "id": "SP-002",
+      "title": "Create SlidePanel wrapper component",
+      "description": "As a developer, I need a reusable SlidePanel component with Minimalist Dark styling.",
+      "acceptanceCriteria": [
+        "Create components/ui/slide-panel.tsx",
+        "Wrap shadcn Sheet with custom styling",
+        "Background: #0A0A0F, border-left: rgba(255,255,255,0.08)",
+        "Shadow: -20px 0 60px rgba(0,0,0,0.5)",
+        "No overlay (SheetOverlay hidden or transparent)",
+        "Export variants: default (600px), narrow (400px), wide (800px)",
+        "Header section with title, close button, border-b border-white/5",
+        "Content section with overflow-y-auto",
+        "Footer section with sticky positioning, border-t border-white/5",
+        "Animation: slide from right, 300ms ease-out",
+        "Typecheck passes"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["SP-001"]
+    },
+    {
+      "id": "SP-003",
+      "title": "Create KategoriaFormPanel component",
+      "description": "As a user, I want to add/edit categories in a slide panel instead of modal.",
+      "acceptanceCriteria": [
+        "Create app/(app)/kategorie/_components/panels/kategoria-form-panel.tsx",
+        "Copy logic from kategoria-form-modal.tsx",
+        "Use SlidePanel instead of Dialog",
+        "Header: dynamic title based on poziom (branża/kategoria/podkategoria)",
+        "Form fields in single column layout",
+        "Full kod preview with amber highlight (font-mono text-amber-500)",
+        "Parent breadcrumb as subtle badge",
+        "Footer with Cancel (ghost) and Submit (primary) buttons",
+        "Typecheck passes"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["SP-002"]
+    },
+    {
+      "id": "SP-004",
+      "title": "Create DeleteConfirmPanel component",
+      "description": "As a user, I want delete confirmations in a narrow slide panel.",
+      "acceptanceCriteria": [
+        "Create app/(app)/kategorie/_components/panels/delete-confirm-panel.tsx",
+        "Use SlidePanel with variant='narrow' (400px)",
+        "Warning icon in header (Trash2 or AlertTriangle)",
+        "Clear message: 'Czy na pewno chcesz usunąć [name]?'",
+        "Show consequences if applicable (e.g., 'Usunie też X pozycji')",
+        "Footer: Ghost 'Anuluj', Destructive 'Usuń' (red variant)",
+        "Accept generic props for reuse across modules",
+        "Typecheck passes"
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["SP-002"]
+    },
+    {
+      "id": "SP-005",
+      "title": "Migrate kategorie-view to use panels",
+      "description": "As a user, I want the Kategorie module to use slide panels.",
+      "acceptanceCriteria": [
+        "Update app/(app)/kategorie/_components/kategorie-view.tsx",
+        "Replace KategoriaFormModal with KategoriaFormPanel",
+        "Replace DeleteConfirmModal with DeleteConfirmPanel",
+        "Remove old modal imports",
+        "All CRUD operations work: add branża/kategoria/podkategoria, edit, delete",
+        "Typecheck passes",
+        "Verify in browser at /kategorie - panels slide from right, no overlay"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["SP-003", "SP-004"]
+    },
+    {
+      "id": "SP-006",
+      "title": "Create PozycjaFormPanel component",
+      "description": "As a user, I want to add/edit pozycje in a slide panel.",
+      "acceptanceCriteria": [
+        "Create app/(app)/pozycje/_components/panels/pozycja-form-panel.tsx",
+        "Copy logic from pozycja-form-modal.tsx",
+        "Use SlidePanel instead of Dialog",
+        "Cascading selects (Branża/Kategoria/Podkategoria) in single row",
+        "Auto-generated kod with amber glow when ready",
+        "Jednostka + Typ side by side",
+        "Textarea for opis field (more space in wide panel)",
+        "Typecheck passes"
+      ],
+      "priority": 6,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["SP-002"]
+    },
+    {
+      "id": "SP-007",
+      "title": "Create SkladowaPanel component",
+      "description": "As a user, I want to add/edit składowe in a slide panel.",
+      "acceptanceCriteria": [
+        "Create app/(app)/pozycje/_components/panels/skladowa-panel.tsx",
+        "Combine logic from skladowa-material-modal.tsx and skladowa-robocizna-modal.tsx",
+        "Use SlidePanel instead of Dialog",
+        "Badge showing składowa type (Materiał/Robocizna) in header",
+        "Form fields specific to type",
+        "Live price calculation preview",
+        "Typecheck passes"
+      ],
+      "priority": 7,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["SP-002"]
+    },
+    {
+      "id": "SP-008",
+      "title": "Restyle PozycjaDetailPanel",
+      "description": "As a user, I want the pozycja detail view styled consistently with slide panels.",
+      "acceptanceCriteria": [
+        "Update app/(app)/pozycje/_components/pozycja-detail-panel.tsx",
+        "Match SlidePanel styling: #0A0A0F background, border-l, shadow",
+        "Header: kod in mono amber, nazwa as title",
+        "Sections: Info podstawowe, Składowe list, (Historia if exists)",
+        "Edit button opens PozycjaFormPanel",
+        "Add składowa buttons open SkladowaPanel",
+        "Typecheck passes"
+      ],
+      "priority": 8,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["SP-006", "SP-007"]
+    },
+    {
+      "id": "SP-009",
+      "title": "Migrate pozycje-view to use panels",
+      "description": "As a user, I want the Pozycje module to use slide panels.",
+      "acceptanceCriteria": [
+        "Update app/(app)/pozycje/_components/pozycje-view.tsx",
+        "Replace PozycjaFormModal with PozycjaFormPanel",
+        "Replace delete modals with DeleteConfirmPanel (reuse from kategorie)",
+        "Replace skladowa modals with SkladowaPanel",
+        "Remove old modal imports",
+        "All CRUD operations work: add/edit/delete pozycja, add/edit/delete składowa",
+        "Typecheck passes",
+        "Verify in browser at /pozycje - all panels slide from right"
+      ],
+      "priority": 9,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["SP-005", "SP-006", "SP-007", "SP-008"]
+    },
+    {
+      "id": "SP-010",
+      "title": "Remove old modal files and final cleanup",
+      "description": "As a developer, I want to clean up unused modal components.",
+      "acceptanceCriteria": [
+        "Delete app/(app)/kategorie/_components/modals/ directory",
+        "Delete app/(app)/pozycje/_components/modals/ directory",
+        "Verify no imports reference deleted files",
+        "npm run build passes without errors",
+        "Verify in browser: /kategorie and /pozycje work correctly",
+        "No console errors"
+      ],
+      "priority": 10,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["SP-005", "SP-009"]
+    }
+  ]
+}

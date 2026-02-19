@@ -9,6 +9,7 @@ import {
   Briefcase,
   Calculator,
   Sliders,
+  Wrench,
 } from "lucide-react";
 import { NavItem } from "./nav-item";
 
@@ -19,6 +20,7 @@ const navSections = [
       { href: "/kategorie", icon: FolderTree, label: "Kategorie" },
       { href: "/pozycje", icon: List, label: "Pozycje" },
       { href: "/materialy", icon: Package, label: "Materiały" },
+      { href: "/typy-robocizny", icon: Wrench, label: "Typy robocizny" },
       { href: "/dostawcy", icon: Truck, label: "Dostawcy" },
       { href: "/podwykonawcy", icon: Users, label: "Podwykonawcy" },
     ],

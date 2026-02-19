@@ -1,0 +1,48 @@
+# Ralph Progress Log
+Started: Sun Feb  8 13:10:36 CET 2026
+---
+## US-001: DB migration: enhanced aggregation RPCs ✅
+- Applied migration `enhanced_aggregations` with 6 functions
+- get_materialy_aggregated: added najgorsza_cena, p_status_cenowy, p_show_inactive, p_sort, p_order
+- get_materialy_stats: total=155, with_suppliers=135, without_suppliers=20, avg_price=64.89
+- get_dostawcy_aggregated: replaces N+1, returns produkty_count + total_wartosc with sort
+- get_dostawcy_stats: total=75, total_products=144, avg_products=1.9
+- get_podwykonawcy_aggregated: replaces N+1, returns stawki_count, min_stawka, max_stawka with sort + specjalizacja filter
+- get_podwykonawcy_stats: total=75, total_stawki=64, avg_stawka=39.69
+- Build passes ✅
+
+## US-002: Update validation schemas for new filter params ✅
+- materialyFiltersSchema: added statusCenowy, showInactive, sort, order
+- dostawcyFiltersSchema: added sort, order
+- podwykonawcyFiltersSchema: added specjalizacja, sort, order
+- Updated all 3 page.tsx files to pass new params from searchParams
+
+## US-003: Update server actions to use new RPCs ✅
+- materialy.ts: najgorszaCena, new RPC params, getMaterialyStats()
+- dostawcy.ts: replaced N+1 with RPC, totalWartosc, getDostawcyStats()
+- podwykonawcy.ts: replaced N+1 with RPC, minStawka/maxStawka, getPodwykonawcyStats(), getDistinctSpecjalizacje()
+
+## US-004: Create shared StatsBar component ✅
+- components/stats-bar.tsx: glass card grid, amber font-mono values, optional sublabel
+
+## US-005: Materialy page UX upgrade ✅
+- StatsBar: 4 KPIs (Produkty, Z dostawcami, Bez dostawców, Śr. cena)
+- Price range column (min-max zł), sortable headers, statusCenowy filter, showInactive toggle
+- Breadcrumb with count, inactive rows dimmed
+
+## US-006: Dostawcy page UX upgrade ✅
+- StatsBar: 3 KPIs (Dostawcy, Pozycji w cennikach, Śr. produktów/dostawca)
+- Wartość cennika column, sortable headers, showInactive toggle
+- Breadcrumb with count, inactive rows dimmed
+
+## US-007: Podwykonawcy page UX upgrade ✅
+- StatsBar: 3 KPIs (Podwykonawcy, Stawek ogółem, Śr. stawka)
+- Rate range column (min-max zł with count), specjalizacja colored badges
+- Specjalizacja filter dropdown from DB, sortable headers, showInactive toggle
+- Breadcrumb with count, inactive rows dimmed
+
+## US-008: Final build verification and polish ✅
+- npm run build: PASSES (zero errors, compiled in 6.5s)
+- npm run lint: 31 issues, all pre-existing (TanStack Table warnings, setState-in-effect in detail panels)
+- npm run test: 31/31 tests pass (8 test files)
+- All acceptance criteria met

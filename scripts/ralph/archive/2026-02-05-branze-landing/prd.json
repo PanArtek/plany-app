@@ -1,0 +1,143 @@
+{
+  "project": "PLANY App",
+  "branchName": "ralph/branze-landing",
+  "description": "Branże Landing Page - kafelki branż jako pośredni ekran przed listą kategorii",
+  "mode": "feature",
+  "baseBranch": "ralph/slide-panel-ux",
+  "userStories": [
+    {
+      "id": "BL-001",
+      "title": "Add getKategorieCounts server action",
+      "description": "As a developer, I need a server action to get category counts per branża for the landing page tiles.",
+      "acceptanceCriteria": [
+        "Add getKategorieCounts() to actions/kategorie.ts",
+        "Returns Record<BranzaKod, number> with count of poziom 2 categories per branża",
+        "Query: count where poziom = 2, group by first 3 chars of pelny_kod",
+        "Typecheck passes"
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": "Added getKategorieCounts() that queries poziom=2 and groups by first 3 chars of pelny_kod",
+      "dependsOn": []
+    },
+    {
+      "id": "BL-002",
+      "title": "Create BranzaTile component",
+      "description": "As a user, I want to see a tile for each branża with code, name and category count.",
+      "acceptanceCriteria": [
+        "Create app/(app)/kategorie/_components/branza-tile.tsx",
+        "Props: kod (BranzaKod), nazwa (string), count (number)",
+        "Layout: code large (text-4xl font-bold text-stone-100), name below (text-lg text-stone-400), count (text-sm text-stone-500)",
+        "Styling: bg-stone-900/50 border border-stone-700/50 rounded-xl p-8 text-center cursor-pointer",
+        "Hover: hover:bg-stone-800/60 hover:border-amber-500/50 hover:scale-[1.02] transition-all duration-200",
+        "Wraps Next.js Link to /kategorie/[kod]",
+        "Typecheck passes"
+      ],
+      "priority": 2,
+      "passes": true,
+      "notes": "Component created with all specified styling and hover effects",
+      "dependsOn": []
+    },
+    {
+      "id": "BL-003",
+      "title": "Create BranzeGrid component",
+      "description": "As a user, I want to see all branże tiles in a responsive grid.",
+      "acceptanceCriteria": [
+        "Create app/(app)/kategorie/_components/branze-grid.tsx",
+        "Props: counts (Record<BranzaKod, number>)",
+        "Uses BRANZE constant for list: BUD, ELE, SAN, TEL, HVC",
+        "Grid: grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4",
+        "Renders BranzaTile for each branża",
+        "Typecheck passes"
+      ],
+      "priority": 3,
+      "passes": true,
+      "notes": "Grid with BRANZE constant, responsive layout",
+      "dependsOn": ["BL-002"]
+    },
+    {
+      "id": "BL-004",
+      "title": "Update /kategorie page to show landing tiles",
+      "description": "As a user, I want to see branże tiles when I navigate to /kategorie.",
+      "acceptanceCriteria": [
+        "Update app/(app)/kategorie/page.tsx",
+        "Fetch counts via getKategorieCounts()",
+        "Render page header 'Kategorie' and BranzeGrid",
+        "Remove current KategorieView rendering",
+        "Typecheck passes",
+        "Verify at localhost:3000/kategorie - shows 5 tiles"
+      ],
+      "priority": 4,
+      "passes": true,
+      "notes": "Verified 5 tiles showing with correct counts (BUD:4, ELE:4, SAN:1, TEL:0, HVC:0)",
+      "dependsOn": ["BL-001", "BL-003"]
+    },
+    {
+      "id": "BL-005",
+      "title": "Create /kategorie/[branza] dynamic route",
+      "description": "As a user, I want to navigate to a specific branża page when I click a tile.",
+      "acceptanceCriteria": [
+        "Create app/(app)/kategorie/[branza]/page.tsx",
+        "Validate branza param: BUD|ELE|SAN|TEL|HVC, else notFound()",
+        "Fetch tree via getKategorieTree()",
+        "Render KategorieView with activeBranza from URL param",
+        "Typecheck passes"
+      ],
+      "priority": 5,
+      "passes": true,
+      "notes": "Dynamic route with validation, uses notFound() for invalid branże",
+      "dependsOn": ["BL-004"]
+    },
+    {
+      "id": "BL-006",
+      "title": "Update KategorieView to accept activeBranza prop",
+      "description": "As a developer, I need KategorieView to accept activeBranza as prop instead of from store.",
+      "acceptanceCriteria": [
+        "Update app/(app)/kategorie/_components/kategorie-view.tsx",
+        "Add activeBranza prop (BranzaKod)",
+        "Pass activeBranza to BranzaTabs and KategorieList",
+        "Remove activeBranza from Zustand store usage (keep expandedIds)",
+        "Typecheck passes"
+      ],
+      "priority": 6,
+      "passes": true,
+      "notes": "KategorieView now accepts activeBranza prop, removed store usage for activeBranza",
+      "dependsOn": ["BL-005"]
+    },
+    {
+      "id": "BL-007",
+      "title": "Update BranzaTabs to use URL navigation",
+      "description": "As a user, I want clicking tabs to navigate to the branża URL.",
+      "acceptanceCriteria": [
+        "Update app/(app)/kategorie/_components/branza-tabs.tsx",
+        "Accept activeBranza as prop instead of reading from store",
+        "Replace onClick with Next.js Link to /kategorie/[branza]",
+        "Active state based on prop comparison",
+        "Typecheck passes"
+      ],
+      "priority": 7,
+      "passes": true,
+      "notes": "BranzaTabs now uses Link components for URL navigation, accepts activeBranza prop",
+      "dependsOn": ["BL-006"]
+    },
+    {
+      "id": "BL-008",
+      "title": "Final verification",
+      "description": "As a developer, I want to verify the full flow works correctly.",
+      "acceptanceCriteria": [
+        "npm run build passes without errors",
+        "Verify /kategorie: shows 5 branże tiles with counts",
+        "Verify tile click: navigates to /kategorie/BUD",
+        "Verify /kategorie/BUD: shows tabs (BUD active) + category list",
+        "Verify tab click: URL changes to /kategorie/ELE",
+        "Verify browser back: returns to /kategorie",
+        "Verify invalid URL /kategorie/XXX: shows 404",
+        "No console errors"
+      ],
+      "priority": 8,
+      "passes": true,
+      "notes": "All acceptance criteria verified via Playwright browser testing",
+      "dependsOn": ["BL-007"]
+    }
+  ]
+}

@@ -24,6 +24,7 @@ export interface PodwykonawcaWithCount {
   specjalizacja: string | null;
   kontakt: string | null;
   aktywny: boolean;
+  pozycjeCount: number;
   stawkiCount: number;
   minStawka: number | null;
   maxStawka: number | null;
@@ -42,14 +43,24 @@ export interface PodwykonawcaBase {
   specjalizacja: string | null;
   kontakt: string | null;
   aktywny: boolean;
+  nazwa_pelna: string | null;
+  nip: string | null;
+  regon: string | null;
+  krs: string | null;
+  adres_siedziby: string | null;
+  osoba_reprezentujaca: string | null;
+  email: string | null;
+  strona_www: string | null;
+  nr_konta: string | null;
+  uwagi: string | null;
+  ocena: number | null;
 }
 
 export interface StawkaEntry {
   id: string;
-  pozycjaBibliotekaId: string;
-  pozycjaKod: string;
-  pozycjaNazwa: string;
-  pozycjaJednostka: string;
+  typRobociznyId: string;
+  typRobociznyNazwa: string;
+  typRobociznyJednostka: string;
   stawka: number;
   aktywny: boolean;
 }
@@ -58,6 +69,7 @@ export interface PodwykonawcaPozycja {
   id: string;
   kod: string;
   nazwa: string;
+  typRobociznyNazwa: string;
 }
 
 // --- Pagination ---
@@ -73,8 +85,10 @@ export async function getPodwykonawcy(filters: PodwykonawcyFilters): Promise<Pod
   const offset = (page - 1) * PAGE_SIZE;
 
   const { data, error } = await supabase.rpc('get_podwykonawcy_aggregated', {
+    p_branza: filters.branza || null,
+    p_kategoria: filters.kategoria || null,
+    p_podkategoria: filters.podkategoria || null,
     p_search: filters.search || null,
-    p_specjalizacja: filters.specjalizacja || null,
     p_show_inactive: filters.showInactive || false,
     p_sort: filters.sort || 'nazwa',
     p_order: filters.order || 'asc',
@@ -90,6 +104,7 @@ export async function getPodwykonawcy(filters: PodwykonawcyFilters): Promise<Pod
     specjalizacja: string | null;
     kontakt: string | null;
     aktywny: boolean;
+    pozycje_count: number;
     stawki_count: number;
     min_stawka: number | null;
     max_stawka: number | null;
@@ -105,6 +120,7 @@ export async function getPodwykonawcy(filters: PodwykonawcyFilters): Promise<Pod
       specjalizacja: r.specjalizacja,
       kontakt: r.kontakt,
       aktywny: r.aktywny,
+      pozycjeCount: Number(r.pozycje_count),
       stawkiCount: Number(r.stawki_count),
       minStawka: r.min_stawka !== null ? Number(r.min_stawka) : null,
       maxStawka: r.max_stawka !== null ? Number(r.max_stawka) : null,
@@ -122,7 +138,7 @@ export async function getPodwykonawca(id: string): Promise<PodwykonawcaBase | nu
 
   const { data, error } = await supabase
     .from('podwykonawcy')
-    .select('id, nazwa, specjalizacja, kontakt, aktywny')
+    .select('id, nazwa, specjalizacja, kontakt, aktywny, nazwa_pelna, nip, regon, krs, adres_siedziby, osoba_reprezentujaca, email, strona_www, nr_konta, uwagi, ocena')
     .eq('id', id)
     .single();
 
@@ -143,30 +159,28 @@ export async function getPodwykonawcaStawki(podwykonawcaId: string): Promise<Sta
     .from('stawki_podwykonawcow')
     .select(`
       id,
-      pozycja_biblioteka_id,
+      typ_robocizny_id,
       stawka,
       aktywny,
-      pozycje_biblioteka!pozycja_biblioteka_id(kod, nazwa, jednostka)
+      typy_robocizny!typ_robocizny_id(nazwa, jednostka)
     `)
     .eq('podwykonawca_id', podwykonawcaId);
 
   if (error) throw error;
 
-  // Sort by pozycja kod
   const mapped = (data || []).map((row: Record<string, unknown>) => {
-    const pozycja = row.pozycje_biblioteka as { kod: string; nazwa: string; jednostka: string } | null;
+    const typ = row.typy_robocizny as { nazwa: string; jednostka: string } | null;
     return {
       id: row.id as string,
-      pozycjaBibliotekaId: row.pozycja_biblioteka_id as string,
-      pozycjaKod: pozycja?.kod ?? '',
-      pozycjaNazwa: pozycja?.nazwa ?? '',
-      pozycjaJednostka: pozycja?.jednostka ?? 'm²',
+      typRobociznyId: row.typ_robocizny_id as string,
+      typRobociznyNazwa: typ?.nazwa ?? '',
+      typRobociznyJednostka: typ?.jednostka ?? 'm²',
       stawka: Number(row.stawka),
       aktywny: row.aktywny as boolean,
     };
   });
 
-  mapped.sort((a, b) => a.pozycjaKod.localeCompare(b.pozycjaKod));
+  mapped.sort((a, b) => a.typRobociznyNazwa.localeCompare(b.typRobociznyNazwa));
   return mapped;
 }
 
@@ -178,23 +192,25 @@ export async function getPodwykonawcaPozycje(podwykonawcaId: string): Promise<Po
   const { data, error } = await supabase
     .from('biblioteka_skladowe_robocizna')
     .select(`
-      pozycje_biblioteka!pozycja_biblioteka_id(id, kod, nazwa)
+      pozycje_biblioteka!pozycja_biblioteka_id(id, kod, nazwa),
+      typy_robocizny!typ_robocizny_id(nazwa)
     `)
     .eq('podwykonawca_id', podwykonawcaId);
 
   if (error) throw error;
 
-  // Deduplicate by pozycja id
-  const seen = new Set<string>();
   const result: PodwykonawcaPozycja[] = [];
   for (const row of (data || []) as Record<string, unknown>[]) {
     const pozycja = row.pozycje_biblioteka as { id: string; kod: string; nazwa: string };
-    if (!seen.has(pozycja.id)) {
-      seen.add(pozycja.id);
-      result.push({ id: pozycja.id, kod: pozycja.kod, nazwa: pozycja.nazwa });
-    }
+    const typ = row.typy_robocizny as { nazwa: string } | null;
+    result.push({
+      id: pozycja.id,
+      kod: pozycja.kod,
+      nazwa: pozycja.nazwa,
+      typRobociznyNazwa: typ?.nazwa ?? '',
+    });
   }
-  return result;
+  return result.sort((a, b) => a.kod.localeCompare(b.kod));
 }
 
 // --- READ: All pozycje_biblioteka (for stawka form select dropdown) ---
@@ -211,6 +227,21 @@ export async function getAllPozycjeBiblioteka(): Promise<{ id: string; kod: stri
   if (error) throw error;
 
   return (data || []) as { id: string; kod: string; nazwa: string; jednostka: string }[];
+}
+
+// --- READ: All active podwykonawcy (for dropdowns) ---
+
+export async function getAllPodwykonawcy(): Promise<{ id: string; nazwa: string }[]> {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from('podwykonawcy')
+    .select('id, nazwa')
+    .eq('aktywny', true)
+    .order('nazwa');
+
+  if (error) throw error;
+  return (data || []) as { id: string; nazwa: string }[];
 }
 
 // --- STATS ---
@@ -233,22 +264,6 @@ export async function getPodwykonawcyStats(): Promise<PodwykonawcyStats> {
   };
 }
 
-// --- DISTINCT SPECJALIZACJE ---
-
-export async function getDistinctSpecjalizacje(): Promise<string[]> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from('podwykonawcy')
-    .select('specjalizacja')
-    .eq('aktywny', true)
-    .not('specjalizacja', 'is', null)
-    .order('specjalizacja');
-
-  if (error) throw error;
-  const unique = [...new Set((data || []).map((d: { specjalizacja: string }) => d.specjalizacja))];
-  return unique;
-}
-
 // --- CREATE podwykonawca ---
 
 export async function createPodwykonawca(input: unknown): Promise<ActionResult<PodwykonawcaBase>> {
@@ -268,8 +283,19 @@ export async function createPodwykonawca(input: unknown): Promise<ActionResult<P
       specjalizacja: parsed.data.specjalizacja,
       kontakt: parsed.data.kontakt,
       aktywny: parsed.data.aktywny,
+      nazwa_pelna: parsed.data.nazwa_pelna || null,
+      nip: parsed.data.nip || null,
+      regon: parsed.data.regon || null,
+      krs: parsed.data.krs || null,
+      adres_siedziby: parsed.data.adres_siedziby || null,
+      osoba_reprezentujaca: parsed.data.osoba_reprezentujaca || null,
+      email: parsed.data.email || null,
+      strona_www: parsed.data.strona_www || null,
+      nr_konta: parsed.data.nr_konta || null,
+      uwagi: parsed.data.uwagi || null,
+      ocena: parsed.data.ocena ?? null,
     })
-    .select('id, nazwa, specjalizacja, kontakt, aktywny')
+    .select('id, nazwa, specjalizacja, kontakt, aktywny, nazwa_pelna, nip, regon, krs, adres_siedziby, osoba_reprezentujaca, email, strona_www, nr_konta, uwagi, ocena')
     .single();
 
   if (error) {
@@ -295,12 +321,23 @@ export async function updatePodwykonawca(id: string, input: unknown): Promise<Ac
   if (parsed.data.specjalizacja !== undefined) updateData.specjalizacja = parsed.data.specjalizacja;
   if (parsed.data.kontakt !== undefined) updateData.kontakt = parsed.data.kontakt;
   if (parsed.data.aktywny !== undefined) updateData.aktywny = parsed.data.aktywny;
+  if (parsed.data.nazwa_pelna !== undefined) updateData.nazwa_pelna = parsed.data.nazwa_pelna || null;
+  if (parsed.data.nip !== undefined) updateData.nip = parsed.data.nip || null;
+  if (parsed.data.regon !== undefined) updateData.regon = parsed.data.regon || null;
+  if (parsed.data.krs !== undefined) updateData.krs = parsed.data.krs || null;
+  if (parsed.data.adres_siedziby !== undefined) updateData.adres_siedziby = parsed.data.adres_siedziby || null;
+  if (parsed.data.osoba_reprezentujaca !== undefined) updateData.osoba_reprezentujaca = parsed.data.osoba_reprezentujaca || null;
+  if (parsed.data.email !== undefined) updateData.email = parsed.data.email || null;
+  if (parsed.data.strona_www !== undefined) updateData.strona_www = parsed.data.strona_www || null;
+  if (parsed.data.nr_konta !== undefined) updateData.nr_konta = parsed.data.nr_konta || null;
+  if (parsed.data.uwagi !== undefined) updateData.uwagi = parsed.data.uwagi || null;
+  if (parsed.data.ocena !== undefined) updateData.ocena = parsed.data.ocena ?? null;
 
   const { data, error } = await supabase
     .from('podwykonawcy')
     .update(updateData)
     .eq('id', id)
-    .select('id, nazwa, specjalizacja, kontakt, aktywny')
+    .select('id, nazwa, specjalizacja, kontakt, aktywny, nazwa_pelna, nip, regon, krs, adres_siedziby, osoba_reprezentujaca, email, strona_www, nr_konta, uwagi, ocena')
     .single();
 
   if (error) {
@@ -309,6 +346,36 @@ export async function updatePodwykonawca(id: string, input: unknown): Promise<Ac
 
   revalidatePath('/podwykonawcy');
   return { success: true, data: data as PodwykonawcaBase };
+}
+
+// --- READ: Historia realizacji ---
+
+export interface HistoriaEntry {
+  projektId: string;
+  projektNazwa: string;
+  projektStatus: string;
+  data: string;
+  suma: number;
+  count: number;
+}
+
+export async function getPodwykonawcaHistoria(podwykonawcaId: string): Promise<HistoriaEntry[]> {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase.rpc('get_podwykonawca_historia', {
+    p_podwykonawca_id: podwykonawcaId,
+  });
+
+  if (error) throw error;
+
+  return (data || []).map((row: Record<string, unknown>) => ({
+    projektId: row.projekt_id as string,
+    projektNazwa: row.projekt_nazwa as string,
+    projektStatus: row.projekt_status as string,
+    data: row.data_realizacji as string,
+    suma: Number(row.suma),
+    count: Number(row.pozycje_count),
+  }));
 }
 
 // --- DELETE podwykonawca ---
@@ -369,7 +436,7 @@ export async function createStawka(input: unknown): Promise<ActionResult> {
     .from('stawki_podwykonawcow')
     .insert({
       podwykonawca_id: parsed.data.podwykonawcaId,
-      pozycja_biblioteka_id: parsed.data.pozycjaBibliotekaId,
+      typ_robocizny_id: parsed.data.typRobociznyId,
       stawka: parsed.data.stawka,
     });
 

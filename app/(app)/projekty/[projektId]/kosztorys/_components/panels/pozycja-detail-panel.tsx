@@ -38,6 +38,8 @@ import {
   resetSkladowaR,
   resetSkladowaM,
   resetPozycjaToLibrary,
+  changeDostawcaForSkladowa,
+  changePodwykonawcaForSkladowa,
   type KosztorysPozycjaDetail as DetailType,
   type BibliotekaSkladowaR,
   type BibliotekaSkladowaM,
@@ -152,28 +154,20 @@ export function PozycjaDetailPanel({
   // Calculate totals
   const rJednostkowy = detail
     ? detail.skladoweR
-        .filter((r) => !r.is_manual)
-        .reduce((sum, r) => sum + r.stawka * r.norma, 0)
+        .reduce((sum, r) => sum + (r.stawka_manualna ?? r.cena), 0)
     : 0;
   const mJednostkowy = detail
     ? detail.skladoweM
-        .filter((m) => !m.is_manual)
-        .reduce((sum, m) => sum + m.cena * m.norma, 0)
+        .reduce((sum, m) => sum + (m.cena_manualna ?? m.cena) * m.norma, 0)
     : 0;
   const rPlusM = (rJednostkowy + mJednostkowy) * ilosc;
   const narzutWartosc = rPlusM * (narzut / 100);
   const razem = rPlusM + narzutWartosc;
 
-  // Check if any skladowe have overrides (differ from library)
+  // Check if any skladowe have manual overrides
   const hasOverrides = detail ? (
-    detail.skladoweR.some((r) => {
-      const lib = detail.bibliotekaSkladoweR.find((l) => l.lp === r.lp);
-      return lib && r.stawka !== lib.stawka_domyslna;
-    }) ||
-    detail.skladoweM.some((m) => {
-      const lib = detail.bibliotekaSkladoweM.find((l) => l.lp === m.lp);
-      return lib && m.cena !== lib.cena_domyslna;
-    })
+    detail.skladoweR.some((r) => r.stawka_manualna !== null) ||
+    detail.skladoweM.some((m) => m.cena_manualna !== null)
   ) : false;
 
   const [resetting, setResetting] = useState(false);
@@ -415,35 +409,50 @@ function SkladowaRRow({
   libSkladowa?: BibliotekaSkladowaR;
   onRefresh: () => Promise<void>;
 }) {
-  const [stawka, setStawka] = useState(skladowa.stawka);
+  const effectiveCena = skladowa.stawka_manualna ?? skladowa.cena;
+  const [stawka, setStawka] = useState(effectiveCena);
   const [podId, setPodId] = useState(skladowa.podwykonawca_id || '_none');
   const router = useRouter();
 
-  // Update local state when detail refreshes
   useEffect(() => {
-    setStawka(skladowa.stawka);
+    setStawka(skladowa.stawka_manualna ?? skladowa.cena);
     setPodId(skladowa.podwykonawca_id || '_none');
-  }, [skladowa.stawka, skladowa.podwykonawca_id]);
+  }, [skladowa.cena, skladowa.stawka_manualna, skladowa.podwykonawca_id]);
 
-  const isStawkaOverridden = libSkladowa
-    ? skladowa.stawka !== libSkladowa.stawka_domyslna
-    : false;
+  const isStawkaOverridden = skladowa.stawka_manualna !== null;
 
   const handleResetStawka = async () => {
     if (!libSkladowa) return;
-    const result = await resetSkladowaR(skladowa.id, libSkladowa.stawka_domyslna);
+    const result = await resetSkladowaR(skladowa.id, libSkladowa.cena);
     if (result.success) {
-      setStawka(libSkladowa.stawka_domyslna);
+      setStawka(libSkladowa.cena);
       router.refresh();
       await onRefresh();
+    }
+  };
+
+  const handlePodwykonawcaChange = async (val: string) => {
+    setPodId(val);
+    if (val === '_none') {
+      onSave(skladowa.id, stawka, null);
+    } else {
+      const result = await changePodwykonawcaForSkladowa(skladowa.id, val);
+      if (result.success) {
+        router.refresh();
+        await onRefresh();
+      } else {
+        toast.error(result.error || 'Błąd zmiany podwykonawcy');
+      }
     }
   };
 
   return (
     <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-white/[0.02] border border-white/[0.05]">
       <div className="flex-1 min-w-0">
-        <div className="text-sm text-white/70 truncate">{skladowa.opis}</div>
-        <div className="text-xs text-white/30">norma: {skladowa.norma} {skladowa.jednostka}</div>
+        <div className="text-sm text-white/70 truncate">{skladowa.typRobociznyNazwa || `Typ #${skladowa.lp}`}</div>
+        {skladowa.typRobociznyJednostka && (
+          <div className="text-xs text-white/30">/{skladowa.typRobociznyJednostka}</div>
+        )}
       </div>
       <div className="flex items-center">
         <Input
@@ -456,17 +465,14 @@ function SkladowaRRow({
         />
         <OverrideIndicator
           isOverridden={isStawkaOverridden}
-          libraryValue={libSkladowa?.stawka_domyslna ?? 0}
+          libraryValue={libSkladowa?.cena ?? 0}
           onReset={handleResetStawka}
           disabled={isLocked}
         />
       </div>
       <Select
         value={podId}
-        onValueChange={(val) => {
-          setPodId(val);
-          onSave(skladowa.id, stawka, val === '_none' ? null : val);
-        }}
+        onValueChange={handlePodwykonawcaChange}
         disabled={isLocked}
       >
         <SelectTrigger className="w-[140px] h-7 bg-white/[0.03] border-white/[0.08] text-xs">
@@ -500,34 +506,51 @@ function SkladowaMRow({
   libSkladowa?: BibliotekaSkladowaM;
   onRefresh: () => Promise<void>;
 }) {
-  const [cena, setCena] = useState(skladowa.cena);
+  const effectiveCena = skladowa.cena_manualna ?? skladowa.cena;
+  const [cena, setCena] = useState(effectiveCena);
   const [dosId, setDosId] = useState(skladowa.dostawca_id || '_none');
   const router = useRouter();
 
   useEffect(() => {
-    setCena(skladowa.cena);
+    setCena(skladowa.cena_manualna ?? skladowa.cena);
     setDosId(skladowa.dostawca_id || '_none');
-  }, [skladowa.cena, skladowa.dostawca_id]);
+  }, [skladowa.cena, skladowa.cena_manualna, skladowa.dostawca_id]);
 
-  const isCenaOverridden = libSkladowa
-    ? skladowa.cena !== libSkladowa.cena_domyslna
-    : false;
+  const isCenaOverridden = skladowa.cena_manualna !== null;
 
   const handleResetCena = async () => {
     if (!libSkladowa) return;
-    const result = await resetSkladowaM(skladowa.id, libSkladowa.cena_domyslna);
+    const result = await resetSkladowaM(skladowa.id, skladowa.cena);
     if (result.success) {
-      setCena(libSkladowa.cena_domyslna);
+      setCena(skladowa.cena);
       router.refresh();
       await onRefresh();
+    }
+  };
+
+  const handleDostawcaChange = async (val: string) => {
+    setDosId(val);
+    if (val === '_none') {
+      onSave(skladowa.id, cena, null);
+    } else {
+      const result = await changeDostawcaForSkladowa(skladowa.id, val);
+      if (result.success) {
+        router.refresh();
+        await onRefresh();
+      } else {
+        toast.error(result.error || 'Błąd zmiany dostawcy');
+      }
     }
   };
 
   return (
     <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-white/[0.02] border border-white/[0.05]">
       <div className="flex-1 min-w-0">
-        <div className="text-sm text-white/70 truncate">{skladowa.nazwa}</div>
-        <div className="text-xs text-white/30">norma: {skladowa.norma} {skladowa.jednostka || ''}</div>
+        <div className="text-sm text-white/70 truncate">{skladowa.produktNazwa || `Produkt #${skladowa.lp}`}</div>
+        <div className="text-xs text-white/30">
+          {skladowa.produktSku && <span className="font-mono mr-1">{skladowa.produktSku}</span>}
+          norma: {skladowa.norma} {skladowa.jednostka || skladowa.produktJednostka || ''}
+        </div>
       </div>
       <div className="flex items-center">
         <Input
@@ -540,17 +563,14 @@ function SkladowaMRow({
         />
         <OverrideIndicator
           isOverridden={isCenaOverridden}
-          libraryValue={libSkladowa?.cena_domyslna ?? 0}
+          libraryValue={skladowa.cena}
           onReset={handleResetCena}
           disabled={isLocked}
         />
       </div>
       <Select
         value={dosId}
-        onValueChange={(val) => {
-          setDosId(val);
-          onSave(skladowa.id, cena, val === '_none' ? null : val);
-        }}
+        onValueChange={handleDostawcaChange}
         disabled={isLocked}
       >
         <SelectTrigger className="w-[140px] h-7 bg-white/[0.03] border-white/[0.08] text-xs">

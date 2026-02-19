@@ -1,0 +1,111 @@
+{
+  "project": "PLANY App",
+  "branchName": "ralph/realizacja-dashboard-redesign",
+  "description": "Redesign realizacji from expense tracker to operational hub — add checklista tab showing zamówienia to send and umowy to sign, with progress bars in sidebar. Existing wpisy tab stays unchanged.",
+  "mode": "feature",
+  "baseBranch": "main",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Add getZamowieniaChecklista and getUmowyChecklista server actions",
+      "description": "Add two new server actions to `actions/realizacja.ts` that fetch checklista data.\n\n**Interface for zamówienia:**\n```typescript\nexport interface ZamowienieChecklistaRow {\n  id: string;\n  numer: string;\n  status: string;\n  dostawca_nazwa: string;\n  wartosc: number;\n  data_zamowienia: string | null;\n  data_dostawy_planowana: string | null;\n}\n```\n\n**Action `getZamowieniaChecklista(projektId)`:**\n```typescript\nconst { data, error } = await supabase\n  .from('zamowienia')\n  .select('id, numer, status, data_zamowienia, data_dostawy_planowana, dostawcy(nazwa)')\n  .eq('projekt_id', projektId)\n  .order('status', { ascending: true })\n  .order('numer', { ascending: true });\n```\nThen for each zamówienie, fetch aggregate wartosc from `zamowienie_pozycje` (SUM of ilosc_zamowiona * cena_jednostkowa). Follow the exact pattern from `getZamowienia()` in `actions/zamowienia.ts` for the aggregation.\n\nMap result to `ZamowienieChecklistaRow[]`. Sort: drafts first, then by numer.\n\n**Interface for umowy:**\n```typescript\nexport interface UmowaChecklistaRow {\n  id: string;\n  numer: string;\n  status: string;\n  podwykonawca_nazwa: string;\n  wartosc: number;\n  avg_procent_wykonania: number;\n  data_podpisania: string | null;\n}\n```\n\n**Action `getUmowyChecklista(projektId)`:**\nSame pattern — query `umowy` with joined `podwykonawcy(nazwa)`, aggregate wartosc and avg procent_wykonania from `umowa_pozycje`. Follow the exact pattern from `getUmowy()` in `actions/umowy.ts`.\n\nSort: drafts first, then by numer.",
+      "acceptanceCriteria": [
+        "getZamowieniaChecklista returns array with id, numer, status, dostawca_nazwa, wartosc, dates",
+        "getUmowyChecklista returns array with id, numer, status, podwykonawca_nazwa, wartosc, avg_procent_wykonania",
+        "Both functions sort drafts first, then by numer",
+        "Wartosc aggregated from pozycje tables (not hardcoded)",
+        "Empty arrays returned when no data exists",
+        "Typecheck passes"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": "",
+      "dependsOn": []
+    },
+    {
+      "id": "US-002",
+      "title": "Add tab switcher to realizacja-view with URL state",
+      "description": "Modify `app/(app)/projekty/[projektId]/realizacja/_components/realizacja-view.tsx` to add tab switching between Checklista and Wpisy.\n\nThe page.tsx must pass `searchParams` to the view. Update `app/(app)/projekty/[projektId]/realizacja/page.tsx` to read searchParams and pass them.\n\n**In page.tsx:**\n```typescript\ninterface PageProps {\n  params: Promise<{ projektId: string }>;\n  searchParams: Promise<{ tab?: string }>;\n}\n// ... \nconst { tab } = await searchParams;\n// pass tab to RealizacjaView\n```\n\n**In realizacja-view.tsx:**\nAdd a tab bar above the content area (but below the two-column flex container, inside the content column).\n\n```tsx\nconst activeTab = tab === 'wpisy' ? 'wpisy' : 'checklista';\n```\n\nTab bar UI — two tabs styled as underline tabs (matching project-tabs.tsx pattern):\n```tsx\n<div className=\"flex gap-1 border-b border-white/[0.06] mb-4\">\n  <Link\n    href={`/projekty/${projektId}/realizacja?tab=checklista`}\n    className={cn(\n      'px-4 py-2 text-sm transition-colors',\n      activeTab === 'checklista'\n        ? 'text-amber-500 border-b-2 border-amber-500'\n        : 'text-white/40 hover:text-white/60'\n    )}\n  >\n    Checklista\n  </Link>\n  <Link\n    href={`/projekty/${projektId}/realizacja?tab=wpisy`}\n    className={cn(...)}\n  >\n    Wpisy\n  </Link>\n</div>\n```\n\nConditionally render content based on activeTab:\n- `checklista`: render `<RealizacjaChecklista>` (placeholder div for now)\n- `wpisy`: render existing toolbar + table/empty state (move existing code into this branch)\n\nThe sidebar KPI stays visible on both tabs.\n\nNew props for RealizacjaView: `tab: string`, `zamowieniaChecklista: ZamowienieChecklistaRow[]`, `umowyChecklista: UmowaChecklistaRow[]`.",
+      "acceptanceCriteria": [
+        "Two tabs visible: Checklista (default) and Wpisy",
+        "Active tab has amber underline, inactive is muted",
+        "Tab state persisted in URL via ?tab= parameter",
+        "Default tab is checklista when no ?tab param",
+        "Wpisy tab shows existing toolbar + table unchanged",
+        "Checklista tab shows placeholder (will be built in US-003)",
+        "Sidebar KPI visible on both tabs",
+        "page.tsx fetches zamowieniaChecklista and umowyChecklista in parallel with other data",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-001"]
+    },
+    {
+      "id": "US-003",
+      "title": "Create realizacja-checklista component",
+      "description": "Create `app/(app)/projekty/[projektId]/realizacja/_components/realizacja-checklista.tsx`.\n\n'use client' component.\n\nProps:\n```typescript\ninterface RealizacjaChecklistaProps {\n  zamowienia: ZamowienieChecklistaRow[];\n  umowy: UmowaChecklistaRow[];\n  projektId: string;\n}\n```\n\nLayout — two sections stacked vertically:\n\n**Section 1: ZAMÓWIENIA MATERIAŁÓW**\n```tsx\n<div className=\"space-y-3\">\n  <div className=\"flex items-center justify-between\">\n    <h3 className=\"text-sm font-medium text-white/60 uppercase tracking-wider\">Zamówienia materiałów</h3>\n    <span className=\"text-xs text-white/40\">{doneCount}/{total} ✓</span>\n  </div>\n  {zamowienia.map(z => <ChecklistaRow key={z.id} ... />)}\n</div>\n```\n\n**Each zamówienie row:**\n```tsx\n<Link href={`/projekty/${projektId}/zamowienia?detail=${z.id}`}\n  className={cn(\n    'flex items-center gap-3 px-3 py-2.5 rounded-lg border transition-colors',\n    isDone\n      ? 'border-white/[0.04] bg-white/[0.01] opacity-60'\n      : 'border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.04]'\n  )}\n>\n  {/* Checkbox visual (not interactive — just status indicator) */}\n  <div className={cn('w-5 h-5 rounded border flex items-center justify-center shrink-0',\n    isDone ? 'border-emerald-500/30 bg-emerald-500/10' : 'border-white/[0.1]'\n  )}>\n    {isDone && <Check className=\"h-3 w-3 text-emerald-500\" />}\n  </div>\n  \n  {/* Numer */}\n  <span className=\"text-sm font-mono text-white/70 w-28 shrink-0\">{z.numer}</span>\n  \n  {/* Dostawca */}\n  <span className=\"text-sm text-white/50 flex-1 truncate\">{z.dostawca_nazwa}</span>\n  \n  {/* Kwota */}\n  <span className=\"text-sm text-white/50 w-24 text-right shrink-0\">\n    {z.wartosc.toLocaleString('pl-PL', { minimumFractionDigits: 0 })} zł\n  </span>\n  \n  {/* Status badge */}\n  <span className={cn('text-xs px-2 py-0.5 rounded-full border shrink-0', statusConfig.className)}>\n    {statusConfig.label}\n  </span>\n  \n  {/* Arrow for drafts */}\n  {!isDone && <ArrowRight className=\"h-4 w-4 text-white/20 shrink-0\" />}\n</Link>\n```\n\n`isDone` for zamówienie: `['wyslane', 'czesciowo', 'dostarczone', 'rozliczone'].includes(z.status)`\n\nUse `getZamowienieStatusConfig` from `@/lib/zamowienia/status-config`.\n\n**Section 2: UMOWY Z PODWYKONAWCAMI**\nSame pattern but for umowy. Additional: show `avg_procent_wykonania` as small text after status badge when > 0.\n\n`isDone` for umowa: `['podpisana', 'wykonana', 'rozliczona'].includes(u.status)`\n\nUse `getUmowaStatusConfig` from `@/lib/umowy/status-config`.\n\n**Empty states:** If zamowienia array is empty, show: 'Brak zamówień — zostaną wygenerowane po akceptacji rewizji'. Same for umowy.\n\nLink `href` for umowy: `/projekty/${projektId}/umowy?detail=${u.id}`",
+      "acceptanceCriteria": [
+        "Two sections: Zamówienia materiałów and Umowy z podwykonawcami",
+        "Each section shows done/total counter in header",
+        "Each row shows: checkbox indicator, numer, dostawca/podwykonawca, kwota, status badge",
+        "Done items (status >= wysłane/podpisana) have check icon, faded opacity",
+        "Undone items (draft) have arrow icon and are visually prominent",
+        "Rows are links to respective zamówienia/umowy detail pages",
+        "Status badges use correct colors from status-config",
+        "Umowy show % wykonania when > 0",
+        "Empty state message when no zamówienia/umowy exist",
+        "Drafts sorted first, then by numer",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-002"]
+    },
+    {
+      "id": "US-004",
+      "title": "Add progress bars to realizacja sidebar",
+      "description": "Modify `app/(app)/projekty/[projektId]/realizacja/_components/realizacja-sidebar.tsx`.\n\nThe component needs new props for checklista counts. Update the parent to pass these.\n\n**New props (in addition to existing `stats` and `projektId`):**\n```typescript\nzamowieniaProgress: { done: number; total: number };\numowyProgress: { done: number; total: number };\n```\n\nCalculate these in `realizacja-view.tsx` from the checklista data:\n```typescript\nconst zamowieniaProgress = {\n  done: zamowieniaChecklista.filter(z => ['wyslane', 'czesciowo', 'dostarczone', 'rozliczone'].includes(z.status)).length,\n  total: zamowieniaChecklista.length,\n};\n```\nSame for umowy with `['podpisana', 'wykonana', 'rozliczona']`.\n\n**Changes to Zamówienia section in sidebar:**\nAfter the per-status dots list, add a progress bar:\n```tsx\n{zamowieniaProgress.total > 0 && (\n  <div className=\"mt-2 space-y-1\">\n    <div className=\"flex justify-between text-xs text-white/40\">\n      <span>Postęp</span>\n      <span>{zamowieniaProgress.done}/{zamowieniaProgress.total}</span>\n    </div>\n    <div className=\"h-1.5 rounded-full bg-white/[0.06]\">\n      <div\n        className=\"h-full rounded-full bg-amber-500 transition-all\"\n        style={{ width: `${(zamowieniaProgress.done / zamowieniaProgress.total) * 100}%` }}\n      />\n    </div>\n  </div>\n)}\n```\n\n**Changes to Umowy section:** Same progress bar pattern.\n\n**Change `→ zobacz` links** in zamówienia/umowy sections: Instead of linking to `/projekty/${projektId}/zamowienia`, make them switch to the Checklista tab: use `?tab=checklista` scroll anchor or simply keep existing behavior (link to zamówienia/umowy pages) — keep existing links, they're more useful for detailed management.",
+      "acceptanceCriteria": [
+        "Zamówienia section shows progress bar with done/total count",
+        "Umowy section shows progress bar with done/total count",
+        "Progress bars use amber-500 color",
+        "Progress bars hidden when total is 0",
+        "Sidebar receives zamowieniaProgress and umowyProgress as props",
+        "Existing sidebar content (budżet, per-status dots, links) unchanged",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-003"]
+    },
+    {
+      "id": "US-005",
+      "title": "Final build verification and browser testing",
+      "description": "Verify everything works end-to-end.\n\n**Step 1:** Run `npm run build` — must pass with zero errors.\n\n**Step 2:** Browser verification at localhost:3000:\n1. Open a project in 'realizacja' status\n2. Click 'Realizacja' tab\n3. Default view should be Checklista tab (not Wpisy)\n4. Checklista shows zamówienia section with rows (drafts first, faded for done)\n5. Checklista shows umowy section with rows\n6. Done/total counters are correct in section headers\n7. Clicking a row navigates to the respective zamówienia/umowy page\n8. Status badges have correct colors\n9. Switch to Wpisy tab — existing table works exactly as before\n10. URL updates: ?tab=checklista / ?tab=wpisy\n11. Sidebar shows progress bars for zamówienia and umowy\n12. Sidebar budget section unchanged\n13. Direct URL /realizacja?tab=wpisy opens wpisy tab\n\n**Step 3:** If any issues found, fix them.",
+      "acceptanceCriteria": [
+        "npm run build passes without errors",
+        "Checklista tab is default view",
+        "Zamówienia and umowy sections render with correct data",
+        "Done/total counters match actual status counts",
+        "Clicking rows navigates to correct detail pages",
+        "Wpisy tab works identically to before",
+        "URL tab parameter works both directions (reading and writing)",
+        "Sidebar progress bars display correctly",
+        "No visual regressions in existing functionality",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-004"]
+    }
+  ]
+}

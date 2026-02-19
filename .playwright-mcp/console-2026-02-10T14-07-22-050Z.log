@@ -1,0 +1,3 @@
+[    1648ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://plany-app-dun.vercel.app/kosztorys?_rsc=vf1oa:0
+[    5533ms] [WARNING] Warning: Missing `Description` or `aria-describedby={undefined}` for {DialogContent}. @ https://plany-app-dun.vercel.app/_next/static/chunks/96038415c82c0440.js:4
+[   11595ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://plany-app-dun.vercel.app/kosztorys?_rsc=1nwvx:0

@@ -1,0 +1,30 @@
+[    4722ms] [WARNING] Warning: Missing `Description` or `aria-describedby={undefined}` for {DialogContent}. @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[    4729ms] [WARNING] Warning: Missing `Description` or `aria-describedby={undefined}` for {DialogContent}. @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[    5233ms] [ERROR] In HTML, %s cannot be a descendant of <%s>.
+This will cause a hydration error.%s <div> p 
+
+  ...
+    <FocusScope asChild={true} loop={true} trapped={true} onMountAutoFocus={undefined} ...>
+      <Primitive.div tabIndex={-1} asChild={true} ref={function} ...>
+        <Primitive.div.Slot tabIndex={-1} onKeyDown={function FocusScope.useCallback[handleKeyDown]} ref={function}>
+          <Primitive.div.SlotClone tabIndex={-1} onKeyDown={function FocusScope.useCallback[handleKeyDown]} ...>
+            <DismissableLayer role="dialog" id="radix-_R_9..." aria-describedby="radix-_R_9..." ...>
+              <Primitive.div role="dialog" id="radix-_R_9..." aria-describedby="radix-_R_9..." ...>
+                <div role="dialog" id="radix-_R_9..." aria-describedby="radix-_R_9..." aria-labelledby="radix-_R_9..." ...>
+                  <SlidePanelHeader onClose={function onClose}>
+                    <div className="flex items...">
+                      <div className="flex-1">
+                        <div>
+                        <SlidePanelDescription>
+                          <DialogDescription className="text-sm te...">
+                            <Primitive.p id="radix-_R_9..." className="text-sm te..." ref={null}>
+>                             <p id="radix-_R_95esnekndlbH2_" className="text-sm text-white/60" ref={null}>
+>                               <div className="flex items-center gap-2 mt-1">
+                      ...
+                  ...
+    ...
+ @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:3127
+[    5234ms] [ERROR] <%s> cannot contain a nested %s.
+See this log for the ancestor stack trace. p <div> @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:3127
+[   24854ms] [WARNING] Warning: Missing `Description` or `aria-describedby={undefined}` for {DialogContent}. @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[   24864ms] [WARNING] Warning: Missing `Description` or `aria-describedby={undefined}` for {DialogContent}. @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297

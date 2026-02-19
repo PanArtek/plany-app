@@ -1,48 +1,110 @@
 # Ralph Progress Log
-Started: Sun Feb  8 13:10:36 CET 2026
+Started: Wed Feb 18 11:21:07 CET 2026
 ---
-## US-001: DB migration: enhanced aggregation RPCs ✅
-- Applied migration `enhanced_aggregations` with 6 functions
-- get_materialy_aggregated: added najgorsza_cena, p_status_cenowy, p_show_inactive, p_sort, p_order
-- get_materialy_stats: total=155, with_suppliers=135, without_suppliers=20, avg_price=64.89
-- get_dostawcy_aggregated: replaces N+1, returns produkty_count + total_wartosc with sort
-- get_dostawcy_stats: total=75, total_products=144, avg_products=1.9
-- get_podwykonawcy_aggregated: replaces N+1, returns stawki_count, min_stawka, max_stawka with sort + specjalizacja filter
-- get_podwykonawcy_stats: total=75, total_stawki=64, avg_stawka=39.69
-- Build passes ✅
+## US-001: Create typy_robocizny table with RLS policies ✅
+- Migration applied: table + index + 4 RLS policies
+- Build passes
 
-## US-002: Update validation schemas for new filter params ✅
-- materialyFiltersSchema: added statusCenowy, showInactive, sort, order
-- dostawcyFiltersSchema: added sort, order
-- podwykonawcyFiltersSchema: added specjalizacja, sort, order
-- Updated all 3 page.tsx files to pass new params from searchParams
+## US-002: Rebuild stawki_podwykonawcow ✅
+- Truncated, dropped pozycja_biblioteka_id, added typ_robocizny_id NOT NULL
+- Unique constraint on (podwykonawca_id, typ_robocizny_id)
 
-## US-003: Update server actions to use new RPCs ✅
-- materialy.ts: najgorszaCena, new RPC params, getMaterialyStats()
-- dostawcy.ts: replaced N+1 with RPC, totalWartosc, getDostawcyStats()
-- podwykonawcy.ts: replaced N+1 with RPC, minStawka/maxStawka, getPodwykonawcyStats(), getDistinctSpecjalizacje()
+## US-003: Alter biblioteka_skladowe_robocizna ✅
+- Dropped opis, stawka_domyslna; added typ_robocizny_id NOT NULL
+- podwykonawca_id set NOT NULL, FK changed to CASCADE
+- Note: table has `cena` column from original schema (not norma_domyslna as PRD expected)
 
-## US-004: Create shared StatsBar component ✅
-- components/stats-bar.tsx: glass card grid, amber font-mono values, optional sublabel
+## US-004: Alter biblioteka_skladowe_materialy ✅
+- Dropped nazwa, cena_domyslna; produkt_id + dostawca_id set NOT NULL
+- FK constraints changed to CASCADE
 
-## US-005: Materialy page UX upgrade ✅
-- StatsBar: 4 KPIs (Produkty, Z dostawcami, Bez dostawców, Śr. cena)
-- Price range column (min-max zł), sortable headers, statusCenowy filter, showInactive toggle
-- Breadcrumb with count, inactive rows dimmed
+## US-005: Alter kosztorys_skladowe tables ✅
+- materialy: dropped nazwa, produkt_id+dostawca_id NOT NULL, added cena_manualna
+- robocizna: dropped opis, added typ_robocizny_id NOT NULL, podwykonawca_id NOT NULL, stawka_manualna
 
-## US-006: Dostawcy page UX upgrade ✅
-- StatsBar: 3 KPIs (Dostawcy, Pozycji w cennikach, Śr. produktów/dostawca)
-- Wartość cennika column, sortable headers, showInactive toggle
-- Breadcrumb with count, inactive rows dimmed
+## US-006: Alter zamowienie_pozycje + umowa_pozycje ✅
+- zamowienie_pozycje: added kosztorys_skladowa_material_id, produkt_id NOT NULL
+- umowa_pozycje: added kosztorys_skladowa_robocizna_id + typ_robocizny_id, dropped pozycja_biblioteka_id
 
-## US-007: Podwykonawcy page UX upgrade ✅
-- StatsBar: 3 KPIs (Podwykonawcy, Stawek ogółem, Śr. stawka)
-- Rate range column (min-max zł with count), specjalizacja colored badges
-- Specjalizacja filter dropdown from DB, sortable headers, showInactive toggle
-- Breadcrumb with count, inactive rows dimmed
+## US-007: Regenerate TypeScript types ✅
+- database.types.ts regenerated with all schema changes
+- Build passes with zero errors
 
-## US-008: Final build verification and polish ✅
-- npm run build: PASSES (zero errors, compiled in 6.5s)
-- npm run lint: 31 issues, all pre-existing (TanStack Table warnings, setState-in-effect in detail panels)
-- npm run test: 31/31 tests pass (8 test files)
-- All acceptance criteria met
+## US-008: Seed base data ✅
+- scripts/seeds/00-clean.sql (truncate all 27 tables)
+- scripts/seeds/01-base.sql (org, 35 kategorie, 3 narzuty, 18 typy_robocizny)
+
+## US-009: Seed kontrahenci ✅
+- scripts/seeds/02-kontrahenci.sql (6 dostawcy, 5 podwykonawcy, 18 stawki)
+
+## US-010: Seed produkty + ceny ✅
+- scripts/seeds/03-produkty.sql (48 produkty, 96 ceny_dostawcow)
+
+## US-011: CRUD action + validation for typy_robocizny ✅
+- lib/validations/typy-robocizny.ts (form + server + filter schemas)
+- actions/typy-robocizny.ts (CRUD + paginated list + dropdown helper)
+- Build passes
+
+## US-012: Typy robocizny page + sidebar nav ✅
+- app/(app)/typy-robocizny/page.tsx (Server Component)
+- _components/typy-robocizny-view.tsx (client view with panel state)
+- _components/typy-robocizny-table.tsx (tanstack table)
+- _components/typy-robocizny-filters.tsx (search + inactive toggle)
+- _components/typy-robocizny-pagination.tsx
+- _components/panels/typ-robocizny-form-panel.tsx (create/edit)
+- Sidebar: added Typy robocizny with Wrench icon between Materiały and Dostawcy
+- Verified in browser: page renders, form panel opens, sidebar active state works
+
+## US-013: Update skladowe actions for new schema ✅
+- lib/validations/skladowe.ts: new schemas (produkt_id+dostawca_id for material, typ_robocizny_id+podwykonawca_id for robocizna)
+- actions/skladowe.ts: new interfaces + CRUD using new columns
+- actions/pozycje.ts: updated interfaces, read queries JOIN with related tables
+- lib/utils/pozycje.ts: updated price calc to use new cena column
+- UI components updated for type compatibility (skladowa-panel, skladowe-section, pozycja-detail-panel)
+- No references to dropped columns (nazwa, opis, cena_domyslna, stawka_domyslna)
+- Build passes
+
+## US-014: Update kosztorys view for new schema ✅
+- kosztorys_pozycje_view: updated to use kosztorys_skladowe_robocizna/materialy
+- Build passes
+
+## US-015: Update add-position action to copy skladowe ✅
+- addPozycjaFromBiblioteka copies robocizna + materialy from library templates
+- Uses cennik prices via JOINs
+
+## US-016: Update pozycja detail panel skladowe display ✅
+- SkladowaRRow: shows typ_robocizny name, podwykonawca dropdown
+- SkladowaMRow: shows produkt name + sku, dostawca dropdown
+
+## US-017: Update kontrahenci detail panels ✅
+- Dostawca/Podwykonawca panels: show cennik usage + kosztorys references
+
+## US-018: Update dostawcy/podwykonawcy category filtering ✅
+- Filter by kontrahent category in lists
+
+## US-019: Supplier/subcontractor change in kosztorys ✅
+- changeDostawcaForSkladowa: updates dostawca + fetches new price from cennik
+- changePodwykonawcaForSkladowa: updates podwykonawca + fetches new stawka
+- Verified in browser: price auto-updates on supplier change
+
+## US-020: Rebuild zamowienia generation ✅
+- Updated generate_zamowienia_draft Postgres function for new schema
+- Uses COALESCE(cena_manualna, cena) + JOIN produkty for names
+
+## US-021: Rebuild umowy generation ✅
+- Rewrote generate_umowy_draft: groups by ksr.podwykonawca_id
+- Aggregates by (typ_robocizny_id, effective_price)
+- Sets typ_robocizny_id on umowa_pozycje
+
+## US-022: Seed demo projects with new schema ✅
+- Rewrote 04-pozycje-stawki.sql: full library (18 pozycje_biblioteka + 18 bib_rob + 48 bib_mat)
+- All 6 project seeds (05-10) executed successfully
+- Fixed 08 UPDATE FROM clause (PostgreSQL reference issue)
+- 5 projects, 44 kosztorys_pozycje, 0 NULL FKs
+
+## US-023: Final verification ✅
+- Data counts: 18 typy_rob, 18 stawki, 5 projekty, 18 bib_poz, 48 bib_mat, 18 bib_rob
+- 0 NULLs in all required FK columns
+- npm run build passes
+- Browser verified: /typy-robocizny (18 types), /projekty (5 projects), kosztorys detail panel (full package with prices from cennik)
+---

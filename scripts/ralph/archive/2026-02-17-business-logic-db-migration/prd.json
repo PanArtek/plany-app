@@ -1,0 +1,227 @@
+{
+  "project": "PLANY App",
+  "branchName": "ralph/kontrahenci-karta-firmy",
+  "description": "Rozszerzenie modułów Podwykonawcy i Dostawcy o pełną kartę firmy: dane rejestrowe do umów, ocenę, historię realizacji + seed data z Excela (9 stolarni + 7 hurtowni)",
+  "mode": "feature",
+  "baseBranch": "main",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "DB migration: rozszerzenie tabel podwykonawcy i dostawcy o kartę firmy",
+      "description": "Apply Supabase migration that adds company card columns to both tables.\n\nALTER TABLE podwykonawcy ADD COLUMN IF NOT EXISTS:\n- nazwa_pelna VARCHAR(500)\n- nip VARCHAR(13)\n- regon VARCHAR(14)\n- krs VARCHAR(10)\n- adres_siedziby TEXT\n- osoba_reprezentujaca VARCHAR(255)\n- email VARCHAR(255)\n- strona_www VARCHAR(500)\n- nr_konta VARCHAR(32)\n- uwagi TEXT\n- ocena SMALLINT CHECK (ocena BETWEEN 1 AND 5)\n\nSame columns for ALTER TABLE dostawcy.\n\nExisting columns (nazwa, specjalizacja/kod, kontakt, aktywny) remain unchanged.",
+      "acceptanceCriteria": [
+        "podwykonawcy table has all 11 new columns",
+        "dostawcy table has all 11 new columns",
+        "ocena column has CHECK constraint (1-5)",
+        "Existing data preserved (no data loss)",
+        "Typecheck passes"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": "",
+      "dependsOn": []
+    },
+    {
+      "id": "US-002",
+      "title": "Seed data: 9 stolarni jako podwykonawcy + 7 hurtowni jako dostawcy",
+      "description": "Apply Supabase seed migration inserting companies from Excel file.\n\nPodwykonawcy (9 stolarni meblowych):\n1. Akccept Sp. j. | Meble biurowe, recepcje, zabudowy na wymiar, fit-out | akccept.pl | akccept@akccept.pl, mjusinski@akccept.pl | Warszawa | Portfolio: Medicover, Toyota, Warta, AkzoNobel. 15000 mebli. | ocena=5\n2. Pracownia Kogut | Meble na wymiar, kuchnie, zabudowy komercyjne | pracowniakogut.pl | biuro@pracowniakogut.pl, 792 10 10 89 | Dawidy Bankowe | Dedykowana sekcja B2B, project manager. | ocena=5\n3. Mebbble.pl / Studio BBB | Kuchnie na wymiar, zabudowy niestandardowe | mebbble.pl | biuro@mebbble.pl, 663 542 438 | Wołomin / Towarowa 22 | Wprost wymienia firmy budowlane jako partnerów B2B. | ocena=4\n4. Maxmeble | Meble biurowe, hotelowe, gastronomiczne | maxmeble.com | biuro@maxmeble.com, 660 730 855 | Warszawa | Egger i Kronopol. Showroom w Warszawie. | ocena=4\n5. Ekta Meble | Meble biurowe, lady recepcyjne na wymiar | ekta-meble.pl | ekta@ekta-meble.pl, 22 619 19 15 | Warszawa | 30 lat doświadczenia. Realizacja 3-5 dni. | ocena=4\n6. Projekt Gabinetu | Meble medyczne do gabinetów | projektgabinetu.com | biuro@projektgabinetu.com | Warszawa | Gabinety stomatologiczne/lekarskie. Wymagania RODO. | ocena=4\n7. Blue Meble | Meble hotelowe, biurowe, restauracyjne | bluemeble.pl | biuro@bluemeble.pl, 690 495 343 | Warszawa | Hotele, restauracje, biura. | ocena=3\n8. Rozbicki Meble | Stolarnia, recepcje, zabudowy | rozbickimeble.pl | studio@rozbickimeble.pl, 505 578 276 | okolice Warszawy | Rodzinna stolarnia z doświadczeniem w recepcjach. | ocena=3\n9. 10office | Lady recepcyjne, meble biurowe | 10office.pl | biuro@10office.pl, 885 80 10 10 | Warszawa | Lady recepcyjne od 865 PLN. Modele gotowe i na wymiar. | ocena=3\n\nDostawcy (7 hurtowni płyt):\n1. FlexMeble / ŚwiatPłyt.pl | kod=FLX | Hurtownia płyt, rozkrój CNC, okleinowanie | flexmeble.pl | info@flexmeble.pl, info@swiatplyt.pl, handel@swiatplyt.pl | Janki | Największa hurtownia w aglomeracji. 500+ dekorów. | ocena=5\n2. W.M.-FORMAT | kod=WMF | Hurtownia płyt Egger, cięcie, okleinowanie | wmformat.pl | info@wmformat.pl, zamowienia.cnc@wmformat.pl, 22 750 10 60 | Piaseczno | Oficjalny partner Egger. | ocena=5\n3. ETS Nova | kod=ETS | Hurtownia płyt Egger, Kronospan, Swiss Krono | ets-nova.pl | biuro@ets-nova.pl, zamowienia@ets-nova.pl | Warszawa | Rozkrój, okleinowanie, formatki na wymiar. | ocena=4\n4. Centrum.meble.pl | kod=CEN | Sklep online, rozkrój, konfigurator | centrum.meble.pl | formularz na stronie | Warszawa | Konfigurator rozkroju online. 9700+ opinii. | ocena=4\n5. Płyta-Meblowa.pl | kod=PLM | Hurtownia płyt Egger online | plyta-meblowa.pl | formularz na stronie | Warszawa | Szeroki wybór płyt Egger z dostawą. | ocena=3\n6. Stolarnia Cito | kod=CIT | Akcesoria, CNC, obrzeża, Blum/Wurth | citostolarnia.pl | formularz na stronie | Warszawa | Egger + Pfleiderer. Akcesoria Blum, Wurth. CNC. | ocena=3\n7. Płytwiór | kod=PLW | Hurtownia płyt meblowych | plytwior.pl | formularz na stronie | Piaseczno | Działa od 1981. Tradycyjny dostawca. | ocena=3\n\nUse INSERT with ON CONFLICT DO NOTHING for idempotency. Split contact info: phone → kontakt, email → email. Put location + profile notes into uwagi. Use organization_id from existing seed data pattern (SELECT from organizations).",
+      "acceptanceCriteria": [
+        "9 podwykonawcy rows inserted with nazwa, specjalizacja, email, strona_www, uwagi, ocena filled",
+        "7 dostawcy rows inserted with nazwa, kod, email, strona_www, uwagi, ocena filled",
+        "ON CONFLICT DO NOTHING — migration is idempotent",
+        "Verify: SELECT count(*) from podwykonawcy returns at least 9 new rows",
+        "Verify: SELECT count(*) from dostawcy returns at least 7 new rows",
+        "Typecheck passes"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-001"]
+    },
+    {
+      "id": "US-003",
+      "title": "Regeneracja typów TypeScript po migracji",
+      "description": "Regenerate Supabase TypeScript types after DB migration.\n\nRun type generation to update lib/supabase/database.types.ts with new columns on podwykonawcy and dostawcy tables.\n\nVerify that the generated types include all 11 new fields on both Row types.",
+      "acceptanceCriteria": [
+        "database.types.ts includes nazwa_pelna, nip, regon, krs, adres_siedziby, osoba_reprezentujaca, email, strona_www, nr_konta, uwagi, ocena on podwykonawcy Row",
+        "database.types.ts includes same 11 fields on dostawcy Row",
+        "npm run build passes",
+        "Typecheck passes"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-001"]
+    },
+    {
+      "id": "US-004",
+      "title": "Walidacje Zod: rozszerzenie schematów podwykonawcy i dostawcy",
+      "description": "Extend Zod validation schemas in both modules with new fields.\n\nlib/validations/podwykonawcy.ts:\n- Add to createPodwykonawcaSchema: nazwa_pelna (string, optional, max 500), nip (string, optional, max 13), regon (string, optional, max 14), krs (string, optional, max 10), adres_siedziby (string, optional), osoba_reprezentujaca (string, optional, max 255), email (string, email, optional), strona_www (string, optional, max 500), nr_konta (string, optional, max 32), uwagi (string, optional), ocena (number, int, min 1, max 5, optional)\n- Same fields in updatePodwykonawcaSchema (all optional)\n- Create form schemas without .default() for zodResolver compatibility\n\nlib/validations/dostawcy.ts:\n- Same new fields added to createDostawcaSchema and updateDostawcaSchema\n- Create form schemas without .default()\n\nExport updated types.",
+      "acceptanceCriteria": [
+        "createPodwykonawcaSchema includes all 11 new optional fields",
+        "updatePodwykonawcaSchema includes all 11 new optional fields",
+        "createDostawcaSchema includes all 11 new optional fields",
+        "updateDostawcaSchema includes all 11 new optional fields",
+        "Form schemas exist without .default() for zodResolver",
+        "email field validated with z.string().email() when provided",
+        "ocena validated as z.number().int().min(1).max(5) when provided",
+        "Typecheck passes"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-003"]
+    },
+    {
+      "id": "US-005",
+      "title": "Server Actions: rozszerzenie CRUD podwykonawcy o nowe pola",
+      "description": "Update server actions in actions/podwykonawcy.ts to handle new fields.\n\ncreatePodwykonawca: insert all new fields from validated input\nupdatePodwykonawca: update all new fields (partial, only provided fields)\ngetPodwykonawcy: include ocena in list query (for display in table)\ngetPodwykonawca: return all new fields in detail query\n\nKeep existing logic (filters, pagination, stats, stawki CRUD) unchanged.",
+      "acceptanceCriteria": [
+        "createPodwykonawca inserts all 11 new fields",
+        "updatePodwykonawca updates only provided new fields",
+        "getPodwykonawcy returns ocena in list results",
+        "getPodwykonawca returns all new fields",
+        "Existing stawki CRUD unchanged",
+        "Typecheck passes"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-004"]
+    },
+    {
+      "id": "US-006",
+      "title": "Server Actions: rozszerzenie CRUD dostawcy o nowe pola",
+      "description": "Update server actions in actions/dostawcy.ts to handle new fields.\n\ncreateDostawca: insert all new fields from validated input\nupdateDostawca: update all new fields (partial, only provided fields)\ngetDostawcy: include ocena in list query (for display in table)\ngetDostawca: return all new fields in detail query\n\nKeep existing logic (filters, pagination, stats, cennik CRUD) unchanged.",
+      "acceptanceCriteria": [
+        "createDostawca inserts all 11 new fields",
+        "updateDostawca updates only provided new fields",
+        "getDostawcy returns ocena in list results",
+        "getDostawca returns all new fields",
+        "Existing cennik CRUD unchanged",
+        "Typecheck passes"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-004"]
+    },
+    {
+      "id": "US-007",
+      "title": "Form panel podwykonawcy: sekcje Kontakt + Dane do umowy + Uwagi",
+      "description": "Extend podwykonawca-form-panel.tsx with 3 new sections.\n\nCurrent form has: nazwa, specjalizacja, kontakt, aktywny.\n\nNew layout:\n1. PODSTAWOWE: nazwa*, specjalizacja, ocena (1-5 select/stars)\n2. KONTAKT: kontakt (phone - existing field), email (new), strona_www (new)\n3. DANE DO UMOWY (collapsible, default collapsed): nazwa_pelna, nip, regon, krs, adres_siedziby (textarea), osoba_reprezentujaca, nr_konta\n4. UWAGI: uwagi (textarea)\n5. aktywny toggle (existing)\n\nUse Collapsible from shadcn/ui (or simple details/summary) for 'Dane do umowy' section.\nAll new fields are optional — PM can fill them later.\nForm should work for both create and edit modes.",
+      "acceptanceCriteria": [
+        "Form shows 4 sections: Podstawowe, Kontakt, Dane do umowy, Uwagi",
+        "Dane do umowy section is collapsible, collapsed by default",
+        "Ocena field is a select with options 1-5",
+        "All new fields save correctly on create",
+        "All new fields populate correctly on edit",
+        "Existing fields (nazwa, specjalizacja, kontakt, aktywny) still work",
+        "npm run build passes",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-005"]
+    },
+    {
+      "id": "US-008",
+      "title": "Form panel dostawcy: sekcje Kontakt + Dane do umowy + Uwagi",
+      "description": "Extend dostawca-form-panel.tsx with 3 new sections. Same pattern as US-007 but for dostawcy.\n\nCurrent form has: nazwa, kod, kontakt, aktywny.\n\nNew layout:\n1. PODSTAWOWE: nazwa*, kod, ocena (1-5 select)\n2. KONTAKT: kontakt (phone - existing), email (new), strona_www (new)\n3. DANE DO UMOWY (collapsible, collapsed by default): nazwa_pelna, nip, regon, krs, adres_siedziby (textarea), osoba_reprezentujaca, nr_konta\n4. UWAGI: uwagi (textarea)\n5. aktywny toggle\n\nReuse same Collapsible pattern from US-007.",
+      "acceptanceCriteria": [
+        "Form shows 4 sections: Podstawowe, Kontakt, Dane do umowy, Uwagi",
+        "Dane do umowy section is collapsible, collapsed by default",
+        "Ocena field is a select with options 1-5",
+        "All new fields save correctly on create",
+        "All new fields populate correctly on edit",
+        "Existing fields (nazwa, kod, kontakt, aktywny) still work",
+        "npm run build passes",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-006"]
+    },
+    {
+      "id": "US-009",
+      "title": "Komponent CopyContractData + integracja w detail panelach",
+      "description": "Create reusable CopyContractData component and integrate in both detail panels.\n\ncomponents/copy-contract-data.tsx:\n- Props: { nazwaPelna?, nip?, regon?, krs?, adresSiedziby?, osobaReprezentujaca?, nrKonta? }\n- Renders a button 'Kopiuj dane do umowy' (ClipboardCopy icon)\n- On click: builds formatted text block (only non-empty fields):\n  ```\n  Akccept Sp. j.\n  NIP: 521-123-45-67, REGON: 123456789, KRS: 0000123456\n  ul. Meblowa 5, 02-100 Warszawa\n  Reprezentowany przez: Jan Kowalski\n  Nr konta: PL61 1090 1014 0000 0000 1234 5678\n  ```\n- Copies to clipboard via navigator.clipboard.writeText()\n- Shows toast 'Skopiowano dane do umowy'\n- Button disabled if no contract data fields are filled\n\nIntegrate in:\n- podwykonawca-detail-panel.tsx: add CopyContractData below contact info, show new fields (email, www, ocena stars)\n- dostawca-detail-panel.tsx: same pattern\n\nAlso display new read-only fields on detail panel: email (mailto link), strona_www (external link), ocena (stars), uwagi.",
+      "acceptanceCriteria": [
+        "CopyContractData component exists in components/",
+        "Button copies formatted text to clipboard with only non-empty fields",
+        "Toast shown after copy",
+        "Button disabled when no contract data filled",
+        "Podwykonawca detail panel shows email, www, ocena, uwagi + copy button",
+        "Dostawca detail panel shows email, www, ocena, uwagi + copy button",
+        "npm run build passes",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-007", "US-008"]
+    },
+    {
+      "id": "US-010",
+      "title": "Detail panel: sekcja Historia realizacji (podwykonawcy)",
+      "description": "Add 'Historia realizacji' section to podwykonawca-detail-panel.tsx.\n\nNew server action in actions/podwykonawcy.ts:\ngetPodwykonawcaHistoria(id): query kosztorys_pozycje WHERE podwykonawca_id = id, JOIN kosztorysy → projekty. GROUP BY projekt, return: projekt_nazwa, data (created_at or start date), suma (SUM of cena_robocizny * ilosc). ORDER BY date DESC.\n\nUI section on detail panel (below cennik stawek):\n- Header: 'Historia realizacji (N)'\n- List: projekt name, date (YYYY-MM), suma (formatted PLN)\n- Footer: 'Łącznie: XX XXX zł z N projektów'\n- Empty state: 'Brak historii realizacji'\n\nThis is read-only, no edit/delete.",
+      "acceptanceCriteria": [
+        "getPodwykonawcaHistoria action exists and returns project history",
+        "Detail panel shows 'Historia realizacji' section",
+        "Each entry shows project name, date, total amount",
+        "Footer shows total across all projects",
+        "Empty state shown when no history",
+        "Section is read-only",
+        "npm run build passes",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-005"]
+    },
+    {
+      "id": "US-011",
+      "title": "Detail panel: sekcja Historia realizacji (dostawcy)",
+      "description": "Add 'Historia realizacji' section to dostawca-detail-panel.tsx. Same pattern as US-010 but for dostawcy.\n\nNew server action in actions/dostawcy.ts:\ngetDostawcaHistoria(id): query kosztorys_skladowe_materialy WHERE dostawca_id = id, JOIN kosztorys_pozycje → kosztorysy → projekty. GROUP BY projekt, return: projekt_nazwa, data, suma (SUM of cena * norma * ilosc or cena * ilosc). ORDER BY date DESC.\n\nUI section on detail panel (below cennik):\n- Header: 'Historia realizacji (N)'\n- List: projekt name, date, suma\n- Footer: 'Łącznie: XX XXX zł z N projektów'\n- Empty state: 'Brak historii realizacji'\n\nRead-only.",
+      "acceptanceCriteria": [
+        "getDostawcaHistoria action exists and returns project history",
+        "Detail panel shows 'Historia realizacji' section",
+        "Each entry shows project name, date, total amount",
+        "Footer shows total across all projects",
+        "Empty state shown when no history",
+        "Section is read-only",
+        "npm run build passes",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-006"]
+    },
+    {
+      "id": "US-012",
+      "title": "Final build verification + cleanup",
+      "description": "Final verification that everything works together.\n\n1. npm run build — must pass with zero errors\n2. npm run lint — must pass\n3. Verify at localhost:3000/podwykonawcy — new seed data visible, detail panel shows all new fields, copy button works\n4. Verify at localhost:3000/dostawcy — same checks\n5. Check for any TypeScript warnings or unused imports\n6. Clean up any console.log statements added during development",
+      "acceptanceCriteria": [
+        "npm run build passes with zero errors",
+        "npm run lint passes",
+        "No console.log debug statements left",
+        "No unused imports",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 6,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-009", "US-010", "US-011"]
+    }
+  ]
+}

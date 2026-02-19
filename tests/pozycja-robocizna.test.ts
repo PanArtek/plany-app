@@ -6,6 +6,7 @@ import {
   createKategoriaHierarchy,
   createPozycjaBiblioteka,
   createPodwykonawca,
+  createTypRobocizny,
   createStawkaPodwykonawcy,
   createBibliotekaSkladowaR,
 } from './helpers/setup';
@@ -14,6 +15,9 @@ describe('Pozycja <-> Robocizna <-> Podwykonawcy', () => {
   let orgId: string;
   let pozycja: Record<string, unknown>;
   let kowalski: Record<string, unknown>;
+  let typMontaz: Record<string, unknown>;
+  let typPlyt: Record<string, unknown>;
+  let typSzpachl: Record<string, unknown>;
 
   beforeAll(async () => {
     const org = await createTestOrganization('rob');
@@ -39,38 +43,39 @@ describe('Pozycja <-> Robocizna <-> Podwykonawcy', () => {
       specjalizacja: 'gipskarton',
     });
 
+    // Create labor types
+    typMontaz = await createTypRobocizny(orgId, { nazwa: 'Montaż profili' });
+    typPlyt = await createTypRobocizny(orgId, { nazwa: 'Montaż płyt GK' });
+    typSzpachl = await createTypRobocizny(orgId, { nazwa: 'Szpachlowanie' });
+
+    // Stawka links subcontractor to typ_robocizny
     await createStawkaPodwykonawcy({
       podwykonawca_id: kowalski.id as string,
-      pozycja_biblioteka_id: pozycja.id as string,
+      typ_robocizny_id: typMontaz.id as string,
       stawka: 45.0,
     });
 
+    // biblioteka_skladowe_robocizna: cena = stawka rate from cennik
     await createBibliotekaSkladowaR({
       pozycja_biblioteka_id: pozycja.id as string,
       lp: 1,
-      opis: 'Montaż profili',
+      typ_robocizny_id: typMontaz.id as string,
       podwykonawca_id: kowalski.id as string,
-      stawka_domyslna: 15.0,
-      norma_domyslna: 0.3,
-      jednostka: 'rbh',
+      cena: 15.0,
     });
     await createBibliotekaSkladowaR({
       pozycja_biblioteka_id: pozycja.id as string,
       lp: 2,
-      opis: 'Montaż płyt GK',
+      typ_robocizny_id: typPlyt.id as string,
       podwykonawca_id: kowalski.id as string,
-      stawka_domyslna: 18.0,
-      norma_domyslna: 0.25,
-      jednostka: 'rbh',
+      cena: 18.0,
     });
     await createBibliotekaSkladowaR({
       pozycja_biblioteka_id: pozycja.id as string,
       lp: 3,
-      opis: 'Szpachlowanie',
+      typ_robocizny_id: typSzpachl.id as string,
       podwykonawca_id: kowalski.id as string,
-      stawka_domyslna: 12.0,
-      norma_domyslna: 0.2,
-      jednostka: 'rbh',
+      cena: 12.0,
     });
   });
 
@@ -90,24 +95,25 @@ describe('Pozycja <-> Robocizna <-> Podwykonawcy', () => {
 
     for (const row of data!) {
       expect(row.podwykonawca_id).toBe(kowalski.id);
+      expect(row.typ_robocizny_id).not.toBeNull();
     }
 
     expect(data!.map((r) => r.lp)).toEqual([1, 2, 3]);
   });
 
-  it('stawki_podwykonawcow links subcontractor to pozycja', async () => {
+  it('stawki_podwykonawcow links subcontractor to typ_robocizny', async () => {
     const { data, error } = await supabase
       .from('stawki_podwykonawcow')
       .select('*')
       .eq('podwykonawca_id', kowalski.id as string)
-      .eq('pozycja_biblioteka_id', pozycja.id as string);
+      .eq('typ_robocizny_id', typMontaz.id as string);
 
     expect(error).toBeNull();
     expect(data).toHaveLength(1);
     expect(Number(data![0].stawka)).toBeCloseTo(45.0, 2);
   });
 
-  it('second subcontractor with different rate', async () => {
+  it('second subcontractor with different rate for same typ_robocizny', async () => {
     const nowak = await createPodwykonawca(orgId, {
       nazwa: 'Ekipa GK Nowak',
       specjalizacja: 'gipskarton',
@@ -115,14 +121,14 @@ describe('Pozycja <-> Robocizna <-> Podwykonawcy', () => {
 
     await createStawkaPodwykonawcy({
       podwykonawca_id: nowak.id,
-      pozycja_biblioteka_id: pozycja.id as string,
+      typ_robocizny_id: typMontaz.id as string,
       stawka: 42.0,
     });
 
     const { data } = await supabase
       .from('stawki_podwykonawcow')
       .select('*')
-      .eq('pozycja_biblioteka_id', pozycja.id as string)
+      .eq('typ_robocizny_id', typMontaz.id as string)
       .order('stawka', { ascending: false });
 
     expect(data).toHaveLength(2);
