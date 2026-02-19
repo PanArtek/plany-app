@@ -65,10 +65,16 @@ export interface CennikEntry {
   aktywny: boolean;
 }
 
+export interface DostawcaPozycjaProdukt {
+  produktNazwa: string;
+  produktSku: string;
+}
+
 export interface DostawcaPozycja {
   id: string;
   kod: string;
   nazwa: string;
+  produkty: DostawcaPozycjaProdukt[];
 }
 
 // --- Pagination ---
@@ -188,23 +194,27 @@ export async function getDostawcaPozycje(dostawcaId: string): Promise<DostawcaPo
   const { data, error } = await supabase
     .from('biblioteka_skladowe_materialy')
     .select(`
-      pozycje_biblioteka!pozycja_biblioteka_id(id, kod, nazwa)
+      pozycje_biblioteka!pozycja_biblioteka_id(id, kod, nazwa),
+      produkty!produkt_id(nazwa, sku)
     `)
     .eq('dostawca_id', dostawcaId);
 
   if (error) throw error;
 
-  // Deduplicate by pozycja id
-  const seen = new Set<string>();
-  const result: DostawcaPozycja[] = [];
+  // Group products by pozycja
+  const grouped = new Map<string, DostawcaPozycja>();
   for (const row of (data || []) as Record<string, unknown>[]) {
     const pozycja = row.pozycje_biblioteka as { id: string; kod: string; nazwa: string };
-    if (!seen.has(pozycja.id)) {
-      seen.add(pozycja.id);
-      result.push({ id: pozycja.id, kod: pozycja.kod, nazwa: pozycja.nazwa });
+    const produkt = row.produkty as { nazwa: string; sku: string } | null;
+
+    if (!grouped.has(pozycja.id)) {
+      grouped.set(pozycja.id, { id: pozycja.id, kod: pozycja.kod, nazwa: pozycja.nazwa, produkty: [] });
+    }
+    if (produkt) {
+      grouped.get(pozycja.id)!.produkty.push({ produktNazwa: produkt.nazwa, produktSku: produkt.sku });
     }
   }
-  return result;
+  return Array.from(grouped.values()).sort((a, b) => a.kod.localeCompare(b.kod));
 }
 
 // --- STATS ---
@@ -339,6 +349,21 @@ export async function getDostawcaHistoria(dostawcaId: string): Promise<DostawcaH
     suma: Number(row.suma),
     count: Number(row.materialy_count),
   }));
+}
+
+// --- READ: All active dostawcy (for dropdowns) ---
+
+export async function getAllDostawcy(): Promise<{ id: string; nazwa: string; kod: string | null }[]> {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from('dostawcy')
+    .select('id, nazwa, kod')
+    .eq('aktywny', true)
+    .order('nazwa');
+
+  if (error) throw error;
+  return (data || []) as { id: string; nazwa: string; kod: string | null }[];
 }
 
 // --- DELETE dostawca ---

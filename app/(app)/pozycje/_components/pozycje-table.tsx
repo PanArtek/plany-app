@@ -8,7 +8,7 @@ import {
   SortingState,
 } from '@tanstack/react-table';
 import { useState } from 'react';
-import { type Pozycja } from '@/actions/pozycje';
+import { type Pozycja, type CennikPrices } from '@/actions/pozycje';
 import { getPozycjeColumns } from './pozycje-columns';
 import { cn } from '@/lib/utils';
 
@@ -18,11 +18,12 @@ interface PozycjeTableProps {
   onSelect: (id: string) => void;
   onEdit: (id: string) => void;
   onDelete: (id: string) => void;
+  cennikPrices?: CennikPrices;
 }
 
-export function PozycjeTable({ data, selectedId, onSelect, onEdit, onDelete }: PozycjeTableProps) {
+export function PozycjeTable({ data, selectedId, onSelect, onEdit, onDelete, cennikPrices }: PozycjeTableProps) {
   const [sorting, setSorting] = useState<SortingState>([]);
-  const columns = getPozycjeColumns({ onEdit, onDelete });
+  const columns = getPozycjeColumns({ onEdit, onDelete, cennikPrices });
 
   const table = useReactTable({
     data,

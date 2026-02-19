@@ -20,8 +20,8 @@ BEGIN
   RETURNING id INTO v_rewizja_id;
 
   -- Insert 8 kosztorys_pozycje
-  INSERT INTO kosztorys_pozycje (organization_id, rewizja_id, pozycja_biblioteka_id, lp, nazwa, ilosc, jednostka, narzut_percent, notatki, cena_robocizny)
-  SELECT v_org_id, v_rewizja_id, pb.id, v.lp, pb.nazwa, v.ilosc, pb.jednostka, v.narzut, v.notatki, pb.cena_robocizny
+  INSERT INTO kosztorys_pozycje (organization_id, rewizja_id, pozycja_biblioteka_id, lp, nazwa, ilosc, jednostka, narzut_percent, notatki)
+  SELECT v_org_id, v_rewizja_id, pb.id, v.lp, pb.nazwa, v.ilosc, pb.jednostka, v.narzut, v.notatki
   FROM (VALUES
     (1, 'BUD.01.01.001', 80, 30, 'Ściany g-k sali i zaplecza'),
     (2, 'BUD.02.02.001', 95, 30, 'Gres kuchnia + łazienki'),
@@ -35,24 +35,22 @@ BEGIN
   JOIN pozycje_biblioteka pb ON pb.kod = v.kod AND pb.organization_id = v_org_id;
 
   -- Copy robocizna from library
-  INSERT INTO kosztorys_skladowe_robocizna (kosztorys_pozycja_id, lp, opis, cena, cena_zrodlowa, podwykonawca_id)
-  SELECT kp.id, br.lp, br.opis, br.cena, br.cena, br.podwykonawca_id
+  INSERT INTO kosztorys_skladowe_robocizna (kosztorys_pozycja_id, lp, typ_robocizny_id, podwykonawca_id, cena)
+  SELECT kp.id, br.lp, br.typ_robocizny_id, br.podwykonawca_id,
+    COALESCE(sp.stawka, 0)
   FROM kosztorys_pozycje kp
   JOIN biblioteka_skladowe_robocizna br ON br.pozycja_biblioteka_id = kp.pozycja_biblioteka_id
+  LEFT JOIN stawki_podwykonawcow sp ON sp.typ_robocizny_id = br.typ_robocizny_id AND sp.podwykonawca_id = br.podwykonawca_id AND sp.aktywny = true
   WHERE kp.rewizja_id = v_rewizja_id;
 
-  -- Copy materialy from library (with cheapest supplier price)
-  INSERT INTO kosztorys_skladowe_materialy (kosztorys_pozycja_id, lp, nazwa, norma, cena, jednostka, produkt_id, dostawca_id)
-  SELECT kp.id, bm.lp, bm.nazwa, bm.norma_domyslna,
-    COALESCE(cheapest.cena_netto, bm.cena_domyslna, 0),
-    bm.jednostka, bm.produkt_id, COALESCE(cheapest.dostawca_id, bm.dostawca_id)
+  -- Copy materialy from library (with active supplier price)
+  INSERT INTO kosztorys_skladowe_materialy (kosztorys_pozycja_id, lp, produkt_id, dostawca_id, cena, norma, jednostka)
+  SELECT kp.id, bm.lp, bm.produkt_id, bm.dostawca_id,
+    COALESCE(cd.cena_netto, 0),
+    bm.norma_domyslna, bm.jednostka
   FROM kosztorys_pozycje kp
   JOIN biblioteka_skladowe_materialy bm ON bm.pozycja_biblioteka_id = kp.pozycja_biblioteka_id
-  LEFT JOIN LATERAL (
-    SELECT cena_netto, dostawca_id FROM ceny_dostawcow
-    WHERE produkt_id = bm.produkt_id AND aktywny = true
-    ORDER BY cena_netto LIMIT 1
-  ) cheapest ON true
+  LEFT JOIN ceny_dostawcow cd ON cd.produkt_id = bm.produkt_id AND cd.dostawca_id = bm.dostawca_id AND cd.aktywny = true
   WHERE kp.rewizja_id = v_rewizja_id;
 
 END $$;

@@ -72,44 +72,36 @@ describe('Pozycja <-> Materiały <-> Dostawcy', () => {
     await createCenaDostawcy({ dostawca_id: bricoman.id as string, produkt_id: wkrety.id as string, cena_netto: 15.0 });
     await createCenaDostawcy({ dostawca_id: bricoman.id as string, produkt_id: tasma.id as string, cena_netto: 3.5 });
 
-    // 4 biblioteka_skladowe_materialy
+    // 4 biblioteka_skladowe_materialy (no nazwa, no cena_domyslna — new schema)
     await createBibliotekaSkladowaM({
       pozycja_biblioteka_id: pozycja.id as string,
       lp: 1,
-      nazwa: 'Profil C50',
       produkt_id: profil.id as string,
       dostawca_id: bricoman.id as string,
-      cena_domyslna: 8.5,
       norma_domyslna: 0.9,
       jednostka: 'mb',
     });
     await createBibliotekaSkladowaM({
       pozycja_biblioteka_id: pozycja.id as string,
       lp: 2,
-      nazwa: 'Płyta GK 12.5',
       produkt_id: plyta.id as string,
       dostawca_id: bricoman.id as string,
-      cena_domyslna: 22.0,
       norma_domyslna: 1.1,
       jednostka: 'm2',
     });
     await createBibliotekaSkladowaM({
       pozycja_biblioteka_id: pozycja.id as string,
       lp: 3,
-      nazwa: 'Wkręty GK',
       produkt_id: wkrety.id as string,
       dostawca_id: bricoman.id as string,
-      cena_domyslna: 15.0,
       norma_domyslna: 0.05,
       jednostka: 'op',
     });
     await createBibliotekaSkladowaM({
       pozycja_biblioteka_id: pozycja.id as string,
       lp: 4,
-      nazwa: 'Taśma papierowa',
       produkt_id: tasma.id as string,
       dostawca_id: bricoman.id as string,
-      cena_domyslna: 3.5,
       norma_domyslna: 0.8,
       jednostka: 'mb',
     });
@@ -155,15 +147,17 @@ describe('Pozycja <-> Materiały <-> Dostawcy', () => {
 
     expect(Number(data!.cena_netto)).toBeCloseTo(9.5, 2);
 
-    // biblioteka_skladowe_materialy.cena_domyslna is a snapshot — NOT auto-updated
+    // Prices now come from cennik (ceny_dostawcow), not stored on the skladowa
+    // Verify cennik still has the original product linked
     const { data: skladowa } = await supabase
       .from('biblioteka_skladowe_materialy')
-      .select('cena_domyslna')
+      .select('produkt_id, dostawca_id')
       .eq('pozycja_biblioteka_id', pozycja.id as string)
       .eq('lp', 1)
       .single();
 
-    expect(Number(skladowa!.cena_domyslna)).toBeCloseTo(8.5, 2);
+    expect(skladowa!.produkt_id).toBe(profil.id);
+    expect(skladowa!.dostawca_id).toBe(bricoman.id);
   });
 
   it('second supplier with different prices', async () => {

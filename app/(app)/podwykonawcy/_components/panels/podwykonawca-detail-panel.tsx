@@ -206,12 +206,11 @@ export function PodwykonawcaDetailPanel({
                       className="flex items-center justify-between px-3 py-2 rounded-md bg-white/[0.03] border border-white/[0.06]"
                     >
                       <div className="flex-1 min-w-0">
-                        <span className="font-mono text-amber-500 text-sm mr-2">{s.pozycjaKod}</span>
-                        <span className="text-sm text-white/80">{s.pozycjaNazwa}</span>
+                        <span className="text-sm text-white/80">{s.typRobociznyNazwa}</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="font-mono text-sm text-amber-500">
-                          {formatPrice(s.stawka, s.pozycjaJednostka)}
+                          {formatPrice(s.stawka, s.typRobociznyJednostka)}
                         </span>
                         <Button
                           variant="ghost"
@@ -272,26 +271,35 @@ export function PodwykonawcaDetailPanel({
               </div>
             )}
 
-            {/* Section 4: Używany w pozycjach (only if count > 0) */}
-            {pozycje.length > 0 && (
-              <div className="space-y-3">
-                <h4 className="text-sm font-medium text-white/50 uppercase tracking-wider">
-                  Używany w pozycjach ({pozycje.length})
-                </h4>
+            {/* Section 4: Używany w pozycjach */}
+            <div className="space-y-3">
+              <h4 className="text-sm font-medium text-white/50 uppercase tracking-wider">
+                Używany w pozycjach ({pozycje.length})
+              </h4>
+              {pozycje.length === 0 ? (
+                <p className="text-sm text-white/50">Podwykonawca nie jest używany w żadnej pozycji bibliotecznej</p>
+              ) : (
                 <div className="space-y-1">
-                  {pozycje.map((p) => (
+                  {pozycje.map((p, i) => (
                     <button
-                      key={p.id}
+                      key={`${p.id}-${i}`}
                       onClick={() => router.push(`/pozycje?selected=${p.id}`)}
                       className="w-full text-left px-3 py-2 rounded-md hover:bg-white/5 transition-colors"
                     >
-                      <span className="font-mono text-amber-500 text-sm mr-2">{p.kod}</span>
-                      <span className="text-sm text-white/80">{p.nazwa}</span>
+                      <div>
+                        <span className="font-mono text-amber-500 text-sm mr-2">{p.kod}</span>
+                        <span className="text-sm text-white/80">{p.nazwa}</span>
+                      </div>
+                      {p.typRobociznyNazwa && (
+                        <div className="text-xs text-white/40 mt-0.5 pl-1">
+                          {p.typRobociznyNazwa}
+                        </div>
+                      )}
                     </button>
                   ))}
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </>
         ) : null}
       </SlidePanelContent>

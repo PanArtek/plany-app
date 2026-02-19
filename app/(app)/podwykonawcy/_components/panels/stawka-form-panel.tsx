@@ -30,11 +30,11 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-import { getAllPozycjeBiblioteka } from '@/actions/podwykonawcy';
 import { createStawka, updateStawka, type StawkaEntry } from '@/actions/podwykonawcy';
+import { getAllTypyRobocizny } from '@/actions/typy-robocizny';
 
 const stawkaFormSchema = z.object({
-  pozycjaBibliotekaId: z.string().uuid("Wybierz pozycję"),
+  typRobociznyId: z.string().uuid("Wybierz typ robocizny"),
   stawka: z.number().positive("Stawka musi być większa od 0"),
 });
 
@@ -50,28 +50,28 @@ interface StawkaFormPanelProps {
 
 export function StawkaFormPanel({ mode, podwykonawcaId, stawka, open, onOpenChange }: StawkaFormPanelProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [pozycje, setPozycje] = useState<{ id: string; kod: string; nazwa: string; jednostka: string }[]>([]);
-  const [loadingPozycje, setLoadingPozycje] = useState(false);
+  const [typyRobocizny, setTypyRobocizny] = useState<{ id: string; nazwa: string; jednostka: string | null }[]>([]);
+  const [loadingTypy, setLoadingTypy] = useState(false);
   const isEdit = mode === 'edit';
 
   const form = useForm<StawkaFormValues>({
     resolver: zodResolver(stawkaFormSchema),
     defaultValues: {
-      pozycjaBibliotekaId: '',
+      typRobociznyId: '',
       stawka: 0,
     },
   });
 
-  const selectedPozycjaId = form.watch('pozycjaBibliotekaId');
-  const selectedPozycja = pozycje.find((p) => p.id === selectedPozycjaId);
+  const selectedTypId = form.watch('typRobociznyId');
+  const selectedTyp = typyRobocizny.find((t) => t.id === selectedTypId);
 
-  // Fetch pozycje for dropdown
+  // Fetch typy robocizny for dropdown
   useEffect(() => {
     if (open) {
-      setLoadingPozycje(true);
-      getAllPozycjeBiblioteka().then((data) => {
-        setPozycje(data);
-        setLoadingPozycje(false);
+      setLoadingTypy(true);
+      getAllTypyRobocizny().then((data) => {
+        setTypyRobocizny(data);
+        setLoadingTypy(false);
       });
     }
   }, [open]);
@@ -80,12 +80,12 @@ export function StawkaFormPanel({ mode, podwykonawcaId, stawka, open, onOpenChan
     if (open) {
       if (isEdit && stawka) {
         form.reset({
-          pozycjaBibliotekaId: stawka.pozycjaBibliotekaId,
+          typRobociznyId: stawka.typRobociznyId,
           stawka: stawka.stawka,
         });
       } else {
         form.reset({
-          pozycjaBibliotekaId: '',
+          typRobociznyId: '',
           stawka: 0,
         });
       }
@@ -110,7 +110,7 @@ export function StawkaFormPanel({ mode, podwykonawcaId, stawka, open, onOpenChan
       } else {
         const result = await createStawka({
           podwykonawcaId,
-          pozycjaBibliotekaId: data.pozycjaBibliotekaId,
+          typRobociznyId: data.typRobociznyId,
           stawka: data.stawka,
         });
         if (result.success) {
@@ -132,7 +132,7 @@ export function StawkaFormPanel({ mode, podwykonawcaId, stawka, open, onOpenChan
       </SlidePanelHeader>
 
       <SlidePanelContent>
-        {loadingPozycje ? (
+        {loadingTypy ? (
           <div className="flex items-center justify-center py-8">
             <Loader2 className="h-6 w-6 animate-spin text-white/50" />
           </div>
@@ -141,10 +141,10 @@ export function StawkaFormPanel({ mode, podwykonawcaId, stawka, open, onOpenChan
             <form id="stawka-form" onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               <FormField
                 control={form.control}
-                name="pozycjaBibliotekaId"
+                name="typRobociznyId"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-white/80">Pozycja</FormLabel>
+                    <FormLabel className="text-white/80">Typ robocizny</FormLabel>
                     <Select
                       onValueChange={field.onChange}
                       value={field.value}
@@ -152,14 +152,14 @@ export function StawkaFormPanel({ mode, podwykonawcaId, stawka, open, onOpenChan
                     >
                       <FormControl>
                         <SelectTrigger className="bg-white/5 border-white/10 text-white">
-                          <SelectValue placeholder="Wybierz pozycję..." />
+                          <SelectValue placeholder="Wybierz typ robocizny..." />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {pozycje.map((p) => (
-                          <SelectItem key={p.id} value={p.id}>
-                            <span className="font-mono text-amber-500 mr-2">{p.kod}</span>
-                            {p.nazwa}
+                        {typyRobocizny.map((t) => (
+                          <SelectItem key={t.id} value={t.id}>
+                            {t.nazwa}
+                            {t.jednostka && <span className="text-white/40 ml-1">({t.jednostka})</span>}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -175,7 +175,7 @@ export function StawkaFormPanel({ mode, podwykonawcaId, stawka, open, onOpenChan
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel className="text-white/80">
-                      Stawka (zł{selectedPozycja ? `/${selectedPozycja.jednostka}` : ''})
+                      Stawka (zł{selectedTyp?.jednostka ? `/${selectedTyp.jednostka}` : ''})
                     </FormLabel>
                     <FormControl>
                       <Input
@@ -212,7 +212,7 @@ export function StawkaFormPanel({ mode, podwykonawcaId, stawka, open, onOpenChan
         <Button
           type="submit"
           form="stawka-form"
-          disabled={isSubmitting || loadingPozycje}
+          disabled={isSubmitting || loadingTypy}
           className="bg-amber-500 text-black hover:bg-amber-400"
         >
           {isSubmitting ? 'Zapisywanie...' : isEdit ? 'Zapisz' : 'Dodaj'}

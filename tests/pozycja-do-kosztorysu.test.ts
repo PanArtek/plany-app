@@ -9,6 +9,7 @@ import {
   createProdukt,
   createCenaDostawcy,
   createPodwykonawca,
+  createTypRobocizny,
   createBibliotekaSkladowaM,
   createBibliotekaSkladowaR,
   createProjekt,
@@ -20,11 +21,13 @@ import {
 
 describe('Biblioteka -> Kosztorys with calculations', () => {
   let orgId: string;
-  let kpId: string; // kosztorys_pozycja id
+  let kpId: string;
   let profilProdukt: Record<string, unknown>;
   let plytaProdukt: Record<string, unknown>;
   let bricoman: Record<string, unknown>;
   let kowalski: Record<string, unknown>;
+  let typMontaz: Record<string, unknown>;
+  let typSzpachl: Record<string, unknown>;
 
   beforeAll(async () => {
     const org = await createTestOrganization('koszt');
@@ -53,18 +56,18 @@ describe('Biblioteka -> Kosztorys with calculations', () => {
     await createCenaDostawcy({ dostawca_id: bricoman.id as string, produkt_id: plytaProdukt.id as string, cena_netto: 22.0 });
 
     kowalski = await createPodwykonawca(orgId, { nazwa: 'Kowalski', specjalizacja: 'gipskarton' });
+    typMontaz = await createTypRobocizny(orgId, { nazwa: 'Montaż profili' });
+    typSzpachl = await createTypRobocizny(orgId, { nazwa: 'Szpachlowanie' });
 
-    // Biblioteka templates (for reference only — kosztorys copies values)
-    await createBibliotekaSkladowaM({ pozycja_biblioteka_id: pozycja.id, lp: 1, nazwa: 'Profil C50', produkt_id: profilProdukt.id as string, dostawca_id: bricoman.id as string, cena_domyslna: 8.5, norma_domyslna: 0.9, jednostka: 'mb' });
-    await createBibliotekaSkladowaM({ pozycja_biblioteka_id: pozycja.id, lp: 2, nazwa: 'Płyta GK 12.5', produkt_id: plytaProdukt.id as string, dostawca_id: bricoman.id as string, cena_domyslna: 22.0, norma_domyslna: 1.1, jednostka: 'm2' });
-    await createBibliotekaSkladowaR({ pozycja_biblioteka_id: pozycja.id, lp: 1, opis: 'Montaż profili', podwykonawca_id: kowalski.id as string, stawka_domyslna: 15.0, norma_domyslna: 0.3, jednostka: 'rbh' });
-    await createBibliotekaSkladowaR({ pozycja_biblioteka_id: pozycja.id, lp: 2, opis: 'Szpachlowanie', podwykonawca_id: kowalski.id as string, stawka_domyslna: 12.0, norma_domyslna: 0.2, jednostka: 'rbh' });
+    // Biblioteka templates
+    await createBibliotekaSkladowaM({ pozycja_biblioteka_id: pozycja.id, lp: 1, produkt_id: profilProdukt.id as string, dostawca_id: bricoman.id as string, norma_domyslna: 0.9, jednostka: 'mb' });
+    await createBibliotekaSkladowaM({ pozycja_biblioteka_id: pozycja.id, lp: 2, produkt_id: plytaProdukt.id as string, dostawca_id: bricoman.id as string, norma_domyslna: 1.1, jednostka: 'm2' });
+    await createBibliotekaSkladowaR({ pozycja_biblioteka_id: pozycja.id, lp: 1, typ_robocizny_id: typMontaz.id as string, podwykonawca_id: kowalski.id as string, cena: 15.0 });
+    await createBibliotekaSkladowaR({ pozycja_biblioteka_id: pozycja.id, lp: 2, typ_robocizny_id: typSzpachl.id as string, podwykonawca_id: kowalski.id as string, cena: 12.0 });
 
-    // Projekt + Rewizja
     const projekt = await createProjekt(orgId, { nazwa: 'Biuro Centrum', powierzchnia: 1000 });
     const rewizja = await createRewizja({ projekt_id: projekt.id });
 
-    // Kosztorys pozycja (320 m2, 30% markup)
     const kp = await createKosztorysPozycja(orgId, {
       rewizja_id: rewizja.id,
       pozycja_biblioteka_id: pozycja.id,
@@ -76,11 +79,11 @@ describe('Biblioteka -> Kosztorys with calculations', () => {
     });
     kpId = kp.id;
 
-    // Copy składowe from library to kosztorys
-    await createKosztorysSkladowaM({ kosztorys_pozycja_id: kpId, lp: 1, nazwa: 'Profil C50', produkt_id: profilProdukt.id as string, dostawca_id: bricoman.id as string, cena: 8.5, norma: 0.9 });
-    await createKosztorysSkladowaM({ kosztorys_pozycja_id: kpId, lp: 2, nazwa: 'Płyta GK 12.5', produkt_id: plytaProdukt.id as string, dostawca_id: bricoman.id as string, cena: 22.0, norma: 1.1 });
-    await createKosztorysSkladowaR({ kosztorys_pozycja_id: kpId, lp: 1, opis: 'Montaż profili', podwykonawca_id: kowalski.id as string, stawka: 15.0, norma: 0.3 });
-    await createKosztorysSkladowaR({ kosztorys_pozycja_id: kpId, lp: 2, opis: 'Szpachlowanie', podwykonawca_id: kowalski.id as string, stawka: 12.0, norma: 0.2 });
+    // Copy składowe — robocizna cena = stawka * norma (per-unit labor cost)
+    await createKosztorysSkladowaM({ kosztorys_pozycja_id: kpId, lp: 1, produkt_id: profilProdukt.id as string, dostawca_id: bricoman.id as string, cena: 8.5, norma: 0.9 });
+    await createKosztorysSkladowaM({ kosztorys_pozycja_id: kpId, lp: 2, produkt_id: plytaProdukt.id as string, dostawca_id: bricoman.id as string, cena: 22.0, norma: 1.1 });
+    await createKosztorysSkladowaR({ kosztorys_pozycja_id: kpId, lp: 1, typ_robocizny_id: typMontaz.id as string, podwykonawca_id: kowalski.id as string, cena: 4.5 }); // 15*0.3
+    await createKosztorysSkladowaR({ kosztorys_pozycja_id: kpId, lp: 2, typ_robocizny_id: typSzpachl.id as string, podwykonawca_id: kowalski.id as string, cena: 2.4 }); // 12*0.2
   });
 
   afterAll(async () => {
@@ -100,7 +103,7 @@ describe('Biblioteka -> Kosztorys with calculations', () => {
     // m_jednostkowy = (8.50×0.9) + (22.00×1.1) = 7.65 + 24.20 = 31.85
     expect(Number(data!.m_jednostkowy)).toBeCloseTo(31.85, 1);
 
-    // r_jednostkowy = (15.00×0.3) + (12.00×0.2) = 4.50 + 2.40 = 6.90
+    // r_jednostkowy = SUM(cena) = 4.50 + 2.40 = 6.90
     expect(Number(data!.r_jednostkowy)).toBeCloseTo(6.9, 1);
 
     // m_materialy = 31.85 × 320 = 10192.00
@@ -120,10 +123,7 @@ describe('Biblioteka -> Kosztorys with calculations', () => {
   });
 
   it('changing quantity recalculates correctly', async () => {
-    await supabase
-      .from('kosztorys_pozycje')
-      .update({ ilosc: 500 })
-      .eq('id', kpId);
+    await supabase.from('kosztorys_pozycje').update({ ilosc: 500 }).eq('id', kpId);
 
     const { data } = await supabase
       .from('kosztorys_pozycje_view')
@@ -142,11 +142,11 @@ describe('Biblioteka -> Kosztorys with calculations', () => {
   });
 
   it('manual component adds to totals correctly', async () => {
-    // Add manual material: flat 500 PLN transport
     await createKosztorysSkladowaM({
       kosztorys_pozycja_id: kpId,
       lp: 3,
-      nazwa: 'Transport',
+      produkt_id: profilProdukt.id as string,
+      dostawca_id: bricoman.id as string,
       cena: 500,
       norma: 0,
       ilosc: 1,

@@ -1,5 +1,9 @@
-import { getPozycje } from '@/actions/pozycje';
+import { getPozycje, getCennikPricesForPozycje } from '@/actions/pozycje';
 import { getKategorieForBranza, getKategorieByPoziom } from '@/actions/kategorie';
+import { getAllProdukty } from '@/actions/materialy';
+import { getAllDostawcy } from '@/actions/dostawcy';
+import { getAllTypyRobocizny } from '@/actions/typy-robocizny';
+import { getAllPodwykonawcy } from '@/actions/podwykonawcy';
 import { PozycjeView } from './_components/pozycje-view';
 import { type PozycjeFilters } from '@/lib/validations/pozycje';
 
@@ -26,7 +30,17 @@ export default async function PozycjePage({ searchParams }: PageProps) {
     page: params.page ? Number(params.page) : 1,
   };
 
-  const result = params.branza ? await getPozycje(filters) : null;
+  const [result, produktOptions, dostawcaOptions, typRobociznyOptions, podwykonawcaOptions] = await Promise.all([
+    params.branza ? getPozycje(filters) : Promise.resolve(null),
+    getAllProdukty(),
+    getAllDostawcy(),
+    getAllTypyRobocizny(),
+    getAllPodwykonawcy(),
+  ]);
+
+  // Fetch cennik prices for all loaded pozycje
+  const pozycjaIds = (result?.data ?? []).map((p) => p.id);
+  const cennikPrices = await getCennikPricesForPozycje(pozycjaIds);
 
   // Resolve category names for breadcrumb
   let kategoriaNazwa: string | undefined;
@@ -59,6 +73,11 @@ export default async function PozycjePage({ searchParams }: PageProps) {
         pageSize={result?.pageSize ?? 15}
         kategoriaNazwa={kategoriaNazwa}
         podkategoriaNazwa={podkategoriaNazwa}
+        produktOptions={produktOptions}
+        dostawcaOptions={dostawcaOptions}
+        typRobociznyOptions={typRobociznyOptions}
+        podwykonawcaOptions={podwykonawcaOptions}
+        cennikPrices={cennikPrices}
       />
     </div>
   );

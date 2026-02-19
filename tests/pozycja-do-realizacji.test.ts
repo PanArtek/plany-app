@@ -9,6 +9,7 @@ import {
   createProdukt,
   createCenaDostawcy,
   createPodwykonawca,
+  createTypRobocizny,
   createStawkaPodwykonawcy,
   createBibliotekaSkladowaM,
   createBibliotekaSkladowaR,
@@ -49,10 +50,11 @@ describe('Umowy/Zamówienia -> Realizacja wpisy', () => {
     await createCenaDostawcy({ dostawca_id: bricoman.id, produkt_id: profil.id, cena_netto: 8.5 });
 
     const kowalski = await createPodwykonawca(orgId, { nazwa: 'Kowalski', specjalizacja: 'gipskarton' });
-    await createStawkaPodwykonawcy({ podwykonawca_id: kowalski.id, pozycja_biblioteka_id: pozycja.id, stawka: 45.0 });
+    const typMontaz = await createTypRobocizny(orgId, { nazwa: 'Montaż' });
+    await createStawkaPodwykonawcy({ podwykonawca_id: kowalski.id, typ_robocizny_id: typMontaz.id, stawka: 45.0 });
 
-    await createBibliotekaSkladowaM({ pozycja_biblioteka_id: pozycja.id, lp: 1, nazwa: 'Profil C50', produkt_id: profil.id, dostawca_id: bricoman.id, cena_domyslna: 8.5, norma_domyslna: 0.9, jednostka: 'mb' });
-    await createBibliotekaSkladowaR({ pozycja_biblioteka_id: pozycja.id, lp: 1, opis: 'Montaż', podwykonawca_id: kowalski.id, stawka_domyslna: 15.0, norma_domyslna: 0.3 });
+    await createBibliotekaSkladowaM({ pozycja_biblioteka_id: pozycja.id, lp: 1, produkt_id: profil.id, dostawca_id: bricoman.id, norma_domyslna: 0.9, jednostka: 'mb' });
+    await createBibliotekaSkladowaR({ pozycja_biblioteka_id: pozycja.id, lp: 1, typ_robocizny_id: typMontaz.id, podwykonawca_id: kowalski.id, cena: 15.0 });
 
     const projekt = await createProjekt(orgId, { nazwa: 'Biuro Real', powierzchnia: 500 });
     projektId = projekt.id;
@@ -68,10 +70,9 @@ describe('Umowy/Zamówienia -> Realizacja wpisy', () => {
       narzut_percent: 30,
     });
 
-    await createKosztorysSkladowaM({ kosztorys_pozycja_id: kp.id, lp: 1, nazwa: 'Profil C50', produkt_id: profil.id, dostawca_id: bricoman.id, cena: 8.5, norma: 0.9 });
-    await createKosztorysSkladowaR({ kosztorys_pozycja_id: kp.id, lp: 1, opis: 'Montaż', podwykonawca_id: kowalski.id, stawka: 15.0, norma: 0.3 });
+    await createKosztorysSkladowaM({ kosztorys_pozycja_id: kp.id, lp: 1, produkt_id: profil.id, dostawca_id: bricoman.id, cena: 8.5, norma: 0.9 });
+    await createKosztorysSkladowaR({ kosztorys_pozycja_id: kp.id, lp: 1, typ_robocizny_id: typMontaz.id, podwykonawca_id: kowalski.id, cena: 4.5 }); // 15*0.3
 
-    // Lock + accept + generate
     await supabase.from('rewizje').update({ is_locked: true, locked_at: new Date().toISOString() }).eq('id', rewizja.id);
     await supabase.rpc('change_project_status', { p_projekt_id: projektId, p_new_status: 'ofertowanie' });
     await supabase.rpc('change_project_status', { p_projekt_id: projektId, p_new_status: 'realizacja', p_rewizja_id: rewizja.id });
@@ -79,14 +80,12 @@ describe('Umowy/Zamówienia -> Realizacja wpisy', () => {
     await supabase.rpc('generate_umowy_draft', { p_projekt_id: projektId, p_rewizja_id: rewizja.id });
     await supabase.rpc('generate_zamowienia_draft', { p_projekt_id: projektId, p_rewizja_id: rewizja.id });
 
-    // Get generated IDs
     const { data: umowy } = await supabase.from('umowy').select('id').eq('projekt_id', projektId).limit(1);
     umowaId = umowy![0].id;
 
     const { data: zamowienia } = await supabase.from('zamowienia').select('id').eq('projekt_id', projektId).limit(1);
     zamowienieId = zamowienia![0].id;
 
-    // Sign umowa + send zamówienie
     await supabase.from('umowy').update({ status: 'wyslana' }).eq('id', umowaId);
     await supabase.from('umowy').update({ status: 'podpisana', data_podpisania: '2026-02-01' }).eq('id', umowaId);
     await supabase.from('zamowienia').update({ status: 'wyslane' }).eq('id', zamowienieId);
@@ -165,26 +164,15 @@ describe('Umowy/Zamówienia -> Realizacja wpisy', () => {
   });
 
   it('mark entries as paid', async () => {
-    await supabase
-      .from('realizacja_wpisy')
-      .update({ oplacone: true })
-      .eq('projekt_id', projektId);
-
-    const { data } = await supabase
-      .from('realizacja_wpisy')
-      .select('oplacone')
-      .eq('projekt_id', projektId);
-
+    await supabase.from('realizacja_wpisy').update({ oplacone: true }).eq('projekt_id', projektId);
+    const { data } = await supabase.from('realizacja_wpisy').select('oplacone').eq('projekt_id', projektId);
     for (const row of data!) {
       expect(row.oplacone).toBe(true);
     }
   });
 
   it('realizacja totals per project', async () => {
-    const { data } = await supabase
-      .from('realizacja_wpisy')
-      .select('typ, kwota_netto, oplacone')
-      .eq('projekt_id', projektId);
+    const { data } = await supabase.from('realizacja_wpisy').select('typ, kwota_netto, oplacone').eq('projekt_id', projektId);
 
     const total = data!.reduce((s, r) => s + Number(r.kwota_netto), 0);
     expect(total).toBeCloseTo(8800, 0);

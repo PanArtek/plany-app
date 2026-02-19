@@ -2,38 +2,6 @@
 -- Add zamówienia, umowy, and realizacja_wpisy for Klinika DentSmile (REALIZACJA project)
 -- Depends on: 07-projekt-realizacja-base.sql
 
--- ===== FIX: Set podwykonawca_id on kosztorys_pozycje from robocizna skladowe =====
--- The seed base script didn't set podwykonawca_id, but generate_umowy_draft needs it.
--- Must temporarily disable triggers since revision is locked+accepted.
-
-ALTER TABLE rewizje DISABLE TRIGGER rewizje_prevent_unlock_accepted;
-ALTER TABLE kosztorys_pozycje DISABLE TRIGGER kosztorys_pozycje_check_locked;
-
-UPDATE rewizje SET is_locked = false
-WHERE projekt_id = (SELECT id FROM projekty WHERE slug = 'klinika-dentsmile')
-AND numer = 1;
-
-UPDATE kosztorys_pozycje
-SET podwykonawca_id = sub.podwykonawca_id
-FROM (
-  SELECT ksr.kosztorys_pozycja_id, ksr.podwykonawca_id
-  FROM kosztorys_skladowe_robocizna ksr
-  JOIN kosztorys_pozycje kp ON kp.id = ksr.kosztorys_pozycja_id
-  JOIN rewizje r ON r.id = kp.rewizja_id
-  JOIN projekty p ON p.id = r.projekt_id
-  WHERE p.slug = 'klinika-dentsmile'
-  AND r.numer = 1
-  AND ksr.podwykonawca_id IS NOT NULL
-) sub
-WHERE kosztorys_pozycje.id = sub.kosztorys_pozycja_id;
-
-UPDATE rewizje SET is_locked = true, locked_at = '2026-01-14T10:00:00Z'
-WHERE projekt_id = (SELECT id FROM projekty WHERE slug = 'klinika-dentsmile')
-AND numer = 1;
-
-ALTER TABLE kosztorys_pozycje ENABLE TRIGGER kosztorys_pozycje_check_locked;
-ALTER TABLE rewizje ENABLE TRIGGER rewizje_prevent_unlock_accepted;
-
 -- ===== GENERATE ZAMÓWIENIA + UMOWY VIA RPC =====
 SELECT generate_zamowienia_draft(
   (SELECT id FROM projekty WHERE slug='klinika-dentsmile'),
@@ -74,14 +42,16 @@ WHERE z.projekt_id = (SELECT id FROM projekty WHERE slug = 'klinika-dentsmile')
 AND p.sku IN ('BUD-GK-125', 'BUD-CW75', 'BUD-WKR', 'BUD-MASA');
 
 -- Update ilosc_dostarczona on pozycje
-UPDATE zamowienie_pozycje zp
-SET ilosc_dostarczona = zp.ilosc_zamowiona
-FROM zamowienia z
-JOIN dostawcy d ON d.id = z.dostawca_id AND d.kod = 'MAT-BUD'
-JOIN produkty p ON p.id = zp.produkt_id
-WHERE zp.zamowienie_id = z.id
-AND z.projekt_id = (SELECT id FROM projekty WHERE slug = 'klinika-dentsmile')
-AND p.sku IN ('BUD-GK-125', 'BUD-CW75', 'BUD-WKR', 'BUD-MASA');
+UPDATE zamowienie_pozycje
+SET ilosc_dostarczona = ilosc_zamowiona
+WHERE id IN (
+  SELECT zp.id FROM zamowienie_pozycje zp
+  JOIN zamowienia z ON z.id = zp.zamowienie_id
+  JOIN dostawcy d ON d.id = z.dostawca_id AND d.kod = 'MAT-BUD'
+  JOIN produkty p ON p.id = zp.produkt_id
+  WHERE z.projekt_id = (SELECT id FROM projekty WHERE slug = 'klinika-dentsmile')
+  AND p.sku IN ('BUD-GK-125', 'BUD-CW75', 'BUD-WKR', 'BUD-MASA')
+);
 
 -- ===== PROCESS ZAMÓWIENIE SANTECH → wyslane =====
 UPDATE zamowienia

@@ -68,26 +68,31 @@ export interface KosztorysData {
 export interface SkladowaR {
   id: string;
   lp: number;
-  opis: string;
-  podwykonawca_id: string | null;
-  stawka: number;
-  norma: number;
-  ilosc: number | null;
-  jednostka: string;
-  is_manual: boolean;
+  typ_robocizny_id: string;
+  podwykonawca_id: string;
+  cena: number;
+  stawka_manualna: number | null;
+  typRobociznyNazwa: string;
+  typRobociznyJednostka: string | null;
+  podwykonawcaNazwa: string;
 }
 
 export interface SkladowaM {
   id: string;
   lp: number;
-  nazwa: string;
-  produkt_id: string | null;
-  dostawca_id: string | null;
+  produkt_id: string;
+  dostawca_id: string;
   cena: number;
   norma: number;
   ilosc: number | null;
   jednostka: string | null;
   is_manual: boolean;
+  cena_manualna: number | null;
+  produktNazwa: string;
+  produktSku: string;
+  produktJednostka: string;
+  dostawcaNazwa: string;
+  dostawcaKod: string | null;
 }
 
 export interface NameIdPair {
@@ -98,19 +103,17 @@ export interface NameIdPair {
 export interface BibliotekaSkladowaR {
   id: string;
   lp: number;
-  opis: string;
-  stawka_domyslna: number;
-  norma_domyslna: number;
-  jednostka: string;
+  typ_robocizny_id: string;
+  podwykonawca_id: string;
+  cena: number;
 }
 
 export interface BibliotekaSkladowaM {
   id: string;
   lp: number;
-  nazwa: string;
-  cena_domyslna: number;
+  produkt_id: string;
+  dostawca_id: string;
   norma_domyslna: number;
-  jednostka: string | null;
 }
 
 export interface KosztorysPozycjaDetail {
@@ -303,10 +306,10 @@ export async function getKosztorysPozycjaDetail(
 
   const pb = (pozycja as Record<string, unknown>).pozycje_biblioteka as { kod: string } | null;
 
-  // 2. Fetch składowe robocizna
+  // 2. Fetch składowe robocizna with names
   const { data: skladoweR, error: rError } = await supabase
     .from('kosztorys_skladowe_robocizna')
-    .select('id, lp, opis, podwykonawca_id, stawka, norma, ilosc, jednostka, is_manual')
+    .select('id, lp, typ_robocizny_id, podwykonawca_id, cena, stawka_manualna, typy_robocizny!typ_robocizny_id(nazwa, jednostka), podwykonawcy!podwykonawca_id(nazwa)')
     .eq('kosztorys_pozycja_id', pozycjaId)
     .order('lp', { ascending: true });
 
@@ -314,10 +317,10 @@ export async function getKosztorysPozycjaDetail(
     return { success: false, error: rError.message };
   }
 
-  // 3. Fetch składowe materiały
+  // 3. Fetch składowe materiały with names
   const { data: skladoweM, error: mError } = await supabase
     .from('kosztorys_skladowe_materialy')
-    .select('id, lp, nazwa, produkt_id, dostawca_id, cena, norma, ilosc, jednostka, is_manual')
+    .select('id, lp, produkt_id, dostawca_id, cena, norma, ilosc, jednostka, is_manual, cena_manualna, produkty!produkt_id(nazwa, sku, jednostka), dostawcy!dostawca_id(nazwa, kod)')
     .eq('kosztorys_pozycja_id', pozycjaId)
     .order('lp', { ascending: true });
 
@@ -343,7 +346,7 @@ export async function getKosztorysPozycjaDetail(
     pozycjaBibliotekaId
       ? supabase
           .from('biblioteka_skladowe_robocizna')
-          .select('id, lp, opis, stawka_domyslna, norma_domyslna, jednostka')
+          .select('id, lp, typ_robocizny_id, podwykonawca_id, cena')
           .eq('pozycja_biblioteka_id', pozycjaBibliotekaId)
           .order('lp', { ascending: true })
       : Promise.resolve({ data: null, error: null }),
@@ -351,7 +354,7 @@ export async function getKosztorysPozycjaDetail(
     pozycjaBibliotekaId
       ? supabase
           .from('biblioteka_skladowe_materialy')
-          .select('id, lp, nazwa, cena_domyslna, norma_domyslna, jednostka')
+          .select('id, lp, produkt_id, dostawca_id, norma_domyslna')
           .eq('pozycja_biblioteka_id', pozycjaBibliotekaId)
           .order('lp', { ascending: true })
       : Promise.resolve({ data: null, error: null }),
@@ -371,44 +374,55 @@ export async function getKosztorysPozycjaDetail(
         pozycja_biblioteka_id: pozycja.pozycja_biblioteka_id as string | null,
         kod: pb?.kod ?? null,
       },
-      skladoweR: (skladoweR || []).map((r: Record<string, unknown>) => ({
-        id: r.id as string,
-        lp: Number(r.lp),
-        opis: r.opis as string,
-        podwykonawca_id: r.podwykonawca_id as string | null,
-        stawka: Number(r.stawka),
-        norma: Number(r.norma),
-        ilosc: r.ilosc != null ? Number(r.ilosc) : null,
-        jednostka: r.jednostka as string,
-        is_manual: r.is_manual as boolean,
-      })),
-      skladoweM: (skladoweM || []).map((m: Record<string, unknown>) => ({
-        id: m.id as string,
-        lp: Number(m.lp),
-        nazwa: m.nazwa as string,
-        produkt_id: m.produkt_id as string | null,
-        dostawca_id: m.dostawca_id as string | null,
-        cena: Number(m.cena),
-        norma: Number(m.norma),
-        ilosc: m.ilosc != null ? Number(m.ilosc) : null,
-        jednostka: m.jednostka as string | null,
-        is_manual: m.is_manual as boolean,
-      })),
+      skladoweR: (skladoweR || []).map((r: Record<string, unknown>) => {
+        const tr = r.typy_robocizny as { nazwa: string; jednostka: string | null } | null;
+        const pw = r.podwykonawcy as { nazwa: string } | null;
+        return {
+          id: r.id as string,
+          lp: Number(r.lp),
+          typ_robocizny_id: r.typ_robocizny_id as string,
+          podwykonawca_id: r.podwykonawca_id as string,
+          cena: Number(r.cena),
+          stawka_manualna: r.stawka_manualna != null ? Number(r.stawka_manualna) : null,
+          typRobociznyNazwa: tr?.nazwa ?? '',
+          typRobociznyJednostka: tr?.jednostka ?? null,
+          podwykonawcaNazwa: pw?.nazwa ?? '',
+        };
+      }),
+      skladoweM: (skladoweM || []).map((m: Record<string, unknown>) => {
+        const pr = m.produkty as { nazwa: string; sku: string; jednostka: string } | null;
+        const ds = m.dostawcy as { nazwa: string; kod: string | null } | null;
+        return {
+          id: m.id as string,
+          lp: Number(m.lp),
+          produkt_id: m.produkt_id as string,
+          dostawca_id: m.dostawca_id as string,
+          cena: Number(m.cena),
+          norma: Number(m.norma),
+          ilosc: m.ilosc != null ? Number(m.ilosc) : null,
+          jednostka: m.jednostka as string | null,
+          is_manual: m.is_manual as boolean,
+          cena_manualna: m.cena_manualna != null ? Number(m.cena_manualna) : null,
+          produktNazwa: pr?.nazwa ?? '',
+          produktSku: pr?.sku ?? '',
+          produktJednostka: pr?.jednostka ?? 'szt',
+          dostawcaNazwa: ds?.nazwa ?? '',
+          dostawcaKod: ds?.kod ?? null,
+        };
+      }),
       bibliotekaSkladoweR: (libRResult.data || []).map((r: Record<string, unknown>) => ({
         id: r.id as string,
         lp: Number(r.lp),
-        opis: r.opis as string,
-        stawka_domyslna: Number(r.stawka_domyslna ?? 0),
-        norma_domyslna: Number(r.norma_domyslna ?? 1),
-        jednostka: (r.jednostka as string) || 'h',
+        typ_robocizny_id: r.typ_robocizny_id as string,
+        podwykonawca_id: r.podwykonawca_id as string,
+        cena: Number(r.cena ?? 0),
       })),
       bibliotekaSkladoweM: (libMResult.data || []).map((m: Record<string, unknown>) => ({
         id: m.id as string,
         lp: Number(m.lp),
-        nazwa: m.nazwa as string,
-        cena_domyslna: Number(m.cena_domyslna ?? 0),
+        produkt_id: m.produkt_id as string,
+        dostawca_id: m.dostawca_id as string,
         norma_domyslna: Number(m.norma_domyslna ?? 1),
-        jednostka: m.jednostka as string | null,
       })),
       podwykonawcy: (podwykonawcyResult.data || []) as NameIdPair[],
       dostawcy: (dostawcyResult.data || []) as NameIdPair[],
@@ -591,31 +605,42 @@ export async function addPositionFromLibrary(
   // 5. Copy składowe robocizna from library
   const { data: libRobocizna } = await supabase
     .from('biblioteka_skladowe_robocizna')
-    .select('lp, opis, norma_domyslna, stawka_domyslna, jednostka')
+    .select('lp, typ_robocizny_id, podwykonawca_id, cena')
     .eq('pozycja_biblioteka_id', pozycjaBibliotekaId)
     .order('lp');
 
   if (libRobocizna && libRobocizna.length > 0) {
-    // Find cheapest subcontractor rates for this library position
-    const { data: stawki } = await supabase
-      .from('stawki_podwykonawcow')
-      .select('pozycja_biblioteka_id, podwykonawca_id, cena_netto')
-      .eq('pozycja_biblioteka_id', pozycjaBibliotekaId)
-      .order('cena_netto', { ascending: true });
+    const robociznaInserts = await Promise.all(
+      (libRobocizna as Record<string, unknown>[]).map(async (r) => {
+        const typRobociznyId = r.typ_robocizny_id as string;
+        const podwykonawcaId = r.podwykonawca_id as string;
+        let cena = Number(r.cena ?? 0);
 
-    const cheapestStawka = stawki && stawki.length > 0
-      ? { stawka: Number((stawki[0] as Record<string, unknown>).cena_netto), podwykonawca_id: (stawki[0] as Record<string, unknown>).podwykonawca_id as string }
-      : null;
+        // Look up stawka from cennik (stawki_podwykonawcow)
+        if (typRobociznyId && podwykonawcaId) {
+          const { data: stawki } = await supabase
+            .from('stawki_podwykonawcow')
+            .select('stawka')
+            .eq('typ_robocizny_id', typRobociznyId)
+            .eq('podwykonawca_id', podwykonawcaId)
+            .eq('aktywny', true)
+            .limit(1);
 
-    const robociznaInserts = (libRobocizna as Record<string, unknown>[]).map((r) => ({
-      kosztorys_pozycja_id: pozycjaId,
-      lp: Number(r.lp),
-      opis: r.opis as string,
-      norma: Number(r.norma_domyslna ?? 1),
-      jednostka: (r.jednostka as string) || 'h',
-      stawka: cheapestStawka?.stawka ?? Number(r.stawka_domyslna ?? 0),
-      podwykonawca_id: cheapestStawka?.podwykonawca_id ?? null,
-    }));
+          if (stawki && stawki.length > 0) {
+            cena = Number((stawki[0] as Record<string, unknown>).stawka);
+          }
+        }
+
+        return {
+          kosztorys_pozycja_id: pozycjaId,
+          lp: Number(r.lp),
+          typ_robocizny_id: typRobociznyId,
+          podwykonawca_id: podwykonawcaId,
+          cena,
+          stawka_manualna: null,
+        };
+      })
+    );
 
     await supabase.from('kosztorys_skladowe_robocizna').insert(robociznaInserts);
   }
@@ -623,41 +648,40 @@ export async function addPositionFromLibrary(
   // 6. Copy składowe materiały from library
   const { data: libMaterialy } = await supabase
     .from('biblioteka_skladowe_materialy')
-    .select('lp, nazwa, norma_domyslna, cena_domyslna, jednostka, produkt_id')
+    .select('lp, produkt_id, dostawca_id, norma_domyslna')
     .eq('pozycja_biblioteka_id', pozycjaBibliotekaId)
     .order('lp');
 
   if (libMaterialy && libMaterialy.length > 0) {
     const materialyInserts = await Promise.all(
       (libMaterialy as Record<string, unknown>[]).map(async (m) => {
-        let cena = Number(m.cena_domyslna ?? 0);
-        let dostawcaId: string | null = null;
+        const produktId = m.produkt_id as string;
+        const dostawcaId = m.dostawca_id as string;
+        let cena = 0;
 
-        // Find cheapest supplier price for this product
-        if (m.produkt_id) {
+        // Look up price from cennik (ceny_dostawcow)
+        if (produktId && dostawcaId) {
           const { data: ceny } = await supabase
             .from('ceny_dostawcow')
-            .select('dostawca_id, cena_netto')
-            .eq('produkt_id', m.produkt_id as string)
+            .select('cena_netto')
+            .eq('produkt_id', produktId)
+            .eq('dostawca_id', dostawcaId)
             .eq('aktywny', true)
-            .order('cena_netto', { ascending: true })
             .limit(1);
 
           if (ceny && ceny.length > 0) {
             cena = Number((ceny[0] as Record<string, unknown>).cena_netto);
-            dostawcaId = (ceny[0] as Record<string, unknown>).dostawca_id as string;
           }
         }
 
         return {
           kosztorys_pozycja_id: pozycjaId,
           lp: Number(m.lp),
-          nazwa: m.nazwa as string,
-          norma: Number(m.norma_domyslna ?? 1),
-          jednostka: m.jednostka as string | null,
-          cena,
-          produkt_id: m.produkt_id as string | null,
+          produkt_id: produktId,
           dostawca_id: dostawcaId,
+          norma: Number(m.norma_domyslna ?? 1),
+          cena,
+          cena_manualna: null,
         };
       })
     );
@@ -716,8 +740,7 @@ export async function updateKosztorysSkladowaR(
   const supabase = await createClient();
 
   const updateData: Record<string, unknown> = {
-    stawka: parsed.data.stawka,
-    is_manual: true,
+    stawka_manualna: parsed.data.stawka,
   };
   if (parsed.data.podwykonawca_id !== undefined) {
     updateData.podwykonawca_id = parsed.data.podwykonawca_id;
@@ -750,8 +773,7 @@ export async function updateKosztorysSkladowaM(
   const supabase = await createClient();
 
   const updateData: Record<string, unknown> = {
-    cena: parsed.data.cena,
-    is_manual: true,
+    cena_manualna: parsed.data.cena,
   };
   if (parsed.data.dostawca_id !== undefined) {
     updateData.dostawca_id = parsed.data.dostawca_id;
@@ -774,13 +796,13 @@ export async function updateKosztorysSkladowaM(
 
 export async function resetSkladowaR(
   id: string,
-  libraryStawka: number
+  libraryCena: number
 ): Promise<ActionResult> {
   const supabase = await createClient();
 
   const { error } = await supabase
     .from('kosztorys_skladowe_robocizna')
-    .update({ stawka: libraryStawka, is_manual: false })
+    .update({ cena: libraryCena, stawka_manualna: null })
     .eq('id', id);
 
   if (error) {
@@ -795,13 +817,13 @@ export async function resetSkladowaR(
 
 export async function resetSkladowaM(
   id: string,
-  libraryCena: number
+  cennikCena: number
 ): Promise<ActionResult> {
   const supabase = await createClient();
 
   const { error } = await supabase
     .from('kosztorys_skladowe_materialy')
-    .update({ cena: libraryCena, is_manual: false })
+    .update({ cena: cennikCena, cena_manualna: null })
     .eq('id', id);
 
   if (error) {
@@ -835,87 +857,103 @@ export async function resetPozycjaToLibrary(
     return { success: false, error: 'Pozycja nie ma powiązania z biblioteką' };
   }
 
-  // 2. Fetch library and kosztorys skladowe in parallel
-  const [libRResult, libMResult, koszRResult, koszMResult] = await Promise.all([
-    supabase
-      .from('biblioteka_skladowe_robocizna')
-      .select('lp, stawka_domyslna, norma_domyslna')
-      .eq('pozycja_biblioteka_id', bibId)
-      .order('lp', { ascending: true }),
-    supabase
-      .from('biblioteka_skladowe_materialy')
-      .select('lp, cena_domyslna, norma_domyslna, produkt_id')
-      .eq('pozycja_biblioteka_id', bibId)
-      .order('lp', { ascending: true }),
+  // 2. Delete existing kosztorys skladowe and re-copy from library
+  // This is simpler and more correct than lp-matching when library may have changed
+  await Promise.all([
     supabase
       .from('kosztorys_skladowe_robocizna')
-      .select('id, lp')
-      .eq('kosztorys_pozycja_id', pozycjaId)
-      .order('lp', { ascending: true }),
+      .delete()
+      .eq('kosztorys_pozycja_id', pozycjaId),
     supabase
       .from('kosztorys_skladowe_materialy')
-      .select('id, lp')
-      .eq('kosztorys_pozycja_id', pozycjaId)
-      .order('lp', { ascending: true }),
+      .delete()
+      .eq('kosztorys_pozycja_id', pozycjaId),
   ]);
 
-  const libR = (libRResult.data || []) as { lp: number; stawka_domyslna: number; norma_domyslna: number }[];
-  const libM = (libMResult.data || []) as { lp: number; cena_domyslna: number; norma_domyslna: number; produkt_id: string | null }[];
-  const koszR = (koszRResult.data || []) as { id: string; lp: number }[];
-  const koszM = (koszMResult.data || []) as { id: string; lp: number }[];
+  // 3. Re-copy robocizna from library with cennik prices
+  const { data: libRobocizna } = await supabase
+    .from('biblioteka_skladowe_robocizna')
+    .select('lp, typ_robocizny_id, podwykonawca_id, cena')
+    .eq('pozycja_biblioteka_id', bibId)
+    .order('lp');
 
-  // 3. Reset robocizna by lp matching
-  const rUpdates = koszR
-    .map((kr) => {
-      const lib = libR.find((l) => l.lp === kr.lp);
-      if (!lib) return null;
-      return supabase
-        .from('kosztorys_skladowe_robocizna')
-        .update({
-          stawka: lib.stawka_domyslna,
-          norma: lib.norma_domyslna,
-          is_manual: false,
-        })
-        .eq('id', kr.id);
-    })
-    .filter(Boolean);
+  if (libRobocizna && libRobocizna.length > 0) {
+    const robociznaInserts = await Promise.all(
+      (libRobocizna as Record<string, unknown>[]).map(async (r) => {
+        const typRobociznyId = r.typ_robocizny_id as string;
+        const podwykonawcaId = r.podwykonawca_id as string;
+        let cena = Number(r.cena ?? 0);
 
-  // 4. Reset materialy by lp matching (with price discovery)
-  const mUpdates = await Promise.all(
-    koszM.map(async (km) => {
-      const lib = libM.find((l) => l.lp === km.lp);
-      if (!lib) return null;
+        if (typRobociznyId && podwykonawcaId) {
+          const { data: stawki } = await supabase
+            .from('stawki_podwykonawcow')
+            .select('stawka')
+            .eq('typ_robocizny_id', typRobociznyId)
+            .eq('podwykonawca_id', podwykonawcaId)
+            .eq('aktywny', true)
+            .limit(1);
 
-      let cena = lib.cena_domyslna;
-
-      // 3-tier price discovery for materials
-      if (lib.produkt_id) {
-        const { data: ceny } = await supabase
-          .from('ceny_dostawcow')
-          .select('cena_netto')
-          .eq('produkt_id', lib.produkt_id)
-          .eq('aktywny', true)
-          .order('cena_netto', { ascending: true })
-          .limit(1);
-
-        if (ceny && ceny.length > 0) {
-          cena = Number((ceny[0] as Record<string, unknown>).cena_netto);
+          if (stawki && stawki.length > 0) {
+            cena = Number((stawki[0] as Record<string, unknown>).stawka);
+          }
         }
-      }
 
-      return supabase
-        .from('kosztorys_skladowe_materialy')
-        .update({
+        return {
+          kosztorys_pozycja_id: pozycjaId,
+          lp: Number(r.lp),
+          typ_robocizny_id: typRobociznyId,
+          podwykonawca_id: podwykonawcaId,
           cena,
-          norma: lib.norma_domyslna,
-          is_manual: false,
-        })
-        .eq('id', km.id);
-    })
-  );
+          stawka_manualna: null,
+        };
+      })
+    );
 
-  // Execute all updates
-  await Promise.all([...rUpdates, ...mUpdates.filter(Boolean)]);
+    await supabase.from('kosztorys_skladowe_robocizna').insert(robociznaInserts);
+  }
+
+  // 4. Re-copy materialy from library with cennik prices
+  const { data: libMaterialy } = await supabase
+    .from('biblioteka_skladowe_materialy')
+    .select('lp, produkt_id, dostawca_id, norma_domyslna')
+    .eq('pozycja_biblioteka_id', bibId)
+    .order('lp');
+
+  if (libMaterialy && libMaterialy.length > 0) {
+    const materialyInserts = await Promise.all(
+      (libMaterialy as Record<string, unknown>[]).map(async (m) => {
+        const produktId = m.produkt_id as string;
+        const dostawcaId = m.dostawca_id as string;
+        let cena = 0;
+
+        if (produktId && dostawcaId) {
+          const { data: ceny } = await supabase
+            .from('ceny_dostawcow')
+            .select('cena_netto')
+            .eq('produkt_id', produktId)
+            .eq('dostawca_id', dostawcaId)
+            .eq('aktywny', true)
+            .limit(1);
+
+          if (ceny && ceny.length > 0) {
+            cena = Number((ceny[0] as Record<string, unknown>).cena_netto);
+          }
+        }
+
+        return {
+          kosztorys_pozycja_id: pozycjaId,
+          lp: Number(m.lp),
+          produkt_id: produktId,
+          dostawca_id: dostawcaId,
+          norma: Number(m.norma_domyslna ?? 1),
+          cena,
+          cena_manualna: null,
+        };
+      })
+    );
+
+    await supabase.from('kosztorys_skladowe_materialy').insert(materialyInserts);
+  }
 
   revalidatePath('/projekty');
   return { success: true };
@@ -1009,6 +1047,98 @@ export async function getKategorieForFilter(
     success: true,
     data: (data || []) as KategoriaFilter[],
   };
+}
+
+// --- WRITE: Change dostawca for a material skladowa (fetches new cennik price) ---
+
+export async function changeDostawcaForSkladowa(
+  skladowaId: string,
+  dostawcaId: string
+): Promise<ActionResult> {
+  const supabase = await createClient();
+
+  // Get current skladowa to find produkt_id
+  const { data: skladowa, error: sErr } = await supabase
+    .from('kosztorys_skladowe_materialy')
+    .select('produkt_id')
+    .eq('id', skladowaId)
+    .single();
+
+  if (sErr || !skladowa) {
+    return { success: false, error: 'Składowa nie znaleziona' };
+  }
+
+  // Look up price from cennik
+  let cena = 0;
+  const { data: ceny } = await supabase
+    .from('ceny_dostawcow')
+    .select('cena_netto')
+    .eq('produkt_id', (skladowa as Record<string, unknown>).produkt_id as string)
+    .eq('dostawca_id', dostawcaId)
+    .eq('aktywny', true)
+    .limit(1);
+
+  if (ceny && ceny.length > 0) {
+    cena = Number((ceny[0] as Record<string, unknown>).cena_netto);
+  }
+
+  const { error } = await supabase
+    .from('kosztorys_skladowe_materialy')
+    .update({ dostawca_id: dostawcaId, cena, cena_manualna: null })
+    .eq('id', skladowaId);
+
+  if (error) {
+    return { success: false, error: error.message };
+  }
+
+  revalidatePath('/projekty');
+  return { success: true };
+}
+
+// --- WRITE: Change podwykonawca for a labor skladowa (fetches new cennik price) ---
+
+export async function changePodwykonawcaForSkladowa(
+  skladowaId: string,
+  podwykonawcaId: string
+): Promise<ActionResult> {
+  const supabase = await createClient();
+
+  // Get current skladowa to find typ_robocizny_id
+  const { data: skladowa, error: sErr } = await supabase
+    .from('kosztorys_skladowe_robocizna')
+    .select('typ_robocizny_id')
+    .eq('id', skladowaId)
+    .single();
+
+  if (sErr || !skladowa) {
+    return { success: false, error: 'Składowa nie znaleziona' };
+  }
+
+  // Look up stawka from cennik
+  let cena = 0;
+  const { data: stawki } = await supabase
+    .from('stawki_podwykonawcow')
+    .select('stawka')
+    .eq('typ_robocizny_id', (skladowa as Record<string, unknown>).typ_robocizny_id as string)
+    .eq('podwykonawca_id', podwykonawcaId)
+    .eq('aktywny', true)
+    .limit(1);
+
+  if (stawki && stawki.length > 0) {
+    cena = Number((stawki[0] as Record<string, unknown>).stawka);
+  }
+
+  const { error } = await supabase
+    .from('kosztorys_skladowe_robocizna')
+    .update({ podwykonawca_id: podwykonawcaId, cena, stawka_manualna: null })
+    .eq('id', skladowaId);
+
+  if (error) {
+    return { success: false, error: error.message };
+  }
+
+  revalidatePath('/projekty');
+  return { success: true };
 }
 
 // --- WRITE: Bulk update narzut on multiple positions ---

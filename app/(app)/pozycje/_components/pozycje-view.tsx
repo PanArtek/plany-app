@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
 import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { type Pozycja, deletePozycja } from '@/actions/pozycje';
+import { type Pozycja, type CennikPrices, deletePozycja } from '@/actions/pozycje';
 import { type PozycjeFilters } from '@/lib/validations/pozycje';
 import { PozycjeFilters as FiltersComponent } from './pozycje-filters';
 import { PozycjeTable } from './pozycje-table';
@@ -14,7 +14,14 @@ import { PozycjaDetailPanel } from './pozycja-detail-panel';
 import { PozycjaFormPanel } from './panels/pozycja-form-panel';
 import { DeleteConfirmPanel } from '../../kategorie/_components/panels/delete-confirm-panel';
 
-interface PozycjeViewProps {
+export interface SkladowaDropdownOptions {
+  produktOptions: { id: string; nazwa: string; sku: string }[];
+  dostawcaOptions: { id: string; nazwa: string; kod: string | null }[];
+  typRobociznyOptions: { id: string; nazwa: string; jednostka: string | null }[];
+  podwykonawcaOptions: { id: string; nazwa: string }[];
+}
+
+interface PozycjeViewProps extends SkladowaDropdownOptions {
   initialData: Pozycja[];
   initialFilters: PozycjeFilters;
   initialSelected: string | null;
@@ -23,6 +30,7 @@ interface PozycjeViewProps {
   pageSize: number;
   kategoriaNazwa?: string;
   podkategoriaNazwa?: string;
+  cennikPrices?: CennikPrices;
 }
 
 interface FormPanelState {
@@ -30,7 +38,7 @@ interface FormPanelState {
   mode: 'add' | 'edit';
 }
 
-function PozycjeViewContent({ initialData, initialFilters, initialSelected, totalCount, page, pageSize, kategoriaNazwa, podkategoriaNazwa }: PozycjeViewProps) {
+function PozycjeViewContent({ initialData, initialFilters, initialSelected, totalCount, page, pageSize, kategoriaNazwa, podkategoriaNazwa, produktOptions, dostawcaOptions, typRobociznyOptions, podwykonawcaOptions, cennikPrices }: PozycjeViewProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -161,6 +169,7 @@ function PozycjeViewContent({ initialData, initialFilters, initialSelected, tota
               onSelect={handleSelect}
               onEdit={handleEditById}
               onDelete={handleDeleteById}
+              cennikPrices={cennikPrices}
             />
           </div>
           <PozycjePagination totalCount={totalCount} page={page} pageSize={pageSize} />
@@ -175,6 +184,11 @@ function PozycjeViewContent({ initialData, initialFilters, initialSelected, tota
           onOpenChange={handleDetailPanelClose}
           onEdit={handleEdit}
           onDelete={handleDelete}
+          produktOptions={produktOptions}
+          dostawcaOptions={dostawcaOptions}
+          typRobociznyOptions={typRobociznyOptions}
+          podwykonawcaOptions={podwykonawcaOptions}
+          cennikPrices={cennikPrices}
         />
       )}
 

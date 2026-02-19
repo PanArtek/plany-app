@@ -36,7 +36,7 @@ export const updatePodwykonawcaSchema = z.object({
 // Schema dla tworzenia stawki
 export const createStawkaSchema = z.object({
   podwykonawcaId: z.string().uuid("Nieprawidłowe ID podwykonawcy"),
-  pozycjaBibliotekaId: z.string().uuid("Nieprawidłowe ID pozycji"),
+  typRobociznyId: z.string().uuid("Wybierz typ robocizny"),
   stawka: z.number().positive("Stawka musi być większa od 0"),
 });
 
@@ -77,7 +77,7 @@ export const podwykonawcaFormSchema = z.object({
 });
 
 export const stawkaFormSchema = z.object({
-  pozycjaBibliotekaId: z.string().uuid("Wybierz pozycję"),
+  typRobociznyId: z.string().uuid("Wybierz typ robocizny"),
   stawka: z.number().positive("Stawka musi być większa od 0"),
 });
 

@@ -26,7 +26,7 @@ export interface ZamowienieRow {
 
 export interface ZamowieniePozycja {
   id: string;
-  produkt_id: string | null;
+  produkt_id: string;
   nazwa: string;
   jednostka: string | null;
   ilosc_zamowiona: number;
@@ -127,7 +127,7 @@ export async function getZamowienie(id: string): Promise<ZamowienieDetail | null
 
   const pozycje: ZamowieniePozycja[] = (pozycjeData || []).map((p: Record<string, unknown>) => ({
     id: p.id as string,
-    produkt_id: p.produkt_id as string | null,
+    produkt_id: p.produkt_id as string,
     nazwa: p.nazwa as string,
     jednostka: p.jednostka as string | null,
     ilosc_zamowiona: Number(p.ilosc_zamowiona),

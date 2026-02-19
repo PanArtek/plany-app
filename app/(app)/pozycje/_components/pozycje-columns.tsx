@@ -2,8 +2,7 @@
 
 import { ColumnDef, RowData } from '@tanstack/react-table';
 import { Badge } from '@/components/ui/badge';
-import { type Pozycja } from '@/actions/pozycje';
-import { obliczCenePozycji } from '@/lib/utils/pozycje';
+import { type Pozycja, type CennikPrices } from '@/actions/pozycje';
 import { ChevronDown, ChevronUp, Pencil, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -46,12 +45,26 @@ function SortIcon({ column }: { column: { getIsSorted: () => false | 'asc' | 'de
   );
 }
 
+function obliczCenaZCennik(pozycja: Pozycja, cennikPrices?: CennikPrices): number {
+  const robocizna = (pozycja.biblioteka_skladowe_robocizna ?? []).reduce((sum, s) => {
+    const stawka = cennikPrices?.robociznaPrices[s.id] ?? s.cena ?? 0;
+    return sum + stawka;
+  }, 0);
+  const material = (pozycja.biblioteka_skladowe_materialy ?? []).reduce((sum, s) => {
+    const cenaJedn = cennikPrices?.materialPrices[s.id] ?? null;
+    const norma = s.norma_domyslna ?? 1;
+    return sum + (cenaJedn !== null ? cenaJedn * norma : 0);
+  }, 0);
+  return robocizna + material;
+}
+
 interface PozycjeColumnsOptions {
   onEdit: (id: string) => void;
   onDelete: (id: string) => void;
+  cennikPrices?: CennikPrices;
 }
 
-export function getPozycjeColumns({ onEdit, onDelete }: PozycjeColumnsOptions): ColumnDef<Pozycja>[] {
+export function getPozycjeColumns({ onEdit, onDelete, cennikPrices }: PozycjeColumnsOptions): ColumnDef<Pozycja>[] {
   return [
   {
     accessorKey: 'kod',
@@ -123,9 +136,9 @@ export function getPozycjeColumns({ onEdit, onDelete }: PozycjeColumnsOptions): 
         <SortIcon column={column} />
       </button>
     ),
-    accessorFn: (row) => obliczCenePozycji(row).cena,
+    accessorFn: (row) => obliczCenaZCennik(row, cennikPrices),
     cell: ({ row }) => {
-      const { cena } = obliczCenePozycji(row.original);
+      const cena = obliczCenaZCennik(row.original, cennikPrices);
       return (
         <span className="font-mono text-sm font-medium text-right block tabular-nums">
           {formatCena(cena)}

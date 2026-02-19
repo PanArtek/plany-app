@@ -29,4 +29,82 @@ Started: Wed Feb 18 11:21:07 CET 2026
 ## US-007: Regenerate TypeScript types ✅
 - database.types.ts regenerated with all schema changes
 - Build passes with zero errors
+
+## US-008: Seed base data ✅
+- scripts/seeds/00-clean.sql (truncate all 27 tables)
+- scripts/seeds/01-base.sql (org, 35 kategorie, 3 narzuty, 18 typy_robocizny)
+
+## US-009: Seed kontrahenci ✅
+- scripts/seeds/02-kontrahenci.sql (6 dostawcy, 5 podwykonawcy, 18 stawki)
+
+## US-010: Seed produkty + ceny ✅
+- scripts/seeds/03-produkty.sql (48 produkty, 96 ceny_dostawcow)
+
+## US-011: CRUD action + validation for typy_robocizny ✅
+- lib/validations/typy-robocizny.ts (form + server + filter schemas)
+- actions/typy-robocizny.ts (CRUD + paginated list + dropdown helper)
+- Build passes
+
+## US-012: Typy robocizny page + sidebar nav ✅
+- app/(app)/typy-robocizny/page.tsx (Server Component)
+- _components/typy-robocizny-view.tsx (client view with panel state)
+- _components/typy-robocizny-table.tsx (tanstack table)
+- _components/typy-robocizny-filters.tsx (search + inactive toggle)
+- _components/typy-robocizny-pagination.tsx
+- _components/panels/typ-robocizny-form-panel.tsx (create/edit)
+- Sidebar: added Typy robocizny with Wrench icon between Materiały and Dostawcy
+- Verified in browser: page renders, form panel opens, sidebar active state works
+
+## US-013: Update skladowe actions for new schema ✅
+- lib/validations/skladowe.ts: new schemas (produkt_id+dostawca_id for material, typ_robocizny_id+podwykonawca_id for robocizna)
+- actions/skladowe.ts: new interfaces + CRUD using new columns
+- actions/pozycje.ts: updated interfaces, read queries JOIN with related tables
+- lib/utils/pozycje.ts: updated price calc to use new cena column
+- UI components updated for type compatibility (skladowa-panel, skladowe-section, pozycja-detail-panel)
+- No references to dropped columns (nazwa, opis, cena_domyslna, stawka_domyslna)
+- Build passes
+
+## US-014: Update kosztorys view for new schema ✅
+- kosztorys_pozycje_view: updated to use kosztorys_skladowe_robocizna/materialy
+- Build passes
+
+## US-015: Update add-position action to copy skladowe ✅
+- addPozycjaFromBiblioteka copies robocizna + materialy from library templates
+- Uses cennik prices via JOINs
+
+## US-016: Update pozycja detail panel skladowe display ✅
+- SkladowaRRow: shows typ_robocizny name, podwykonawca dropdown
+- SkladowaMRow: shows produkt name + sku, dostawca dropdown
+
+## US-017: Update kontrahenci detail panels ✅
+- Dostawca/Podwykonawca panels: show cennik usage + kosztorys references
+
+## US-018: Update dostawcy/podwykonawcy category filtering ✅
+- Filter by kontrahent category in lists
+
+## US-019: Supplier/subcontractor change in kosztorys ✅
+- changeDostawcaForSkladowa: updates dostawca + fetches new price from cennik
+- changePodwykonawcaForSkladowa: updates podwykonawca + fetches new stawka
+- Verified in browser: price auto-updates on supplier change
+
+## US-020: Rebuild zamowienia generation ✅
+- Updated generate_zamowienia_draft Postgres function for new schema
+- Uses COALESCE(cena_manualna, cena) + JOIN produkty for names
+
+## US-021: Rebuild umowy generation ✅
+- Rewrote generate_umowy_draft: groups by ksr.podwykonawca_id
+- Aggregates by (typ_robocizny_id, effective_price)
+- Sets typ_robocizny_id on umowa_pozycje
+
+## US-022: Seed demo projects with new schema ✅
+- Rewrote 04-pozycje-stawki.sql: full library (18 pozycje_biblioteka + 18 bib_rob + 48 bib_mat)
+- All 6 project seeds (05-10) executed successfully
+- Fixed 08 UPDATE FROM clause (PostgreSQL reference issue)
+- 5 projects, 44 kosztorys_pozycje, 0 NULL FKs
+
+## US-023: Final verification ✅
+- Data counts: 18 typy_rob, 18 stawki, 5 projekty, 18 bib_poz, 48 bib_mat, 18 bib_rob
+- 0 NULLs in all required FK columns
+- npm run build passes
+- Browser verified: /typy-robocizny (18 types), /projekty (5 projects), kosztorys detail panel (full package with prices from cennik)
 ---

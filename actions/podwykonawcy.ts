@@ -58,10 +58,9 @@ export interface PodwykonawcaBase {
 
 export interface StawkaEntry {
   id: string;
-  pozycjaBibliotekaId: string;
-  pozycjaKod: string;
-  pozycjaNazwa: string;
-  pozycjaJednostka: string;
+  typRobociznyId: string;
+  typRobociznyNazwa: string;
+  typRobociznyJednostka: string;
   stawka: number;
   aktywny: boolean;
 }
@@ -70,6 +69,7 @@ export interface PodwykonawcaPozycja {
   id: string;
   kod: string;
   nazwa: string;
+  typRobociznyNazwa: string;
 }
 
 // --- Pagination ---
@@ -159,30 +159,28 @@ export async function getPodwykonawcaStawki(podwykonawcaId: string): Promise<Sta
     .from('stawki_podwykonawcow')
     .select(`
       id,
-      pozycja_biblioteka_id,
+      typ_robocizny_id,
       stawka,
       aktywny,
-      pozycje_biblioteka!pozycja_biblioteka_id(kod, nazwa, jednostka)
+      typy_robocizny!typ_robocizny_id(nazwa, jednostka)
     `)
     .eq('podwykonawca_id', podwykonawcaId);
 
   if (error) throw error;
 
-  // Sort by pozycja kod
   const mapped = (data || []).map((row: Record<string, unknown>) => {
-    const pozycja = row.pozycje_biblioteka as { kod: string; nazwa: string; jednostka: string } | null;
+    const typ = row.typy_robocizny as { nazwa: string; jednostka: string } | null;
     return {
       id: row.id as string,
-      pozycjaBibliotekaId: row.pozycja_biblioteka_id as string,
-      pozycjaKod: pozycja?.kod ?? '',
-      pozycjaNazwa: pozycja?.nazwa ?? '',
-      pozycjaJednostka: pozycja?.jednostka ?? 'm²',
+      typRobociznyId: row.typ_robocizny_id as string,
+      typRobociznyNazwa: typ?.nazwa ?? '',
+      typRobociznyJednostka: typ?.jednostka ?? 'm²',
       stawka: Number(row.stawka),
       aktywny: row.aktywny as boolean,
     };
   });
 
-  mapped.sort((a, b) => a.pozycjaKod.localeCompare(b.pozycjaKod));
+  mapped.sort((a, b) => a.typRobociznyNazwa.localeCompare(b.typRobociznyNazwa));
   return mapped;
 }
 
@@ -194,23 +192,25 @@ export async function getPodwykonawcaPozycje(podwykonawcaId: string): Promise<Po
   const { data, error } = await supabase
     .from('biblioteka_skladowe_robocizna')
     .select(`
-      pozycje_biblioteka!pozycja_biblioteka_id(id, kod, nazwa)
+      pozycje_biblioteka!pozycja_biblioteka_id(id, kod, nazwa),
+      typy_robocizny!typ_robocizny_id(nazwa)
     `)
     .eq('podwykonawca_id', podwykonawcaId);
 
   if (error) throw error;
 
-  // Deduplicate by pozycja id
-  const seen = new Set<string>();
   const result: PodwykonawcaPozycja[] = [];
   for (const row of (data || []) as Record<string, unknown>[]) {
     const pozycja = row.pozycje_biblioteka as { id: string; kod: string; nazwa: string };
-    if (!seen.has(pozycja.id)) {
-      seen.add(pozycja.id);
-      result.push({ id: pozycja.id, kod: pozycja.kod, nazwa: pozycja.nazwa });
-    }
+    const typ = row.typy_robocizny as { nazwa: string } | null;
+    result.push({
+      id: pozycja.id,
+      kod: pozycja.kod,
+      nazwa: pozycja.nazwa,
+      typRobociznyNazwa: typ?.nazwa ?? '',
+    });
   }
-  return result;
+  return result.sort((a, b) => a.kod.localeCompare(b.kod));
 }
 
 // --- READ: All pozycje_biblioteka (for stawka form select dropdown) ---
@@ -227,6 +227,21 @@ export async function getAllPozycjeBiblioteka(): Promise<{ id: string; kod: stri
   if (error) throw error;
 
   return (data || []) as { id: string; kod: string; nazwa: string; jednostka: string }[];
+}
+
+// --- READ: All active podwykonawcy (for dropdowns) ---
+
+export async function getAllPodwykonawcy(): Promise<{ id: string; nazwa: string }[]> {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from('podwykonawcy')
+    .select('id, nazwa')
+    .eq('aktywny', true)
+    .order('nazwa');
+
+  if (error) throw error;
+  return (data || []) as { id: string; nazwa: string }[];
 }
 
 // --- STATS ---
@@ -421,7 +436,7 @@ export async function createStawka(input: unknown): Promise<ActionResult> {
     .from('stawki_podwykonawcow')
     .insert({
       podwykonawca_id: parsed.data.podwykonawcaId,
-      pozycja_biblioteka_id: parsed.data.pozycjaBibliotekaId,
+      typ_robocizny_id: parsed.data.typRobociznyId,
       stawka: parsed.data.stawka,
     });
 

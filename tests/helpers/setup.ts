@@ -203,18 +203,38 @@ export async function createPodwykonawca(
   return data;
 }
 
+// --- Typ robocizny ---
+
+export async function createTypRobocizny(
+  orgId: string,
+  opts: { nazwa: string; jednostka?: string; opis?: string }
+) {
+  const { data, error } = await supabase
+    .from('typy_robocizny')
+    .insert({
+      organization_id: orgId,
+      nazwa: opts.nazwa,
+      jednostka: opts.jednostka || 'm2',
+      opis: opts.opis || null,
+    })
+    .select()
+    .single();
+  if (error) throw new Error(`createTypRobocizny: ${error.message}`);
+  return data;
+}
+
 // --- Stawka podwykonawcy ---
 
 export async function createStawkaPodwykonawcy(opts: {
   podwykonawca_id: string;
-  pozycja_biblioteka_id: string;
+  typ_robocizny_id: string;
   stawka: number;
 }) {
   const { data, error } = await supabase
     .from('stawki_podwykonawcow')
     .insert({
       podwykonawca_id: opts.podwykonawca_id,
-      pozycja_biblioteka_id: opts.pozycja_biblioteka_id,
+      typ_robocizny_id: opts.typ_robocizny_id,
       stawka: opts.stawka,
     })
     .select()
@@ -228,10 +248,8 @@ export async function createStawkaPodwykonawcy(opts: {
 export async function createBibliotekaSkladowaM(opts: {
   pozycja_biblioteka_id: string;
   lp: number;
-  nazwa: string;
-  produkt_id?: string;
-  dostawca_id?: string;
-  cena_domyslna?: number;
+  produkt_id: string;
+  dostawca_id: string;
   norma_domyslna?: number;
   jednostka?: string;
 }) {
@@ -240,10 +258,8 @@ export async function createBibliotekaSkladowaM(opts: {
     .insert({
       pozycja_biblioteka_id: opts.pozycja_biblioteka_id,
       lp: opts.lp,
-      nazwa: opts.nazwa,
-      produkt_id: opts.produkt_id || null,
-      dostawca_id: opts.dostawca_id || null,
-      cena_domyslna: opts.cena_domyslna ?? null,
+      produkt_id: opts.produkt_id,
+      dostawca_id: opts.dostawca_id,
       norma_domyslna: opts.norma_domyslna ?? 1,
       jednostka: opts.jednostka || null,
     })
@@ -258,22 +274,18 @@ export async function createBibliotekaSkladowaM(opts: {
 export async function createBibliotekaSkladowaR(opts: {
   pozycja_biblioteka_id: string;
   lp: number;
-  opis: string;
-  podwykonawca_id?: string;
-  stawka_domyslna?: number;
-  norma_domyslna?: number;
-  jednostka?: string;
+  typ_robocizny_id: string;
+  podwykonawca_id: string;
+  cena?: number;
 }) {
   const { data, error } = await supabase
     .from('biblioteka_skladowe_robocizna')
     .insert({
       pozycja_biblioteka_id: opts.pozycja_biblioteka_id,
       lp: opts.lp,
-      opis: opts.opis,
-      podwykonawca_id: opts.podwykonawca_id || null,
-      stawka_domyslna: opts.stawka_domyslna ?? null,
-      norma_domyslna: opts.norma_domyslna ?? 1,
-      jednostka: opts.jednostka || 'h',
+      typ_robocizny_id: opts.typ_robocizny_id,
+      podwykonawca_id: opts.podwykonawca_id,
+      cena: opts.cena ?? 0,
     })
     .select()
     .single();
@@ -356,28 +368,19 @@ export async function createKosztorysPozycja(
 export async function createKosztorysSkladowaR(opts: {
   kosztorys_pozycja_id: string;
   lp: number;
-  opis: string;
-  podwykonawca_id?: string;
-  stawka: number;
-  norma: number;
-  is_manual?: boolean;
-  ilosc?: number;
-  jednostka?: string;
+  typ_robocizny_id: string;
+  podwykonawca_id: string;
+  cena: number;
 }) {
-  const record: Record<string, unknown> = {
-    kosztorys_pozycja_id: opts.kosztorys_pozycja_id,
-    lp: opts.lp,
-    opis: opts.opis,
-    podwykonawca_id: opts.podwykonawca_id || null,
-    stawka: opts.stawka,
-    norma: opts.norma,
-    is_manual: opts.is_manual ?? false,
-    jednostka: opts.jednostka || 'h',
-  };
-  if (opts.ilosc !== undefined) record.ilosc = opts.ilosc;
   const { data, error } = await supabase
     .from('kosztorys_skladowe_robocizna')
-    .insert(record)
+    .insert({
+      kosztorys_pozycja_id: opts.kosztorys_pozycja_id,
+      lp: opts.lp,
+      typ_robocizny_id: opts.typ_robocizny_id,
+      podwykonawca_id: opts.podwykonawca_id,
+      cena: opts.cena,
+    })
     .select()
     .single();
   if (error) throw new Error(`createKosztorysSkladowaR: ${error.message}`);
@@ -389,9 +392,8 @@ export async function createKosztorysSkladowaR(opts: {
 export async function createKosztorysSkladowaM(opts: {
   kosztorys_pozycja_id: string;
   lp: number;
-  nazwa: string;
-  produkt_id?: string;
-  dostawca_id?: string;
+  produkt_id: string;
+  dostawca_id: string;
   cena: number;
   norma: number;
   is_manual?: boolean;
@@ -401,9 +403,8 @@ export async function createKosztorysSkladowaM(opts: {
   const record: Record<string, unknown> = {
     kosztorys_pozycja_id: opts.kosztorys_pozycja_id,
     lp: opts.lp,
-    nazwa: opts.nazwa,
-    produkt_id: opts.produkt_id || null,
-    dostawca_id: opts.dostawca_id || null,
+    produkt_id: opts.produkt_id,
+    dostawca_id: opts.dostawca_id,
     cena: opts.cena,
     norma: opts.norma,
     is_manual: opts.is_manual ?? false,

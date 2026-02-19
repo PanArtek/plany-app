@@ -6,25 +6,31 @@ import { Button } from '@/components/ui/button';
 
 export interface SkladowaItem {
   id: string;
-  opis?: string;
-  nazwa?: string;
-  stawka_domyslna?: number | null;
-  cena_domyslna?: number | null;
+  // Robocizna fields
+  typ_robocizny_id?: string;
+  podwykonawca_id?: string;
+  cena?: number;
+  typy_robocizny?: { id: string; nazwa: string; jednostka: string | null } | null;
+  podwykonawcy?: { id: string; nazwa: string } | null;
+  // Material fields
+  produkt_id?: string;
+  dostawca_id?: string;
   norma_domyslna?: number | null;
   jednostka?: string | null;
+  produkty?: { id: string; nazwa: string; sku: string; jednostka: string } | null;
+  dostawcy?: { id: string; nazwa: string; kod: string | null } | null;
 }
 
 interface SkladoweSectionProps {
   title: string;
   items: SkladowaItem[];
   suma: number;
-  /** @deprecated Use amber styling internally */
-  colorClass?: string;
   variant?: 'primary' | 'secondary';
   editable?: boolean;
   onAdd?: () => void;
   onEdit?: (item: SkladowaItem) => void;
   onDelete?: (item: SkladowaItem) => void;
+  cennikPrices?: Record<string, number | null>;
 }
 
 function formatCena(value: number): string {
@@ -35,15 +41,38 @@ function formatCena(value: number): string {
   }).format(value);
 }
 
-function formatNormaInfo(item: SkladowaItem): string {
-  const norma = item.norma_domyslna ?? 0;
-  const rate = item.stawka_domyslna ?? item.cena_domyslna ?? 0;
-  const jednostka = item.jednostka || 'j.';
+function getItemLabel(item: SkladowaItem): string {
+  // Robocizna: show typ name
+  if (item.typy_robocizny?.nazwa) return item.typy_robocizny.nazwa;
+  // Material: show produkt name
+  if (item.produkty?.nazwa) return item.produkty.nazwa;
+  return '—';
+}
 
-  if (rate === 0) {
-    return `${norma} ${jednostka}`;
+function getItemSubLabel(item: SkladowaItem): string {
+  // Robocizna: show podwykonawca
+  if (item.podwykonawcy?.nazwa) return item.podwykonawcy.nazwa;
+  // Material: show dostawca + norma
+  if (item.dostawcy?.nazwa) {
+    const norma = item.norma_domyslna ?? 0;
+    const j = item.jednostka || 'j.';
+    return `${item.dostawcy.nazwa} · ${norma} ${j}`;
   }
-  return `${norma} ${jednostka} × ${rate.toFixed(2)} zł/${jednostka}`;
+  return '';
+}
+
+function getItemCost(item: SkladowaItem, cennikPrice?: number | null): number {
+  // If cennik price is available, use it
+  if (cennikPrice !== undefined && cennikPrice !== null) {
+    // For materials: cennik price * norma; for robocizna: just the stawka
+    if (item.norma_domyslna !== undefined && item.norma_domyslna !== null && item.produkty) {
+      return cennikPrice * item.norma_domyslna;
+    }
+    return cennikPrice;
+  }
+  // Robocizna: cena is stored directly
+  if (item.cena !== undefined) return item.cena;
+  return 0;
 }
 
 export function SkladoweSection({
@@ -55,6 +84,7 @@ export function SkladoweSection({
   onAdd,
   onEdit,
   onDelete,
+  cennikPrices,
 }: SkladoweSectionProps) {
   const titleColorClass = variant === 'primary' ? 'text-amber-400' : 'text-amber-400/70';
 
@@ -83,9 +113,11 @@ export function SkladoweSection({
       ) : (
         <div className="space-y-1">
           {items.map((item) => {
-            const label = item.opis || item.nazwa || '—';
-            const cena = (item.stawka_domyslna ?? item.cena_domyslna ?? 0) * (item.norma_domyslna ?? 0);
-            const normaInfo = formatNormaInfo(item);
+            const label = getItemLabel(item);
+            const subLabel = getItemSubLabel(item);
+            const cennikPrice = cennikPrices?.[item.id];
+            const cost = getItemCost(item, cennikPrice);
+            const hasMissingPrice = cennikPrices !== undefined && (cennikPrice === null || cennikPrice === undefined);
 
             return (
               <div
@@ -94,10 +126,16 @@ export function SkladoweSection({
               >
                 <div className="flex flex-col min-w-0 flex-1">
                   <span className="truncate">{label}</span>
-                  <span className="text-xs text-muted-foreground">{normaInfo}</span>
+                  {subLabel && (
+                    <span className="text-xs text-muted-foreground">{subLabel}</span>
+                  )}
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="font-mono text-muted-foreground">{formatCena(cena)}</span>
+                  {hasMissingPrice ? (
+                    <span className="text-xs text-orange-400">brak w cenniku</span>
+                  ) : cost > 0 ? (
+                    <span className="font-mono text-muted-foreground">{formatCena(cost)}</span>
+                  ) : null}
                   {editable && (
                     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                       {onEdit && (

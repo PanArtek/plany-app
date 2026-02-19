@@ -16,26 +16,28 @@ export type ActionResult<T = unknown> = {
   data?: T;
 };
 
-// Typy dla pozycji z bazy
+// Typy dla pozycji z bazy (matching new schema)
 export interface SkladowaRobocizna {
   id: string;
   lp: number;
-  opis: string;
-  podwykonawca_id: string | null;
-  stawka_domyslna: number | null;
-  norma_domyslna: number | null;
-  jednostka: string | null;
+  typ_robocizny_id: string;
+  podwykonawca_id: string;
+  cena: number;
+  // Joined data
+  typy_robocizny?: { id: string; nazwa: string; jednostka: string | null } | null;
+  podwykonawcy?: { id: string; nazwa: string } | null;
 }
 
 export interface SkladowaMaterial {
   id: string;
   lp: number;
-  nazwa: string;
-  produkt_id: string | null;
-  dostawca_id: string | null;
-  cena_domyslna: number | null;
+  produkt_id: string;
+  dostawca_id: string;
   norma_domyslna: number | null;
   jednostka: string | null;
+  // Joined data
+  produkty?: { id: string; nazwa: string; sku: string; jednostka: string } | null;
+  dostawcy?: { id: string; nazwa: string; kod: string | null } | null;
 }
 
 export interface KategoriaInfo {
@@ -89,8 +91,8 @@ export async function createPozycja(input: unknown): Promise<ActionResult<Pozycj
     })
     .select(`
       *,
-      biblioteka_skladowe_robocizna(*),
-      biblioteka_skladowe_materialy(*)
+      biblioteka_skladowe_robocizna(*, typy_robocizny(id, nazwa, jednostka), podwykonawcy(id, nazwa)),
+      biblioteka_skladowe_materialy(*, produkty(id, nazwa, sku, jednostka), dostawcy(id, nazwa, kod))
     `)
     .single();
 
@@ -129,8 +131,8 @@ export async function updatePozycja(id: string, input: unknown): Promise<ActionR
     .eq('id', id)
     .select(`
       *,
-      biblioteka_skladowe_robocizna(*),
-      biblioteka_skladowe_materialy(*)
+      biblioteka_skladowe_robocizna(*, typy_robocizny(id, nazwa, jednostka), podwykonawcy(id, nazwa)),
+      biblioteka_skladowe_materialy(*, produkty(id, nazwa, sku, jednostka), dostawcy(id, nazwa, kod))
     `)
     .single();
 
@@ -197,8 +199,8 @@ export async function getPozycje(filters: PozycjeFilters): Promise<PozycjeResult
     .from('pozycje_biblioteka')
     .select(`
       *,
-      biblioteka_skladowe_robocizna(*),
-      biblioteka_skladowe_materialy(*),
+      biblioteka_skladowe_robocizna(*, typy_robocizny(id, nazwa, jednostka), podwykonawcy(id, nazwa)),
+      biblioteka_skladowe_materialy(*, produkty(id, nazwa, sku, jednostka), dostawcy(id, nazwa, kod)),
       kategoria:kategorie!kategoria_id(
         id,
         kod,
@@ -239,6 +241,40 @@ export async function getPozycje(filters: PozycjeFilters): Promise<PozycjeResult
   };
 }
 
+// Fetch cennik prices for multiple pozycje (batch)
+export interface CennikPrices {
+  materialPrices: Record<string, number | null>; // skladowa_id -> cena_netto
+  robociznaPrices: Record<string, number | null>; // skladowa_id -> stawka
+}
+
+export async function getCennikPricesForPozycje(pozycjaIds: string[]): Promise<CennikPrices> {
+  if (pozycjaIds.length === 0) return { materialPrices: {}, robociznaPrices: {} };
+
+  const supabase = await createClient();
+
+  const [materialResult, robociznaResult] = await Promise.all([
+    supabase.rpc('get_pozycja_material_prices_batch', { p_pozycja_ids: pozycjaIds }),
+    supabase.rpc('get_pozycja_robocizna_stawki_batch', { p_pozycja_ids: pozycjaIds }),
+  ]);
+
+  const materialPrices: Record<string, number | null> = {};
+  const robociznaPrices: Record<string, number | null> = {};
+
+  if (materialResult.data) {
+    for (const row of materialResult.data) {
+      materialPrices[row.skladowa_id] = row.cena_netto !== null ? Number(row.cena_netto) : null;
+    }
+  }
+
+  if (robociznaResult.data) {
+    for (const row of robociznaResult.data) {
+      robociznaPrices[row.skladowa_id] = row.stawka !== null ? Number(row.stawka) : null;
+    }
+  }
+
+  return { materialPrices, robociznaPrices };
+}
+
 // READ - pojedyncza pozycja
 export async function getPozycja(id: string): Promise<Pozycja | null> {
   const supabase = await createClient();
@@ -247,8 +283,8 @@ export async function getPozycja(id: string): Promise<Pozycja | null> {
     .from('pozycje_biblioteka')
     .select(`
       *,
-      biblioteka_skladowe_robocizna(*),
-      biblioteka_skladowe_materialy(*)
+      biblioteka_skladowe_robocizna(*, typy_robocizny(id, nazwa, jednostka), podwykonawcy(id, nazwa)),
+      biblioteka_skladowe_materialy(*, produkty(id, nazwa, sku, jednostka), dostawcy(id, nazwa, kod))
     `)
     .eq('id', id)
     .single();

@@ -15,8 +15,8 @@
         "Typecheck passes"
       ],
       "priority": 1,
-      "passes": true,
-      "notes": "Migration applied via Supabase MCP. Table, index, and 4 RLS policies created. Build passes.",
+      "passes": false,
+      "notes": "",
       "dependsOn": []
     },
     {
@@ -31,8 +31,8 @@
         "Typecheck passes"
       ],
       "priority": 2,
-      "passes": true,
-      "notes": "Migration applied. pozycja_biblioteka_id dropped, typ_robocizny_id added NOT NULL, unique constraint on (podwykonawca_id, typ_robocizny_id). Build passes.",
+      "passes": false,
+      "notes": "",
       "dependsOn": ["US-001"]
     },
     {
@@ -48,8 +48,8 @@
         "Typecheck passes"
       ],
       "priority": 2,
-      "passes": true,
-      "notes": "Migration applied. opis and stawka_domyslna dropped, typ_robocizny_id added NOT NULL, podwykonawca_id set NOT NULL. Table has cena column from original schema (not norma_domyslna as PRD expected). Build passes.",
+      "passes": false,
+      "notes": "",
       "dependsOn": ["US-001"]
     },
     {
@@ -65,8 +65,8 @@
         "Typecheck passes"
       ],
       "priority": 2,
-      "passes": true,
-      "notes": "Migration applied. nazwa and cena_domyslna dropped, produkt_id and dostawca_id set NOT NULL with CASCADE delete. Build passes.",
+      "passes": false,
+      "notes": "",
       "dependsOn": []
     },
     {
@@ -80,8 +80,8 @@
         "Typecheck passes"
       ],
       "priority": 3,
-      "passes": true,
-      "notes": "Migration applied. materialy: nazwa dropped, produkt_id+dostawca_id NOT NULL, cena_manualna added. robocizna: opis dropped, typ_robocizny_id added NOT NULL, podwykonawca_id NOT NULL, stawka_manualna added. Build passes.",
+      "passes": false,
+      "notes": "",
       "dependsOn": ["US-001"]
     },
     {
@@ -97,8 +97,8 @@
         "Typecheck passes"
       ],
       "priority": 3,
-      "passes": true,
-      "notes": "Migration applied. zamowienie_pozycje: kosztorys_skladowa_material_id added, produkt_id NOT NULL. umowa_pozycje: kosztorys_skladowa_robocizna_id + typ_robocizny_id added, pozycja_biblioteka_id dropped. Build passes.",
+      "passes": false,
+      "notes": "",
       "dependsOn": ["US-005"]
     },
     {
@@ -113,8 +113,8 @@
         "Typecheck passes"
       ],
       "priority": 4,
-      "passes": true,
-      "notes": "Types regenerated via Supabase MCP. All new tables/columns reflected. Build passes with zero errors.",
+      "passes": false,
+      "notes": "",
       "dependsOn": ["US-006"]
     },
     {
@@ -131,8 +131,8 @@
         "Typecheck passes"
       ],
       "priority": 5,
-      "passes": true,
-      "notes": "All tables truncated. Seeded: organizations=1, kategorie=35, narzuty=3, typy_robocizny=18. Seed files 00-clean.sql and 01-base.sql created.",
+      "passes": false,
+      "notes": "",
       "dependsOn": ["US-007"]
     },
     {
@@ -150,8 +150,8 @@
         "Typecheck passes"
       ],
       "priority": 5,
-      "passes": true,
-      "notes": "Seeded: dostawcy=6, podwykonawcy=5, produkty=48, ceny_dostawcow=96, stawki_podwykonawcow=18 (all with typ_robocizny_id). Seed files need creation.",
+      "passes": false,
+      "notes": "",
       "dependsOn": ["US-008"]
     },
     {
@@ -169,8 +169,8 @@
         "Typecheck passes"
       ],
       "priority": 6,
-      "passes": true,
-      "notes": "Seeded: pozycje_biblioteka=18, biblioteka_skladowe_robocizna=18 (all typ_robocizny_id NOT NULL), biblioteka_skladowe_materialy=48 (all produkt_id+dostawca_id NOT NULL). Seed file updated.",
+      "passes": false,
+      "notes": "",
       "dependsOn": ["US-009"]
     },
     {
@@ -187,8 +187,8 @@
         "Typecheck passes"
       ],
       "priority": 7,
-      "passes": true,
-      "notes": "Created lib/validations/typy-robocizny.ts and actions/typy-robocizny.ts. Build passes.",
+      "passes": false,
+      "notes": "",
       "dependsOn": ["US-007"]
     },
     {
@@ -206,8 +206,8 @@
         "Typecheck passes"
       ],
       "priority": 8,
-      "passes": true,
-      "notes": "Created page, view, table, filters, pagination, form panel. Sidebar updated with Wrench icon. Verified in browser.",
+      "passes": false,
+      "notes": "",
       "dependsOn": ["US-011", "US-008"]
     },
     {
@@ -223,8 +223,8 @@
         "Typecheck passes"
       ],
       "priority": 9,
-      "passes": true,
-      "notes": "Updated actions/skladowe.ts, lib/validations/skladowe.ts, actions/pozycje.ts interfaces+queries, lib/utils/pozycje.ts, skladowa-panel.tsx, skladowe-section.tsx, pozycja-detail-panel.tsx. All dropped columns removed. Build passes.",
+      "passes": false,
+      "notes": "",
       "dependsOn": ["US-007", "US-010"]
     },
     {
@@ -242,15 +242,13 @@
         "Typecheck passes"
       ],
       "priority": 10,
-      "passes": true,
-      "notes": "Material form: produkt dropdown (48 options), dostawca dropdown, cennik price shown (18.50 zl). Labor form: typ_robocizny dropdown (18 options, RLS fixed), podwykonawca dropdown (5 options), cennik stawka shown (45.00 zl) with auto-fill. Build passes. Browser verified.",
+      "passes": false,
+      "notes": "",
       "dependsOn": ["US-013", "US-012"]
     },
     {
       "id": "US-015",
       "title": "Pozycja detail panel — full package view with prices from cennik",
-      "passes": true,
-      "notes": "Created Postgres batch functions for cennik lookups. Updated page, view, detail panel, table columns to use cennik prices. Material prices now show cena*norma from ceny_dostawcow. Footer shows R+M breakdown. Build passes. Browser verified.",
       "description": "Update the pozycja biblioteczna detail panel to show the complete package with live prices.\n\nFind the existing pozycja detail component and update/replace it:\n\n### Package view layout:\n```\nPozycja: Malowanie scian (BUD.03.01.001)\n\nMATERIALY\n| Produkt       | Dostawca  | Norma  | Cena (cennik) |\n| Farba Dulux   | MAT-BUD   | 0.15   | 45 zl         |\n| Grunt akryl.  | MAT-BUD   | 0.05   | 12 zl         |\n\nROBOCIZNA\n| Typ pracy     | Podwyk.   | Norma  | Stawka (cennik) |\n| Montaz...     | BudMont   | 0.8    | 45 zl/m2        |\n\nPODSUMOWANIE\nMaterialy: XX zl | Robocizna: YY zl | Razem: ZZ zl\n```\n\nPrices must come from cennik tables (ceny_dostawcow, stawki_podwykonawcow), NOT from stored defaults.\n\nThe action fetching pozycja detail should return skladowe with JOINed data:\n- Material: produkt.nazwa, produkt.sku, dostawca.nazwa, dostawca.kod, cena from ceny_dostawcow\n- Labor: typ_robocizny.nazwa, podwykonawca.nazwa, stawka from stawki_podwykonawcow\n\nIf price not found in cennik, show 'brak w cenniku' warning.",
       "acceptanceCriteria": [
         "Pozycja detail shows MATERIALY table with produkt name, dostawca name, norma, cena from cennik",
@@ -261,6 +259,8 @@
         "Typecheck passes"
       ],
       "priority": 11,
+      "passes": false,
+      "notes": "",
       "dependsOn": ["US-014"]
     },
     {
@@ -275,8 +275,8 @@
         "Typecheck passes"
       ],
       "priority": 11,
-      "passes": true,
-      "notes": "Dostawca detail panel shows 'Używany w pozycjach' section with positions grouped by pozycja showing product names. Verified MAT-BUD: 3 positions (BUD.01.01.001, BUD.01.03.001, BUD.03.01.001) with products listed. Empty state handled. Build passes.",
+      "passes": false,
+      "notes": "",
       "dependsOn": ["US-013", "US-010"]
     },
     {
@@ -291,8 +291,8 @@
         "Typecheck passes"
       ],
       "priority": 11,
-      "passes": true,
-      "notes": "Cennik shows 5 stawki per typ_robocizny with units. Pozycje shows 5 positions with labor type names. Fixed stale pozycjaBibliotekaId refs to typRobociznyId across actions, validations, and stawka form. Build passes.",
+      "passes": false,
+      "notes": "",
       "dependsOn": ["US-013", "US-010"]
     },
     {
@@ -308,8 +308,8 @@
         "Typecheck passes"
       ],
       "priority": 12,
-      "passes": true,
-      "notes": "Rewrote addPositionFromLibrary and resetPozycjaToLibrary to use new schema. Materials: looks up ceny_dostawcow by produkt_id+dostawca_id. Robocizna: looks up stawki_podwykonawcow by typ_robocizny_id+podwykonawca_id. Updated SkladowaR/M interfaces, getKosztorysPozycjaDetail, and pozycja-detail-panel to match new column names. All dropped column refs removed. Build passes.",
+      "passes": false,
+      "notes": "",
       "dependsOn": ["US-013"]
     },
     {
@@ -326,8 +326,8 @@
         "Typecheck passes"
       ],
       "priority": 13,
-      "passes": true,
-      "notes": "Added changeDostawcaForSkladowa and changePodwykonawcaForSkladowa actions that update supplier/subcontractor and fetch new cennik price. UI shows real names (typRobociznyNazwa, produktNazwa, produktSku, dostawcaNazwa, podwykonawcaNazwa). Changing dostawca updates price from cennik automatically. Manual override via stawka_manualna/cena_manualna works. Build passes. Browser verified.",
+      "passes": false,
+      "notes": "",
       "dependsOn": ["US-018", "US-015"]
     },
     {
@@ -342,8 +342,8 @@
         "Typecheck passes"
       ],
       "priority": 14,
-      "passes": true,
-      "notes": "Updated generate_zamowienia_draft Postgres function: uses p.nazwa instead of ksm.nazwa (dropped), COALESCE(cena_manualna, cena) for prices, JOIN produkty required (not LEFT JOIN). ZamowieniePozycja.produkt_id updated to non-nullable. Build passes.",
+      "passes": false,
+      "notes": "",
       "dependsOn": ["US-018", "US-006"]
     },
     {
@@ -359,8 +359,8 @@
         "Typecheck passes"
       ],
       "priority": 14,
-      "passes": true,
-      "notes": "Updated generate_umowy_draft Postgres function: groups by podwykonawca_id from kosztorys_skladowe_robocizna, aggregates by typ_robocizny_id+price, uses COALESCE(stawka_manualna, cena). UmowaPozycja interface updated: pozycja_biblioteka_id→typ_robocizny_id. Query updated. No UI references to dropped columns. Build passes.",
+      "passes": false,
+      "notes": "",
       "dependsOn": ["US-018", "US-006"]
     },
     {
@@ -377,8 +377,8 @@
         "Typecheck passes"
       ],
       "priority": 15,
-      "passes": true,
-      "notes": "Rewrote 04-pozycje-stawki.sql with full library (pozycje_biblioteka + biblioteka_skladowe_robocizna/materialy). All 6 project seeds (05-10) executed. Fixed 08 UPDATE FROM clause. 5 projects, 0 NULLs in FKs. Build passes.",
+      "passes": false,
+      "notes": "",
       "dependsOn": ["US-020", "US-021", "US-010"]
     },
     {
@@ -395,8 +395,8 @@
         "Typecheck passes"
       ],
       "priority": 16,
-      "passes": true,
-      "notes": "All data counts verified. 0 NULL FKs. Build passes. Browser: /typy-robocizny shows 18 types, /projekty shows 5 projects with correct statuses, kosztorys detail panel shows full package with real product names, SKUs, prices from cennik, supplier dropdowns.",
+      "passes": false,
+      "notes": "",
       "dependsOn": ["US-022"]
     }
   ]
